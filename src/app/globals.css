@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #f7fafb;
+  --surface: #ffffff;
+  --ink: #12242b;
+  --muted: #647279;
+  --line: #e2e8ea;
+
+  --brand: #1fb6cc;
+  --brand-deep: #0e8fa3;
+  --brand-soft: #e7f8fb;
+
+  --success: #17a568;
+  --success-soft: #e9f9f1;
+
+  --urgent: #e23f63;
+  --urgent-deep: #c22a4c;
+  --urgent-soft: #fdeef1;
+
+  --warning: #b8860b;
+  --warning-soft: #fdf6e3;
+}
+* { box-sizing: border-box; }
+html { background: var(--canvas); }
+body { background: var(--canvas); color: var(--ink); font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: no-preference) { button, a { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease, color 160ms ease, border-color 160ms ease; } button:active { transform: scale(0.97); } }
