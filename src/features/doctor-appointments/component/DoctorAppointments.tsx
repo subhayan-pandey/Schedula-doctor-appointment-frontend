@@ -10,6 +10,7 @@ import {
   updateBookingStatus,
 } from "@/lib/bookings-store";
 
+import { releaseSlot } from "@/lib/slots-store";
 import { getSession } from "@/lib/storage";
 
 import type {
@@ -21,14 +22,21 @@ type FilterStatus =
   | "all"
   | BookingStatus;
 
-function getAppointmentDateTime(booking: Booking) {
+function getAppointmentDateTime(
+  booking: Booking,
+) {
   return new Date(
     `${booking.date}T${booking.time}`,
   );
 }
 
-function isPastAppointment(booking: Booking) {
-  return getAppointmentDateTime(booking) < new Date();
+function isPastAppointment(
+  booking: Booking,
+) {
+  return (
+    getAppointmentDateTime(booking) <
+    new Date()
+  );
 }
 
 function formatDate(date: string) {
@@ -41,7 +49,9 @@ function formatDate(date: string) {
   });
 }
 
-function getStatusClasses(status: BookingStatus) {
+function getStatusClasses(
+  status: BookingStatus,
+) {
   switch (status) {
     case "pending":
       return "bg-amber-50 text-amber-700 border-amber-200";
@@ -66,9 +76,13 @@ function getStatusClasses(status: BookingStatus) {
   }
 }
 
-function getStatusLabel(status: BookingStatus) {
-  return status.charAt(0).toUpperCase() +
-    status.slice(1);
+function getStatusLabel(
+  status: BookingStatus,
+) {
+  return (
+    status.charAt(0).toUpperCase() +
+    status.slice(1)
+  );
 }
 
 export default function DoctorAppointments() {
@@ -93,10 +107,11 @@ export default function DoctorAppointments() {
 
     setDoctorId(session.id);
 
-    const doctorBookings = getAllBookings().filter(
-      (booking) =>
-        booking.doctorId === session.id,
-    );
+    const doctorBookings =
+      getAllBookings().filter(
+        (booking) =>
+          booking.doctorId === session.id,
+      );
 
     setBookings(doctorBookings);
   }, []);
@@ -117,12 +132,21 @@ export default function DoctorAppointments() {
       return;
     }
 
-    const doctorBookings = getAllBookings().filter(
-      (booking) =>
-        booking.doctorId === doctorId,
-    );
+    const doctorBookings =
+      getAllBookings().filter(
+        (booking) =>
+          booking.doctorId === doctorId,
+      );
 
     setBookings(doctorBookings);
+  }
+
+  function showMessage(text: string) {
+    setMessage(text);
+
+    window.setTimeout(() => {
+      setMessage(null);
+    }, 3000);
   }
 
   function changeStatus(
@@ -136,17 +160,42 @@ export default function DoctorAppointments() {
 
     refreshBookings();
 
-    setMessage(
+    showMessage(
       `Appointment marked as ${status}.`,
     );
-
-    window.setTimeout(() => {
-      setMessage(null);
-    }, 3000);
   }
 
-  function handleConfirm(booking: Booking) {
-    if (booking.status !== "pending") {
+  function cancelAndReleaseSlot(
+    booking: Booking,
+  ) {
+    /*
+     * Release the slot first.
+     *
+     * The appointment is then marked as cancelled.
+     */
+    releaseSlot(
+      booking.doctorId,
+      booking.slotId,
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "cancelled",
+    );
+
+    refreshBookings();
+
+    showMessage(
+      "Appointment cancelled and slot released.",
+    );
+  }
+
+  function handleConfirm(
+    booking: Booking,
+  ) {
+    if (
+      booking.status !== "pending"
+    ) {
       return;
     }
 
@@ -156,18 +205,25 @@ export default function DoctorAppointments() {
     );
   }
 
-  function handleDecline(booking: Booking) {
-    if (booking.status !== "pending") {
+  function handleDecline(
+    booking: Booking,
+  ) {
+    if (
+      booking.status !== "pending"
+    ) {
       return;
     }
 
-    changeStatus(
-      booking.id,
-      "cancelled",
-    );
+    /*
+     * Declined appointments should not
+     * permanently occupy the doctor's slot.
+     */
+    cancelAndReleaseSlot(booking);
   }
 
-  function handleCancel(booking: Booking) {
+  function handleCancel(
+    booking: Booking,
+  ) {
     if (
       booking.status !== "confirmed" &&
       booking.status !== "upcoming"
@@ -175,13 +231,12 @@ export default function DoctorAppointments() {
       return;
     }
 
-    changeStatus(
-      booking.id,
-      "cancelled",
-    );
+    cancelAndReleaseSlot(booking);
   }
 
-  function handleCompleted(booking: Booking) {
+  function handleCompleted(
+    booking: Booking,
+  ) {
     if (
       booking.status !== "confirmed" &&
       booking.status !== "upcoming"
@@ -190,20 +245,26 @@ export default function DoctorAppointments() {
     }
 
     if (!isPastAppointment(booking)) {
-      setMessage(
+      showMessage(
         "Only past appointments can be marked as completed.",
       );
 
       return;
     }
 
+    /*
+     * Completed appointments keep
+     * their slot permanently booked.
+     */
     changeStatus(
       booking.id,
       "completed",
     );
   }
 
-  function handleMissed(booking: Booking) {
+  function handleMissed(
+    booking: Booking,
+  ) {
     if (
       booking.status !== "confirmed" &&
       booking.status !== "upcoming"
@@ -212,13 +273,17 @@ export default function DoctorAppointments() {
     }
 
     if (!isPastAppointment(booking)) {
-      setMessage(
+      showMessage(
         "Only past appointments can be marked as missed.",
       );
 
       return;
     }
 
+    /*
+     * Missed appointments also keep
+     * their original slot booked.
+     */
     changeStatus(
       booking.id,
       "missed",
@@ -269,7 +334,9 @@ export default function DoctorAppointments() {
           <button
             key={status}
             type="button"
-            onClick={() => setFilter(status)}
+            onClick={() =>
+              setFilter(status)
+            }
             className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
               filter === status
                 ? "bg-[var(--brand)] text-white"
