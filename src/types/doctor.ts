@@ -23,3 +23,12 @@ export type Doctor = {
   bio: string;
   avatarInitials: string;
 };
+
+export const SPECIALTIES: Specialty[] = [
+  "Cardiologist",
+  "Dermatologist",
+  "Psychologist",
+  "General Physician",
+  "Pediatrician",
+  "Orthopedic",
+];
