@@ -104,3 +104,7 @@ export const doctors: Doctor[] = [
     avatarInitials: "RS",
   },
 ];
+
+export function getDoctorById(id: string): Doctor | undefined {
+  return doctors.find((doctor) => doctor.id === id);
+}
