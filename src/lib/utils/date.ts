@@ -34,3 +34,13 @@ export function formatLongDate(isoDate: string): string {
     year: "numeric",
   });
 }
+
+/** Converts a 24-hour "HH:MM" input value (e.g. from <input type="time">)
+ * into a 12-hour display string, e.g. "09:30 AM". */
+export function formatTime12h(time24: string): string {
+  const [hoursStr, minutesStr] = time24.split(":");
+  const hours = Number(hoursStr);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `${String(displayHours).padStart(2, "0")}:${minutesStr} ${period}`;
+}

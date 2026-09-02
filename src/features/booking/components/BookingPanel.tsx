@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
-import DateStrip from "@/features/booking/components/DateStrip";
+import DateStrip from "@/components/ui/DateStrip";
 import SlotGrid from "@/features/booking/components/SlotGrid";
 import { getSlotsForDoctor, bookSlot } from "@/lib/slots-store";
 import { addBooking } from "@/lib/bookings-store";
