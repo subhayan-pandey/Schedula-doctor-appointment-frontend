@@ -1,23 +1,29 @@
+type StatCardProps = {
+  label: string;
+  value: string | number;
+  description?: string;
+};
+
 export default function StatCard({
   label,
   value,
-  accent = "brand",
-}: {
-  label: string;
-  value: string | number;
-  accent?: "brand" | "urgent" | "success";
-}) {
-  const accentClass =
-    accent === "urgent"
-      ? "text-[var(--urgent-deep)]"
-      : accent === "success"
-        ? "text-[var(--success)]"
-        : "text-[var(--brand-deep)]";
-
+  description,
+}: StatCardProps) {
   return (
-    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
-      <p className={`text-2xl font-semibold ${accentClass}`}>{value}</p>
-      <p className="mt-1 text-sm text-[var(--muted)]">{label}</p>
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5">
+      <p className="text-sm font-medium text-[var(--muted)]">
+        {label}
+      </p>
+
+      <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+        {value}
+      </p>
+
+      {description && (
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          {description}
+        </p>
+      )}
     </div>
   );
 }
