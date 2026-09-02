@@ -1,25 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
 
 import Button from "@/components/ui/Button";
 import DateStrip from "@/components/ui/DateStrip";
+
 import SlotGrid from "@/features/booking/components/SlotGrid";
 
 import {
-  getSlotsForDoctor,
   bookSlot,
+  getSlotsForDoctor,
 } from "@/lib/slots-store";
 
-import { addBooking } from "@/lib/bookings-store";
-import { getSession } from "@/lib/storage";
+import {
+  addBooking,
+} from "@/lib/bookings-store";
+
+import {
+  getSession,
+} from "@/lib/storage";
+
 import {
   getNextDays,
   toISODate,
 } from "@/lib/utils/date";
 
-import type { Slot } from "@/types/slot";
+import type {
+  Slot,
+} from "@/types/slot";
 
 export default function BookingPanel({
   doctorId,
@@ -33,46 +49,75 @@ export default function BookingPanel({
     [],
   );
 
-  const [selectedDate, setSelectedDate] =
-    useState(() => toISODate(days[0]));
+  const [
+    selectedDate,
+    setSelectedDate,
+  ] = useState(
+    () => toISODate(days[0]),
+  );
 
-  const [selectedSlotId, setSelectedSlotId] =
-    useState<string | null>(null);
+  const [
+    selectedSlotId,
+    setSelectedSlotId,
+  ] = useState<string | null>(
+    null,
+  );
 
   const [slots, setSlots] =
     useState<Slot[]>([]);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const [isBooking, setIsBooking] =
-    useState(false);
+  const [
+    isBooking,
+    setIsBooking,
+  ] = useState(false);
 
-  const [bookingError, setBookingError] =
-    useState<string | null>(null);
+  const [
+    bookingError,
+    setBookingError,
+  ] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      setSlots(getSlotsForDoctor(doctorId));
+      setSlots(
+        getSlotsForDoctor(doctorId),
+      );
+
       setIsLoading(false);
     });
   }, [doctorId]);
 
-  const slotsForDate = slots.filter(
-    (slot) => slot.date === selectedDate,
-  );
+  const slotsForDate =
+    slots.filter(
+      (slot) =>
+        slot.date === selectedDate,
+    );
 
-  const morningSlots = slotsForDate.filter(
-    (slot) => slot.period === "Morning",
-  );
+  const morningSlots =
+    slotsForDate.filter(
+      (slot) =>
+        slot.period === "Morning",
+    );
 
-  const eveningSlots = slotsForDate.filter(
-    (slot) => slot.period === "Evening",
-  );
+  const eveningSlots =
+    slotsForDate.filter(
+      (slot) =>
+        slot.period === "Evening",
+    );
 
-  function handleSelectDate(isoDate: string) {
+  function handleSelectDate(
+    isoDate: string,
+  ) {
     setSelectedDate(isoDate);
+
     setSelectedSlotId(null);
+
     setBookingError(null);
   }
 
@@ -81,7 +126,8 @@ export default function BookingPanel({
       return;
     }
 
-    const session = getSession();
+    const session =
+      getSession();
 
     if (!session) {
       setBookingError(
@@ -91,14 +137,26 @@ export default function BookingPanel({
       return;
     }
 
+    if (
+      session.role !== "patient"
+    ) {
+      setBookingError(
+        "Please use a patient account to book an appointment.",
+      );
+
+      return;
+    }
+
     setIsBooking(true);
+
     setBookingError(null);
 
     window.setTimeout(() => {
-      const updatedSlots = bookSlot(
-        doctorId,
-        selectedSlotId,
-      );
+      const updatedSlots =
+        bookSlot(
+          doctorId,
+          selectedSlotId,
+        );
 
       if (!updatedSlots) {
         setBookingError(
@@ -106,7 +164,9 @@ export default function BookingPanel({
         );
 
         setSlots(
-          getSlotsForDoctor(doctorId),
+          getSlotsForDoctor(
+            doctorId,
+          ),
         );
 
         setSelectedSlotId(null);
@@ -116,9 +176,12 @@ export default function BookingPanel({
         return;
       }
 
-      const bookedSlot = updatedSlots.find(
-        (slot) => slot.id === selectedSlotId,
-      );
+      const bookedSlot =
+        updatedSlots.find(
+          (slot) =>
+            slot.id ===
+            selectedSlotId,
+        );
 
       if (!bookedSlot) {
         setBookingError(
@@ -130,7 +193,8 @@ export default function BookingPanel({
         return;
       }
 
-      const bookingId = `bk-${Date.now()}`;
+      const bookingId =
+        `bk-${Date.now()}`;
 
       addBooking({
         id: bookingId,
@@ -139,18 +203,19 @@ export default function BookingPanel({
 
         slotId: bookedSlot.id,
 
+        patientId:
+          session.id,
+
         patientName:
-          session.name ?? "Guest Patient",
+          session.name ??
+          "Guest Patient",
 
-        date: bookedSlot.date,
+        date:
+          bookedSlot.date,
 
-        time: bookedSlot.time,
+        time:
+          bookedSlot.time,
 
-        /*
-         * Every new appointment begins as pending.
-         *
-         * The doctor must explicitly confirm or decline it.
-         */
         status: "pending",
 
         createdAt:
@@ -176,8 +241,12 @@ export default function BookingPanel({
       <div className="mt-4">
         <DateStrip
           days={days}
-          selectedDate={selectedDate}
-          onSelect={handleSelectDate}
+          selectedDate={
+            selectedDate
+          }
+          onSelect={
+            handleSelectDate
+          }
         />
       </div>
 
@@ -186,25 +255,35 @@ export default function BookingPanel({
           <p className="text-sm text-[var(--muted)]">
             Loading availability…
           </p>
-        ) : slotsForDate.length === 0 ? (
+        ) : slotsForDate.length ===
+          0 ? (
           <p className="text-sm text-[var(--muted)]">
-            No slots configured for this date.
-            Try another day.
+            No slots configured for
+            this date. Try another
+            day.
           </p>
         ) : (
           <>
             <SlotGrid
               title="Select slot"
               slots={morningSlots}
-              selectedSlotId={selectedSlotId}
-              onSelect={setSelectedSlotId}
+              selectedSlotId={
+                selectedSlotId
+              }
+              onSelect={
+                setSelectedSlotId
+              }
             />
 
             <SlotGrid
               title="Evening Slot"
               slots={eveningSlots}
-              selectedSlotId={selectedSlotId}
-              onSelect={setSelectedSlotId}
+              selectedSlotId={
+                selectedSlotId
+              }
+              onSelect={
+                setSelectedSlotId
+              }
             />
           </>
         )}
@@ -220,9 +299,12 @@ export default function BookingPanel({
         size="lg"
         className="mt-6 w-full"
         disabled={
-          !selectedSlotId || isBooking
+          !selectedSlotId ||
+          isBooking
         }
-        onClick={handleConfirmBooking}
+        onClick={
+          handleConfirmBooking
+        }
       >
         {isBooking
           ? "Booking…"

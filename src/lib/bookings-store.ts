@@ -5,70 +5,129 @@ import type {
 
 const KEY = "schedula:bookings";
 
+type StoredBooking = Omit<
+  Booking,
+  "patientId"
+> & {
+  patientId?: string;
+};
+
 function isBrowser() {
   return typeof window !== "undefined";
 }
 
-export function getAllBookings(): Booking[] {
+function normalizeBooking(
+  booking: StoredBooking,
+): Booking {
+  return {
+    ...booking,
+    patientId:
+      booking.patientId ?? "",
+  };
+}
+
+function readBookings(): Booking[] {
   if (!isBrowser()) {
     return [];
   }
 
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw =
+      window.localStorage.getItem(KEY);
 
-    return raw
-      ? (JSON.parse(raw) as Booking[])
-      : [];
+    if (!raw) {
+      return [];
+    }
+
+    const bookings =
+      JSON.parse(raw) as StoredBooking[];
+
+    return bookings.map(
+      normalizeBooking,
+    );
   } catch {
     return [];
   }
 }
 
+function writeBookings(
+  bookings: Booking[],
+): void {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    KEY,
+    JSON.stringify(bookings),
+  );
+
+  window.dispatchEvent(
+    new Event(
+      "schedula:bookings-updated",
+    ),
+  );
+}
+
+export function getAllBookings(): Booking[] {
+  return readBookings();
+}
+
 export function getBookingById(
   bookingId: string,
 ): Booking | undefined {
-  return getAllBookings().find(
-    (booking) => booking.id === bookingId,
+  return readBookings().find(
+    (booking) =>
+      booking.id === bookingId,
+  );
+}
+
+export function getBookingsByPatientId(
+  patientId: string,
+): Booking[] {
+  return readBookings().filter(
+    (booking) =>
+      booking.patientId === patientId,
+  );
+}
+
+export function getBookingsByDoctorId(
+  doctorId: string,
+): Booking[] {
+  return readBookings().filter(
+    (booking) =>
+      booking.doctorId === doctorId,
   );
 }
 
 export function addBooking(
   booking: Booking,
 ): void {
-  if (!isBrowser()) {
-    return;
-  }
+  const bookings =
+    readBookings();
 
-  const bookings = getAllBookings();
-
-  window.localStorage.setItem(
-    KEY,
-    JSON.stringify([...bookings, booking]),
-  );
+  writeBookings([
+    ...bookings,
+    booking,
+  ]);
 }
 
 export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
 ): Booking[] {
-  const bookings = getAllBookings();
-
-  const updated = bookings.map((booking) =>
-    booking.id === bookingId
-      ? {
-          ...booking,
-          status,
-        }
-      : booking,
-  );
-
-  if (isBrowser()) {
-    window.localStorage.setItem(
-      KEY,
-      JSON.stringify(updated),
+  const updated =
+    readBookings().map(
+      (booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              status,
+            }
+          : booking,
     );
-  }
+
+  writeBookings(updated);
 
   return updated;
 }
@@ -85,23 +144,18 @@ export function updateBooking(
     >
   >,
 ): Booking[] {
-  const bookings = getAllBookings();
-
-  const updated = bookings.map((booking) =>
-    booking.id === bookingId
-      ? {
-          ...booking,
-          ...updates,
-        }
-      : booking,
-  );
-
-  if (isBrowser()) {
-    window.localStorage.setItem(
-      KEY,
-      JSON.stringify(updated),
+  const updated =
+    readBookings().map(
+      (booking) =>
+        booking.id === bookingId
+          ? {
+              ...booking,
+              ...updates,
+            }
+          : booking,
     );
-  }
+
+  writeBookings(updated);
 
   return updated;
 }

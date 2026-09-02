@@ -8,8 +8,12 @@ export type BookingStatus =
 
 export type Booking = {
   id: string;
+
   doctorId: string;
+
   slotId: string;
+
+  patientId: string;
 
   patientName: string;
 

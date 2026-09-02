@@ -1,180 +1,372 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
 import {
-  getAllBookings,
+  getBookingsByDoctorId,
   updateBookingStatus,
 } from "@/lib/bookings-store";
 
-import { releaseSlot } from "@/lib/slots-store";
-import { getSession } from "@/lib/storage";
+import {
+  getDoctorById,
+} from "@/lib/doctors-store";
+
+import {
+  createNotification,
+} from "@/lib/notifications-store";
+
+import {
+  releaseSlot,
+} from "@/lib/slots-store";
+
+import {
+  getSession,
+} from "@/lib/storage";
+
+import {
+  formatLongDate,
+} from "@/lib/utils/date";
 
 import type {
   Booking,
   BookingStatus,
 } from "@/types/booking";
 
-type FilterStatus =
-  | "all"
-  | BookingStatus;
+type PageStatus =
+  | "loading"
+  | "unauthorized"
+  | "ready";
 
-function getAppointmentDateTime(
-  booking: Booking,
-) {
-  return new Date(
-    `${booking.date}T${booking.time}`,
-  );
-}
+const FILTERS: {
+  label: string;
+  status: BookingStatus | "all";
+}[] = [
+  {
+    label: "All",
+    status: "all",
+  },
+  {
+    label: "Pending",
+    status: "pending",
+  },
+  {
+    label: "Confirmed",
+    status: "confirmed",
+  },
+  {
+    label: "Upcoming",
+    status: "upcoming",
+  },
+  {
+    label: "Completed",
+    status: "completed",
+  },
+  {
+    label: "Cancelled",
+    status: "cancelled",
+  },
+  {
+    label: "Missed",
+    status: "missed",
+  },
+];
 
-function isPastAppointment(
-  booking: Booking,
-) {
-  return (
-    getAppointmentDateTime(booking) <
-    new Date()
-  );
-}
-
-function formatDate(date: string) {
-  return new Date(
-    `${date}T00:00:00`,
-  ).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function getStatusClasses(
+function getStatusBadgeClass(
   status: BookingStatus,
 ) {
   switch (status) {
     case "pending":
-      return "bg-amber-50 text-amber-700 border-amber-200";
+      return "bg-amber-100 text-amber-700";
 
     case "confirmed":
-      return "bg-blue-50 text-blue-700 border-blue-200";
+      return "bg-blue-100 text-blue-700";
 
     case "upcoming":
-      return "bg-teal-50 text-teal-700 border-teal-200";
+      return "bg-[var(--success-soft)] text-[var(--success)]";
 
     case "completed":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
 
     case "cancelled":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
 
     case "missed":
-      return "bg-slate-100 text-slate-600 border-slate-200";
-
-    default:
-      return "bg-slate-100 text-slate-600 border-slate-200";
+      return "bg-slate-100 text-slate-700";
   }
 }
 
 function getStatusLabel(
   status: BookingStatus,
 ) {
-  return (
-    status.charAt(0).toUpperCase() +
-    status.slice(1)
-  );
+  switch (status) {
+    case "pending":
+      return "Pending";
+
+    case "confirmed":
+      return "Confirmed";
+
+    case "upcoming":
+      return "Upcoming";
+
+    case "completed":
+      return "Completed";
+
+    case "cancelled":
+      return "Cancelled";
+
+    case "missed":
+      return "Missed";
+  }
 }
 
 export default function DoctorAppointments() {
+  const [pageStatus, setPageStatus] =
+    useState<PageStatus>("loading");
+
   const [doctorId, setDoctorId] =
     useState<string | null>(null);
 
   const [bookings, setBookings] =
     useState<Booking[]>([]);
 
-  const [filter, setFilter] =
-    useState<FilterStatus>("all");
+  const [
+    activeFilter,
+    setActiveFilter,
+  ] = useState<
+    BookingStatus | "all"
+  >("all");
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [
+    processingBookingId,
+    setProcessingBookingId,
+  ] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
-    const session = getSession();
+    Promise.resolve().then(() => {
+      const session =
+        getSession();
 
-    if (!session || session.role !== "doctor") {
-      return;
-    }
+      if (
+        !session ||
+        session.role !== "doctor"
+      ) {
+        setPageStatus(
+          "unauthorized",
+        );
 
-    setDoctorId(session.id);
+        return;
+      }
 
-    const doctorBookings =
-      getAllBookings().filter(
-        (booking) =>
-          booking.doctorId === session.id,
+      setDoctorId(session.id);
+
+      setBookings(
+        getBookingsByDoctorId(
+          session.id,
+        ),
       );
 
-    setBookings(doctorBookings);
+      setPageStatus("ready");
+    });
   }, []);
-
-  const filteredBookings = useMemo(() => {
-    if (filter === "all") {
-      return bookings;
-    }
-
-    return bookings.filter(
-      (booking) =>
-        booking.status === filter,
-    );
-  }, [bookings, filter]);
 
   function refreshBookings() {
     if (!doctorId) {
       return;
     }
 
-    const doctorBookings =
-      getAllBookings().filter(
-        (booking) =>
-          booking.doctorId === doctorId,
+    setBookings(
+      getBookingsByDoctorId(
+        doctorId,
+      ),
+    );
+  }
+
+  const visibleBookings =
+    useMemo(() => {
+      const filtered =
+        activeFilter === "all"
+          ? bookings
+          : bookings.filter(
+              (booking) =>
+                booking.status ===
+                activeFilter,
+            );
+
+      return [...filtered].sort(
+        (a, b) => {
+          const first =
+            `${a.date} ${a.time}`;
+
+          const second =
+            `${b.date} ${b.time}`;
+
+          return first.localeCompare(
+            second,
+          );
+        },
       );
+    }, [
+      bookings,
+      activeFilter,
+    ]);
 
-    setBookings(doctorBookings);
-  }
-
-  function showMessage(text: string) {
-    setMessage(text);
-
-    window.setTimeout(() => {
-      setMessage(null);
-    }, 3000);
-  }
-
-  function changeStatus(
-    bookingId: string,
-    status: BookingStatus,
+  function notifyPatient(
+    booking: Booking,
+    title: string,
+    message: string,
+    type:
+      | "appointment"
+      | "confirmation"
+      | "cancellation",
   ) {
+    /*
+      Older bookings created before
+      Phase 15 may not have patientId.
+
+      We preserve compatibility while
+      ensuring new bookings receive
+      notifications correctly.
+    */
+    if (!booking.patientId) {
+      return;
+    }
+
+    createNotification({
+      userId:
+        booking.patientId,
+
+      title,
+
+      message,
+
+      type,
+
+      appointmentId:
+        booking.id,
+    });
+  }
+
+  function handleConfirm(
+    booking: Booking,
+  ) {
+    setProcessingBookingId(
+      booking.id,
+    );
+
     updateBookingStatus(
-      bookingId,
-      status,
+      booking.id,
+      "confirmed",
+    );
+
+    notifyPatient(
+      booking,
+      "Appointment confirmed",
+      `Your appointment on ${formatLongDate(
+        booking.date,
+      )} at ${booking.time} has been confirmed.`,
+      "confirmation",
     );
 
     refreshBookings();
 
-    showMessage(
-      `Appointment marked as ${status}.`,
-    );
+    setProcessingBookingId(null);
   }
 
-  function cancelAndReleaseSlot(
+  function handleMarkUpcoming(
     booking: Booking,
   ) {
-    /*
-     * Release the slot first.
-     *
-     * The appointment is then marked as cancelled.
-     */
+    setProcessingBookingId(
+      booking.id,
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "upcoming",
+    );
+
+    notifyPatient(
+      booking,
+      "Appointment is upcoming",
+      `Your appointment on ${formatLongDate(
+        booking.date,
+      )} at ${booking.time} is coming up.`,
+      "appointment",
+    );
+
+    refreshBookings();
+
+    setProcessingBookingId(null);
+  }
+
+  function handleComplete(
+    booking: Booking,
+  ) {
+    setProcessingBookingId(
+      booking.id,
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "completed",
+    );
+
+    notifyPatient(
+      booking,
+      "Appointment completed",
+      "Your appointment has been marked as completed. You can now review your doctor and access your prescription when available.",
+      "appointment",
+    );
+
+    refreshBookings();
+
+    setProcessingBookingId(null);
+  }
+
+  function handleMissed(
+    booking: Booking,
+  ) {
+    setProcessingBookingId(
+      booking.id,
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "missed",
+    );
+
+    notifyPatient(
+      booking,
+      "Appointment missed",
+      `Your appointment scheduled for ${formatLongDate(
+        booking.date,
+      )} at ${booking.time} was marked as missed.`,
+      "appointment",
+    );
+
+    refreshBookings();
+
+    setProcessingBookingId(null);
+  }
+
+  function handleCancel(
+    booking: Booking,
+  ) {
+    if (!doctorId) {
+      return;
+    }
+
+    setProcessingBookingId(
+      booking.id,
+    );
+
     releaseSlot(
-      booking.doctorId,
+      doctorId,
       booking.slotId,
     );
 
@@ -183,317 +375,298 @@ export default function DoctorAppointments() {
       "cancelled",
     );
 
+    notifyPatient(
+      booking,
+      "Appointment cancelled",
+      `Your appointment scheduled for ${formatLongDate(
+        booking.date,
+      )} at ${booking.time} has been cancelled. The appointment slot is available again.`,
+      "cancellation",
+    );
+
     refreshBookings();
 
-    showMessage(
-      "Appointment cancelled and slot released.",
-    );
+    setProcessingBookingId(null);
   }
 
-  function handleConfirm(
-    booking: Booking,
-  ) {
-    if (
-      booking.status !== "pending"
-    ) {
-      return;
-    }
-
-    changeStatus(
-      booking.id,
-      "confirmed",
-    );
-  }
-
-  function handleDecline(
-    booking: Booking,
-  ) {
-    if (
-      booking.status !== "pending"
-    ) {
-      return;
-    }
-
-    /*
-     * Declined appointments should not
-     * permanently occupy the doctor's slot.
-     */
-    cancelAndReleaseSlot(booking);
-  }
-
-  function handleCancel(
-    booking: Booking,
-  ) {
-    if (
-      booking.status !== "confirmed" &&
-      booking.status !== "upcoming"
-    ) {
-      return;
-    }
-
-    cancelAndReleaseSlot(booking);
-  }
-
-  function handleCompleted(
-    booking: Booking,
-  ) {
-    if (
-      booking.status !== "confirmed" &&
-      booking.status !== "upcoming"
-    ) {
-      return;
-    }
-
-    if (!isPastAppointment(booking)) {
-      showMessage(
-        "Only past appointments can be marked as completed.",
-      );
-
-      return;
-    }
-
-    /*
-     * Completed appointments keep
-     * their slot permanently booked.
-     */
-    changeStatus(
-      booking.id,
-      "completed",
-    );
-  }
-
-  function handleMissed(
-    booking: Booking,
-  ) {
-    if (
-      booking.status !== "confirmed" &&
-      booking.status !== "upcoming"
-    ) {
-      return;
-    }
-
-    if (!isPastAppointment(booking)) {
-      showMessage(
-        "Only past appointments can be marked as missed.",
-      );
-
-      return;
-    }
-
-    /*
-     * Missed appointments also keep
-     * their original slot booked.
-     */
-    changeStatus(
-      booking.id,
-      "missed",
-    );
-  }
-
-  if (!doctorId) {
+  if (pageStatus === "loading") {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-12">
-        <EmptyState
-          title="Doctor access required"
-          description="Please log in with a doctor account to manage appointments."
-        />
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center text-sm text-[var(--muted)]">
+        Loading appointments…
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-[var(--ink)]">
-          Appointments
+  if (
+    pageStatus === "unauthorized"
+  ) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold text-[var(--ink)]">
+          Doctor access required
         </h1>
 
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Manage and update your patient appointments.
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Log in with a doctor account
+          to manage appointments.
         </p>
-      </div>
 
-      {message && (
-        <div className="mb-5 rounded-lg border border-[var(--line)] bg-[var(--brand-soft)] px-4 py-3 text-sm text-[var(--brand-deep)]">
-          {message}
+        <Link
+          href="/doctor/login"
+          className="mt-6 inline-block"
+        >
+          <Button>
+            Doctor login
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const doctor = doctorId
+    ? getDoctorById(doctorId)
+    : undefined;
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+            Appointments
+          </h1>
+
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Review and manage your
+            patient appointments.
+          </p>
         </div>
-      )}
 
-      <div className="mb-6 flex flex-wrap gap-2">
-        {(
-          [
-            "all",
-            "pending",
-            "confirmed",
-            "upcoming",
-            "completed",
-            "cancelled",
-            "missed",
-          ] as FilterStatus[]
-        ).map((status) => (
-          <button
-            key={status}
-            type="button"
-            onClick={() =>
-              setFilter(status)
-            }
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-              filter === status
-                ? "bg-[var(--brand)] text-white"
-                : "border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--canvas)]"
-            }`}
-          >
-            {status === "all"
-              ? "All"
-              : getStatusLabel(status)}
-          </button>
-        ))}
+        {doctor && (
+          <p className="text-sm text-[var(--muted)]">
+            {doctor.name}
+          </p>
+        )}
       </div>
 
-      {filteredBookings.length === 0 ? (
-        <EmptyState
-          title="No appointments found"
-          description="There are no appointments matching this filter."
-        />
-      ) : (
-        <div className="space-y-4">
-          {filteredBookings.map(
-            (booking) => {
-              const past =
-                isPastAppointment(booking);
+      <div className="mt-6 flex gap-2 overflow-x-auto border-b border-[var(--line)]">
+        {FILTERS.map((filter) => {
+          const isActive =
+            activeFilter ===
+            filter.status;
 
-              return (
-                <div
-                  key={booking.id}
-                  className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5"
-                >
-                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="font-semibold text-[var(--ink)]">
-                          {booking.patientName}
-                        </h2>
+          return (
+            <button
+              key={filter.status}
+              type="button"
+              onClick={() =>
+                setActiveFilter(
+                  filter.status,
+                )
+              }
+              className={`shrink-0 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+                isActive
+                  ? "border-[var(--brand)] text-[var(--brand-deep)]"
+                  : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
+              }`}
+            >
+              {filter.label}
+            </button>
+          );
+        })}
+      </div>
 
-                        <span
-                          className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusClasses(
-                            booking.status,
-                          )}`}
+      <div className="mt-6">
+        {visibleBookings.length ===
+        0 ? (
+          <EmptyState
+            title="No appointments found"
+            description="Appointments matching this filter will appear here."
+          />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {visibleBookings.map(
+              (booking) => {
+                const initials =
+                  booking.patientName
+                    .split(" ")
+                    .filter(Boolean)
+                    .map((name) =>
+                      name.charAt(0),
+                    )
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase();
+
+                const isProcessing =
+                  processingBookingId ===
+                  booking.id;
+
+                return (
+                  <article
+                    key={booking.id}
+                    className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5"
+                  >
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 gap-4">
+                        <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
+                          {initials}
+                        </div>
+
+                        <div className="min-w-0">
+                          <h2 className="truncate font-semibold text-[var(--ink)]">
+                            {
+                              booking.patientName
+                            }
+                          </h2>
+
+                          <p className="mt-1 text-sm text-[var(--muted)]">
+                            {formatLongDate(
+                              booking.date,
+                            )}
+                          </p>
+
+                          <p className="text-sm text-[var(--muted)]">
+                            {
+                              booking.time
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClass(
+                          booking.status,
+                        )}`}
+                      >
+                        {getStatusLabel(
+                          booking.status,
+                        )}
+                      </span>
+                    </div>
+
+                    {booking.status ===
+                      "pending" && (
+                      <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+                        <Button
+                          size="sm"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleConfirm(
+                              booking,
+                            )
+                          }
                         >
-                          {getStatusLabel(
-                            booking.status,
-                          )}
-                        </span>
+                          Confirm appointment
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleCancel(
+                              booking,
+                            )
+                          }
+                        >
+                          Cancel
+                        </Button>
                       </div>
+                    )}
 
-                      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[var(--muted)]">
-                        <span>
-                          {formatDate(
-                            booking.date,
-                          )}
-                        </span>
+                    {booking.status ===
+                      "confirmed" && (
+                      <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+                        <Button
+                          size="sm"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleMarkUpcoming(
+                              booking,
+                            )
+                          }
+                        >
+                          Mark as upcoming
+                        </Button>
 
-                        <span>
-                          {booking.time}
-                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleCancel(
+                              booking,
+                            )
+                          }
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="flex flex-wrap gap-2">
-                      {booking.status ===
-                        "pending" && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() =>
-                              handleConfirm(
-                                booking,
-                              )
-                            }
-                          >
-                            Confirm
-                          </Button>
+                    {booking.status ===
+                      "upcoming" && (
+                      <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+                        <Button
+                          size="sm"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleComplete(
+                              booking,
+                            )
+                          }
+                        >
+                          Mark completed
+                        </Button>
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleDecline(
-                                booking,
-                              )
-                            }
-                          >
-                            Decline
-                          </Button>
-                        </>
-                      )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleMissed(
+                              booking,
+                            )
+                          }
+                        >
+                          Mark missed
+                        </Button>
 
-                      {(booking.status ===
-                        "confirmed" ||
-                        booking.status ===
-                          "upcoming") &&
-                        !past && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              handleCancel(
-                                booking,
-                              )
-                            }
-                          >
-                            Cancel
-                          </Button>
-                        )}
-
-                      {(booking.status ===
-                        "confirmed" ||
-                        booking.status ===
-                          "upcoming") &&
-                        past && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                handleCompleted(
-                                  booking,
-                                )
-                              }
-                            >
-                              Mark completed
-                            </Button>
-
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                handleMissed(
-                                  booking,
-                                )
-                              }
-                            >
-                              Mark missed
-                            </Button>
-                          </>
-                        )}
-
-                      {(booking.status ===
-                        "completed" ||
-                        booking.status ===
-                          "cancelled" ||
-                        booking.status ===
-                          "missed") && (
-                        <span className="py-2 text-xs text-[var(--muted)]">
-                          No further actions available
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            },
-          )}
-        </div>
-      )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            isProcessing
+                          }
+                          onClick={() =>
+                            handleCancel(
+                              booking,
+                            )
+                          }
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                  </article>
+                );
+              },
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

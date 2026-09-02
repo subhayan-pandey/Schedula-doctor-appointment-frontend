@@ -65,6 +65,12 @@ const QUICK_LINKS = [
       "See every patient appointment and its status",
   },
   {
+    href: "/doctor/prescriptions",
+    title: "Prescriptions",
+    description:
+    "Create and manage patient prescriptions",
+},
+  {
     href:
       "/doctor/calendar",
     title:
