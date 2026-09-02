@@ -26,10 +26,10 @@ export default function SlotManagerGrid({
         {slots.map((slot) => (
           <li
             key={slot.id}
-            className="flex items-center justify-between gap-3 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5"
+            className="flex flex-col gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
           >
             <span className="text-sm font-medium text-[var(--ink)]">{slot.time}</span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:justify-end">
               <span
                 className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLES[slot.status]}`}
               >

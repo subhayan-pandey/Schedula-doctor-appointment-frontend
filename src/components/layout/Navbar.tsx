@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
+import { getSession, clearSession } from "@/lib/storage";
+import type { User } from "@/types/user";
 
 const navLinks = [
   { href: "/doctors", label: "Find Doctors" },
@@ -12,6 +15,26 @@ const navLinks = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState<User | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Navbar lives in the root layout, so it never unmounts between page
+  // navigations — re-reading the session on every pathname change is what
+  // picks up a fresh login/logout without needing a global auth context.
+  useEffect(() => {
+    Promise.resolve().then(() => setSession(getSession()));
+  }, [pathname]);
+
+  function handleLogout() {
+    clearSession();
+    setSession(null);
+    setOpen(false);
+    router.push("/");
+  }
+
+  const accountHref = session?.role === "doctor" ? "/doctor/dashboard" : "/appointments";
+  const accountLabel = session?.role === "doctor" ? "Dashboard" : "My Appointments";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--surface)]/95 backdrop-blur">
@@ -38,15 +61,32 @@ export default function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/login"
-            className="text-sm font-semibold text-[var(--ink)] hover:text-[var(--brand)]"
-          >
-            Log in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Sign up</Button>
-          </Link>
+          {session ? (
+            <>
+              <Link
+                href={accountHref}
+                className="max-w-[9rem] truncate text-sm font-medium text-[var(--ink)] hover:text-[var(--brand)] lg:max-w-none"
+              >
+                Hi, {session.name}
+                <span className="hidden lg:inline"> · {accountLabel}</span>
+              </Link>
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                Log out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-semibold text-[var(--ink)] hover:text-[var(--brand)]"
+              >
+                Log in
+              </Link>
+              <Link href="/signup">
+                <Button size="sm">Sign up</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -86,16 +126,33 @@ export default function Navbar() {
             </Link>
           ))}
           <div className="mt-2 flex flex-col gap-2 border-t border-[var(--line)] pt-3">
-            <Link
-              href="/login"
-              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--brand-soft)]"
-              onClick={() => setOpen(false)}
-            >
-              Log in
-            </Link>
-            <Link href="/signup" onClick={() => setOpen(false)}>
-              <Button className="w-full">Sign up</Button>
-            </Link>
+            {session ? (
+              <>
+                <Link
+                  href={accountHref}
+                  className="rounded-lg px-3 py-2.5 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--brand-soft)]"
+                  onClick={() => setOpen(false)}
+                >
+                  Hi, {session.name} · {accountLabel}
+                </Link>
+                <Button variant="outline" onClick={handleLogout}>
+                  Log out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-lg px-3 py-2.5 text-sm font-semibold text-[var(--ink)] hover:bg-[var(--brand-soft)]"
+                  onClick={() => setOpen(false)}
+                >
+                  Log in
+                </Link>
+                <Link href="/signup" onClick={() => setOpen(false)}>
+                  <Button className="w-full">Sign up</Button>
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       )}

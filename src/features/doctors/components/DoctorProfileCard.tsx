@@ -41,7 +41,7 @@ export default function DoctorProfileCard({ doctor }: { doctor: Doctor }) {
         <p className="mt-1.5 text-sm text-[var(--muted)]">{doctor.bio}</p>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4 border-t border-[var(--line)] pt-5 text-sm">
+      <div className="mt-5 grid grid-cols-1 gap-4 border-t border-[var(--line)] pt-5 text-sm sm:grid-cols-2">
         <div>
           <p className="font-semibold text-[var(--ink)]">Service &amp; Specialization</p>
           <dl className="mt-2 space-y-1 text-[var(--muted)]">

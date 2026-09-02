@@ -95,3 +95,16 @@ export function toggleSlotAvailability(doctorId: string, slotId: string): Slot[]
   writeSlots(doctorId, updated);
   return updated;
 }
+
+/**
+ * Frees a booked slot back to "available" — used when a doctor cancels an
+ * appointment, so the slot can be booked by someone else again.
+ */
+export function releaseSlot(doctorId: string, slotId: string): Slot[] {
+  const slots = readSlots(doctorId);
+  const updated = slots.map((slot) =>
+    slot.id === slotId ? { ...slot, status: "available" as const } : slot,
+  );
+  writeSlots(doctorId, updated);
+  return updated;
+}

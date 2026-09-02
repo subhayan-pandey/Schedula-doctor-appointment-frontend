@@ -25,3 +25,15 @@ export function addBooking(booking: Booking): void {
   const bookings = getAllBookings();
   window.localStorage.setItem(KEY, JSON.stringify([...bookings, booking]));
 }
+
+/** Updates a booking's status (e.g. marking a visit completed or cancelled). */
+export function updateBookingStatus(bookingId: string, status: Booking["status"]): Booking[] {
+  const bookings = getAllBookings();
+  const updated = bookings.map((booking) =>
+    booking.id === bookingId ? { ...booking, status } : booking,
+  );
+  if (isBrowser()) {
+    window.localStorage.setItem(KEY, JSON.stringify(updated));
+  }
+  return updated;
+}

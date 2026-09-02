@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import { getSession } from "@/lib/storage";
-import { getAllBookings } from "@/lib/bookings-store";
+import { getAllBookings, updateBookingStatus } from "@/lib/bookings-store";
+import { releaseSlot } from "@/lib/slots-store";
 import { getDoctorById } from "@/lib/doctors-store";
 import { formatLongDate } from "@/lib/utils/date";
 import type { Booking, BookingStatus } from "@/types/booking";
@@ -55,6 +56,18 @@ export default function DoctorAppointments() {
         : bookings.filter((booking) => booking.status === activeFilter);
     return [...filtered].sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1));
   }, [bookings, activeFilter]);
+
+  function handleMarkCompleted(bookingId: string) {
+    setBookings(updateBookingStatus(bookingId, "completed").filter((b) => b.doctorId === doctorId));
+  }
+
+  function handleCancel(booking: Booking) {
+    if (!doctorId) return;
+    releaseSlot(doctorId, booking.slotId);
+    setBookings(
+      updateBookingStatus(booking.id, "cancelled").filter((b) => b.doctorId === doctorId),
+    );
+  }
 
   if (status === "loading") {
     return (
@@ -117,34 +130,56 @@ export default function DoctorAppointments() {
               return (
                 <li
                   key={booking.id}
-                  className="flex items-center gap-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4"
+                  className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:gap-4"
                 >
-                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
-                    {booking.patientName
-                      .split(" ")
-                      .map((part) => part[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-[var(--ink)]">
-                      {booking.patientName}
-                    </p>
-                    <p className="truncate text-sm text-[var(--muted)]">
-                      {formatLongDate(booking.date)}, {booking.time}
-                    </p>
-                    {doctor && (
-                      <p className="truncate text-xs text-[var(--muted)]">
-                        {doctor.specialty} · {doctor.clinic}
+                  <div className="flex min-w-0 flex-1 items-center gap-4">
+                    <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
+                      {booking.patientName
+                        .split(" ")
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-[var(--ink)]">
+                        {booking.patientName}
                       </p>
+                      <p className="truncate text-sm text-[var(--muted)]">
+                        {formatLongDate(booking.date)}, {booking.time}
+                      </p>
+                      {doctor && (
+                        <p className="truncate text-xs text-[var(--muted)]">
+                          {doctor.specialty} · {doctor.clinic}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_BADGE[booking.status]}`}
+                    >
+                      {booking.status}
+                    </span>
+                    {booking.status === "upcoming" && (
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleMarkCompleted(booking.id)}
+                          className="text-xs font-semibold text-[var(--brand-deep)] hover:underline"
+                        >
+                          Mark completed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCancel(booking)}
+                          className="text-xs font-semibold text-[var(--urgent-deep)] hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     )}
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${STATUS_BADGE[booking.status]}`}
-                  >
-                    {booking.status}
-                  </span>
                 </li>
               );
             })}

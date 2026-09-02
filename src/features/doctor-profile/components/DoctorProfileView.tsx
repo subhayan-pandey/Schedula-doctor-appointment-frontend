@@ -20,7 +20,7 @@ export default function DoctorProfileView({
 
   return (
     <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="flex items-center gap-4">
           <span className="grid size-16 place-items-center rounded-full bg-[var(--brand-soft)] text-xl font-semibold text-[var(--brand-deep)]">
             {account.name

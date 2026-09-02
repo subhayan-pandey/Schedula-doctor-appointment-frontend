@@ -21,7 +21,7 @@ const QUICK_LINKS = [
     description: "View and update your professional details",
   },
   {
-    href: "/doctor/slots",
+    href: "/doctor/slot",
     title: "Manage Availability",
     description: "Add, remove, or block appointment slots",
   },
