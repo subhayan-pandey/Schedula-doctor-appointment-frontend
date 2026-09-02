@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { getBookingById } from "@/lib/bookings-store";
-import { getDoctorById } from "@/lib/mock-data/doctors";
+import { getDoctorById } from "@/lib/doctors-store";
 import { formatLongDate } from "@/lib/utils/date";
 import type { Booking } from "@/types/booking";
 

@@ -7,6 +7,8 @@ import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
 import { setSession } from "@/lib/storage";
 import { saveDoctorAccount } from "@/lib/doctor-account-store";
+import { addDoctor } from "@/lib/doctors-store";
+import { getInitials } from "@/lib/utils/text";
 import {
   isValidEmail,
   isValidMobile,
@@ -69,10 +71,11 @@ export default function DoctorRegisterForm() {
     // Simulated network delay — there is no real backend in this project.
     window.setTimeout(() => {
       const accountId = `doctor-${Date.now()}`;
+      const trimmedName = name.trim();
 
       saveDoctorAccount({
         id: accountId,
-        name: name.trim(),
+        name: trimmedName,
         email: email.trim(),
         phone: phone.trim(),
         specialty,
@@ -81,9 +84,30 @@ export default function DoctorRegisterForm() {
         location: location.trim(),
       });
 
+      // A registered doctor also becomes bookable in the patient-facing
+      // catalog, using the same id — this is what lets the doctor create
+      // slots and immediately show up for patients to book in Phase 9/11.
+      addDoctor({
+        id: accountId,
+        name: trimmedName,
+        specialty,
+        qualification: "MBBS",
+        experienceYears: Number(experienceYears),
+        clinic: clinic.trim(),
+        location: location.trim(),
+        rating: 5,
+        reviewsCount: 0,
+        patientsCount: 0,
+        consultationFee: 500,
+        availableToday: true,
+        timing: "09:00 AM - 5:00 PM",
+        bio: `${trimmedName} is a ${specialty.toLowerCase()} practicing at ${clinic.trim()}, ${location.trim()}.`,
+        avatarInitials: getInitials(trimmedName),
+      });
+
       setSession({
         id: accountId,
-        name: name.trim(),
+        name: trimmedName,
         emailOrMobile: email.trim(),
         role: "doctor",
       });

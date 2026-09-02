@@ -5,7 +5,7 @@ import Link from "next/link";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import { getAllBookings } from "@/lib/bookings-store";
-import { getDoctorById } from "@/lib/mock-data/doctors";
+import { getDoctorById } from "@/lib/doctors-store";
 import { formatLongDate } from "@/lib/utils/date";
 import type { Booking, BookingStatus } from "@/types/booking";
 

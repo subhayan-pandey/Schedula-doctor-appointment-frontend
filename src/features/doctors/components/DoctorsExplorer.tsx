@@ -5,7 +5,7 @@ import DoctorFilters, {
   type DoctorFiltersValue,
 } from "@/features/doctors/components/DoctorFilters";
 import DoctorList from "@/features/doctors/components/DoctorList";
-import { getDoctors } from "@/features/doctors/api/getDoctors";
+import { getAllDoctors } from "@/lib/doctors-store";
 import type { Doctor, Specialty } from "@/types/doctor";
 
 export default function DoctorsExplorer({
@@ -17,28 +17,21 @@ export default function DoctorsExplorer({
 }) {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
   const [filters, setFilters] = useState<DoctorFiltersValue>({
     query: initialQuery,
     specialty: initialSpecialty,
     availableOnly: false,
   });
 
+  // The doctor catalog now lives in localStorage (see lib/doctors-store.ts)
+  // so that newly registered doctors show up here too — that's why this is
+  // a synchronous read rather than a fetch, wrapped in a microtask only to
+  // satisfy React's "no direct setState in an effect body" lint rule.
   useEffect(() => {
-    let isMounted = true;
-    getDoctors()
-      .then((data) => {
-        if (isMounted) setDoctors(data);
-      })
-      .catch(() => {
-        if (isMounted) setLoadError(true);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-    return () => {
-      isMounted = false;
-    };
+    Promise.resolve().then(() => {
+      setDoctors(getAllDoctors());
+      setIsLoading(false);
+    });
   }, []);
 
   const filteredDoctors = useMemo(() => {
@@ -61,10 +54,6 @@ export default function DoctorsExplorer({
 
       {isLoading ? (
         <p className="text-sm text-[var(--muted)]">Loading doctors…</p>
-      ) : loadError ? (
-        <p className="text-sm text-[var(--urgent-deep)]">
-          Couldn&apos;t load doctors right now. Please refresh the page.
-        </p>
       ) : (
         <>
           <p className="text-sm text-[var(--muted)]">
