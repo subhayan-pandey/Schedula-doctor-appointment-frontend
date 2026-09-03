@@ -1,251 +1,687 @@
-# Schedula Ã¢â‚¬â€ Frontend Internship Starter
+# Schedula
 
-Schedula is a practical Next.js starter for doctor appointment booking and clinic operations. It gives interns a small, typed codebase with a real UI, predictable data boundaries, and a contribution workflow that scales beyond a demo.
+Schedula is a healthcare appointment management web application designed to provide separate and structured workflows for patients and doctors.
 
-## Stack
+The application allows patients to discover doctors, book and manage appointments, access prescriptions, manage their profiles, and receive application-related guidance through the integrated **Schedula Assistant**.
 
-- Next.js App Router, React, TypeScript, Tailwind CSS
-- ESLint for static analysis
-- A typed mock JSON endpoint at `GET /api/appointments`
-- Node.js 20.9 or later
+Doctors have access to a dedicated workspace where they can manage appointments, availability, calendars, professional profiles, and prescriptions.
 
-## Quick start
+---
 
-```bash
-git clone https://github.com/PearlThoughts/frontend-internship.git
-cd frontend-internship
-npm install
-npm run dev
+# Features
+
+## Patient Features
+
+* Create a patient account and log in.
+* Browse and discover doctors.
+* View doctor profiles and available information.
+* View available appointment dates and time slots.
+* Book appointments with doctors.
+* View appointments from the **My Appointments** section.
+* Access individual appointment details.
+* Manage appointments based on their current status.
+* Access prescription information.
+* Download prescriptions when available.
+* Review doctors after eligible appointments.
+* Rebook appointments where applicable.
+* Manage patient profile information.
+* Access notifications.
+
+### Appointment Statuses
+
+Schedula supports the following appointment statuses:
+
+* Pending
+* Confirmed
+* Upcoming
+* Completed
+* Cancelled
+* Missed
+
+The actions available to users may depend on the current appointment status.
+
+---
+
+## Doctor Features
+
+Doctors have a separate workflow and dedicated set of tools.
+
+Doctors can:
+
+* Register for a doctor account.
+* Log in through the dedicated Doctor Login page.
+* Access the Doctor Dashboard.
+* View and manage patient appointments.
+* Access appointment information and statuses.
+* Manage appointment availability.
+* Create and manage appointment slots.
+* Use the Doctor Calendar.
+* Navigate through available calendar views.
+* Manage professional profile information.
+* Create and manage prescriptions.
+
+Doctors can also use patient-side functionality when applicable, including booking appointments with other doctors.
+
+---
+
+# Appointment Workflow
+
+Schedula provides a structured appointment booking process.
+
+### Step 1: Find a Doctor
+
+Navigate to:
+
+```text
+Find Doctors
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Browse the available doctors and select one to view their profile.
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the local development server |
-| `npm run lint` | Run static analysis |
-| `npm run build` | Type-check and create a production build |
-| `npm run start` | Serve the production build |
+### Step 2: Select an Appointment
 
-## Architecture
+From the doctor's page:
 
-Keep every change inside the layer that owns it. Route files compose features; they should not contain feature state, API parsing, or large presentational trees.
+1. Select an available date.
+2. Choose an available time slot.
+3. Continue through the booking process.
+
+### Step 3: Appointment Confirmation
+
+After completing the booking process, the application displays appointment confirmation information.
+
+### Step 4: Manage the Appointment
+
+Navigate to:
+
+```text
+My Appointments
+```
+
+Users can view appointment details and access the actions available for that appointment.
+
+---
+
+# Patient Guide
+
+## Creating an Account
+
+New users can create a patient account using:
+
+```text
+Get Started
+```
+
+After registration, users can log in and access patient-specific features.
+
+---
+
+## Finding Doctors
+
+Navigate to:
+
+```text
+Find Doctors
+```
+
+Users can browse doctors and open individual doctor profiles to view available information.
+
+---
+
+## Viewing Appointments
+
+Navigate to:
+
+```text
+My Appointments
+```
+
+This section allows patients to access their appointments and view appointment-related details.
+
+---
+
+## Managing the Patient Profile
+
+Navigate to:
+
+```text
+My Profile
+```
+
+The profile page provides access to patient information available within the application.
+
+---
+
+# Doctor Guide
+
+## Step 1: Register as a Doctor
+
+New doctors can create an account through:
+
+```text
+Doctor Register
+```
+
+---
+
+## Step 2: Doctor Login
+
+Existing doctors can access their account through:
+
+```text
+Doctor Login
+```
+
+---
+
+## Step 3: Doctor Dashboard
+
+After logging in, doctors can access:
+
+```text
+Doctor Dashboard
+```
+
+The dashboard acts as the primary entry point for doctor-side features.
+
+---
+
+## Step 4: Manage Appointments
+
+Navigate to:
+
+```text
+Doctor Appointments
+```
+
+Doctors can access appointment-related information and management features available within the application.
+
+---
+
+## Step 5: Manage Availability
+
+Navigate to:
+
+```text
+Manage Availability
+```
+
+Doctors can manage appointment slots and availability for patients.
+
+---
+
+## Step 6: Doctor Calendar
+
+Navigate to:
+
+```text
+Doctor Calendar
+```
+
+The calendar provides a structured view of scheduled appointments and supports the available calendar navigation options.
+
+---
+
+## Step 7: Manage Prescriptions
+
+Navigate to:
+
+```text
+Prescriptions
+```
+
+Doctors can access and manage appointment-related prescription information.
+
+---
+
+## Step 8: Doctor Profile
+
+Navigate to:
+
+```text
+Doctor Profile
+```
+
+Doctors can access and manage their professional information available within the application.
+
+---
+
+# Schedula Assistant
+
+Schedula includes an integrated application-specific assistant called **Schedula Guide**.
+
+The assistant is designed specifically to help users understand and navigate the Schedula application.
+
+It is not intended to function as a general-purpose chatbot.
+
+---
+
+## What the Schedula Assistant Can Explain
+
+### Authentication
+
+The assistant can explain:
+
+* How to log in.
+* How to log out.
+* How to create a patient account.
+* How doctors can register.
+* How doctors can log in.
+
+---
+
+### Finding Doctors
+
+The assistant can explain:
+
+* How to find doctors.
+* How to browse doctors.
+* How to view doctor details.
+* How to access doctor information.
+
+---
+
+### Appointments
+
+The assistant can explain:
+
+* How to book an appointment.
+* How appointment slots work.
+* How to check appointments.
+* How appointment statuses work.
+* How to reschedule an appointment.
+* How to cancel an appointment.
+* What happens after an appointment is completed.
+* What happens when an appointment is missed.
+* How rebooking works.
+
+---
+
+### Patient Features
+
+The assistant can explain:
+
+* How to access the patient profile.
+* How prescriptions work.
+* How to access available prescriptions.
+* How doctor reviews work.
+* How notifications work.
+
+---
+
+### Doctor Features
+
+The assistant can explain:
+
+* How the Doctor Dashboard works.
+* How doctors manage appointments.
+* How the Doctor Calendar works.
+* How the available calendar views work.
+* How doctors manage appointment availability.
+* How appointment slots work.
+* How doctors manage their profiles.
+* How prescription management works.
+
+---
+
+# Assistant Limitations
+
+The Schedula Assistant is focused exclusively on the Schedula application.
+
+It:
+
+* Does not answer general knowledge questions.
+* Does not answer questions unrelated to Schedula.
+* Cannot book appointments on behalf of users.
+* Cannot cancel appointments on behalf of users.
+* Cannot reschedule appointments directly.
+* Cannot submit doctor reviews.
+* Cannot modify user information.
+* Cannot perform actions on behalf of users.
+
+Instead, the assistant explains how users can complete actions themselves and provides navigation guidance where appropriate.
+
+For example, if a user asks:
+
+> Cancel my appointment.
+
+The assistant does not cancel the appointment. Instead, it explains where the user can find the appointment and how to access the available cancellation option.
+
+---
+
+# Context-Aware Guidance
+
+The Schedula Assistant provides guidance based on the user's current role.
+
+## Guest Users
+
+Guests can ask about:
+
+* How Schedula works.
+* How to create an account.
+* How to find doctors.
+* How appointment booking works.
+* How doctors can register.
+
+When account access is required, the assistant guides the user toward the appropriate login or registration page.
+
+---
+
+## Patient Users
+
+Patients can receive guidance about:
+
+* Finding doctors.
+* Booking appointments.
+* Managing appointments.
+* Appointment statuses.
+* Prescriptions.
+* Reviews.
+* Rebooking.
+* Notifications.
+* Profile management.
+
+---
+
+## Doctor Users
+
+Doctors can receive guidance about:
+
+* Doctor Dashboard.
+* Patient appointments.
+* Appointment statuses.
+* Doctor Calendar.
+* Appointment availability.
+* Appointment slots.
+* Doctor Profile.
+* Prescription management.
+
+Doctors can also receive guidance about patient-side functionality where applicable.
+
+---
+
+# Technology Stack
+
+## Frontend Framework
+
+* Next.js 16
+* React 19
+
+## Programming Language
+
+* TypeScript
+
+## Styling
+
+* Tailwind CSS
+* PostCSS
+* Autoprefixer
+
+## Development Tools
+
+* ESLint
+* ESLint Config Next
+
+---
+
+# Project Structure
 
 ```text
 src/
-  app/                         # Routes, layouts, metadata, route handlers
-    api/                       # HTTP boundary only
-  features/
-    appointments/
-      components/              # Feature UI (cards, forms, views)
-      hooks/                   # Feature state and query hooks
-      api/                     # Typed feature API client / mappers
-      types.ts                 # Feature-only types
-  components/
-    ui/                        # Reusable headless primitives
-    layout/                    # Shared app shell/navigation
-  lib/
-    mock-data/                 # API fixtures used only by mock handlers
-    utils/                     # Small, generic pure helpers
-  types/                       # Cross-feature domain contracts
+│
+├── app/
+│   │
+│   ├── api/
+│   │   └── appointments/
+│   │
+│   ├── appointments/
+│   │   └── [bookingId]/
+│   │
+│   ├── doctor/
+│   │   ├── appointments/
+│   │   ├── calendar/
+│   │   ├── dashboard/
+│   │   ├── login/
+│   │   ├── prescriptions/
+│   │   ├── profile/
+│   │   ├── register/
+│   │   └── slot/
+│   │
+│   ├── doctors/
+│   │   └── [id]/
+│   │
+│   ├── login/
+│   ├── profile/
+│   ├── signup/
+│   │
+│   └── page.tsx
+│
+├── components/
+│   │
+│   ├── chatbot/
+│   │   ├── Chatbot.tsx
+│   │   ├── ChatMessage.tsx
+│   │   ├── ChatTrigger.tsx
+│   │   └── ChatWindow.tsx
+│   │
+│   ├── appointments/
+│   ├── doctor/
+│   ├── doctors/
+│   ├── prescriptions/
+│   └── ui/
+│
+├── context/
+│   └── ChatContext.tsx
+│
+├── lib/
+│   ├── chatbot/
+│   │   ├── intents.ts
+│   │   └── responses.ts
+│   │
+│   ├── appointments-store.ts
+│   ├── doctors-store.ts
+│   └── storage.ts
+│
+└── types/
+    ├── booking.ts
+    ├── chatbot.ts
+    └── user.ts
 ```
 
-### Dependency rules
+---
 
-- `app` may import from `features`, `components`, `lib`, and `types`.
-- A `feature` may import shared `components`, `lib`, and `types`, but never another featureÃ¢â‚¬â„¢s private files.
-- `components/ui` must not fetch data or know appointment business rules.
-- `lib/mock-data` is never imported directly by a page or visual component; route handlers expose it through HTTP.
-- Promote a helper to `lib` only after it is genuinely shared by two or more features.
+# Getting Started
 
-## Headless component structure
+## Prerequisites
 
-Create reusable UI primitives around behaviour and accessibility, then let the feature own its content and visual composition.
+Make sure the following are installed:
 
-```tsx
-// components/ui/dialog/dialog.tsx Ã¢â‚¬â€ reusable behaviour and semantics
-<Dialog open={isOpen} onOpenChange={setIsOpen}>
-  <Dialog.Trigger>Reschedule</Dialog.Trigger>
-  <Dialog.Content aria-describedby="reschedule-help">
-    <RescheduleAppointmentForm appointment={appointment} />
-  </Dialog.Content>
-</Dialog>
-```
+* Node.js
+* npm
 
-A headless `Dialog`, `Select`, `Tabs`, or `Popover` owns keyboard interactions, focus management, ARIA semantics, and state transitions. It does **not** own appointment copy, API calls, or page-specific layout. Prefer composition over boolean-heavy APIs such as `isBookingDialog`, `patientMode`, or `compactHeader`.
+---
 
-## Mock JSON API
+## Installation
 
-The dashboard calls the API exactly as it would call a backend:
-
-```text
-Browser component Ã¢â€ â€™ GET /api/appointments Ã¢â€ â€™ route handler Ã¢â€ â€™ mock fixture
-```
-
-- Contract type: `src/types/appointment.ts`
-- Mock records: `src/lib/mock-data/appointments.ts`
-- JSON endpoint: `src/app/api/appointments/route.ts`
-
-When the backend is ready, retain the `Appointment` contract and replace the route handler or the feature API client. Do not scatter `fetch()` calls throughout cards, rows, and buttons. Keep response parsing, errors, and mapping in one API boundary.
-
-Example typed client pattern:
-
-```ts
-export async function getAppointments(): Promise<Appointment[]> {
-  const response = await fetch("/api/appointments");
-  if (!response.ok) throw new Error("Unable to load appointments");
-  const body: { data: Appointment[] } = await response.json();
-  return body.data;
-}
-```
-
-## Code-quality guardrails
-
-### DRY, without premature abstraction
-
-- Remove repeated business logic and duplicated API contracts.
-- Do not create a generic component for a one-off screen. Repeatable behaviour is the signal to extract.
-- Prefer configuration data and small pure helpers over copy-pasted conditionals.
-
-### SOLID, applied to frontend work
-
-| Principle | Schedula practice |
-| --- | --- |
-| Single responsibility | A `AppointmentCard` renders one appointment; a hook loads data; a route handler returns HTTP data. |
-| Open/closed | Add a new status through a status map or variant, not by rewriting every card. |
-| Liskov substitution | Components accept their declared contracts and work with every valid `Appointment`. |
-| Interface segregation | Pass `onCancel` to the action that needs itÃ¢â‚¬â€not a large page controller object. |
-| Dependency inversion | UI depends on typed API functions/contracts, not directly on mock fixture files. |
-
-Also keep components focused, use semantic HTML first, support keyboard use, provide loading/error/empty states, and test mobile layouts at 320px, 768px, 1024px, and 1440px.
-
-## Intern workflow: local and personal repositories
-
-`git pull` updates a repository that already exists on a machine. It cannot create the first local copy. The starter repository is distribution-only: interns are **not** collaborators on `PearlThoughts/frontend-internship`, and they must not create branches or PRs in it.
-
-Each intern works in a personal repository or a company-provided local copy, then shares their own repository/PR with their mentor. This keeps the organisation starter clean while allowing many interns to work independently.
-
-### Setup options
-
-Use the option your mentor provides:
-
-1. **Personal repository from the starter:** create a repository under the internâ€™s own GitHub account, copy the starter into it, then clone that personal repository locally.
-2. **Starter ZIP:** download and extract the starter, run `git init`, create a personal remote repository, and push the initial copy there.
-3. **Existing local project:** after the first setup only, use `git pull` to receive updates from the internâ€™s own remote or an approved upstream remote.
-
-> A private organisation repository cannot be cloned, forked, or pulled by non-collaborators. If the starter must be directly accessible to all interns, the organisation must separately decide to make it public or distribute it as a ZIP/template.
-
-### Personal repository and branch workflow
-
-```mermaid
-flowchart TD
-  A[Receive starter: personal repo or ZIP] --> B[Set up local machine]
-  B --> C[Create intern/name integration branch in personal repo]
-  C --> D[Create one task branch]
-  D --> E[Make one focused change]
-  E --> F[Commit small conventional commits]
-  F --> G[Run lint and build]
-  G --> H[Push to personal repository]
-  H --> I[Open detailed PR in personal repository]
-  I --> J[Mentor reviews repository/PR]
-  J --> K[Merge task branch into intern/name]
-  K --> L[Pull latest personal integration branch before next task]
-```
-
-### Branch naming
-
-| Branch | Format | Example |
-| --- | --- | --- |
-| Personal integration branch | `intern/<first-name>` | `intern/priya` |
-| Feature task | `feat/<ticket>-<scope>-<slug>` | `feat/SCH-142-appointments-doctor-filter` |
-| Bug fix | `fix/<ticket>-<scope>-<slug>` | `fix/SCH-157-booking-timezone` |
-| Documentation | `docs/<ticket>-<slug>` | `docs/SCH-160-api-contract` |
-| Chore/tooling | `chore/<ticket>-<slug>` | `chore/SCH-161-eslint-rules` |
-
-Use lowercase kebab-case. Include the task/ticket ID when one exists. A task branch must describe one reviewable outcome; do not mix a styling cleanup, a feature, and a dependency upgrade.
-
-### Commands after first local setup
-
-Create the personal integration branch once in the internâ€™s **own** repository:
+### Clone the Repository
 
 ```bash
-git switch -c intern/your-name
-git push -u origin intern/your-name
+git clone <your-repository-url>
 ```
 
-Start every assigned task from the latest personal integration branch:
+### Navigate to the Project
 
 ```bash
-git switch intern/your-name
-git pull --ff-only origin intern/your-name
-git switch -c feat/SCH-142-appointments-doctor-filter
+cd <project-folder>
 ```
 
-Commit focused increments as soon as each small logical unit is complete:
+### Install Dependencies
 
 ```bash
-git add src/features/appointments
-git commit -m "feat(appointments): add doctor filter"
-git push -u origin feat/SCH-142-appointments-doctor-filter
+npm install
 ```
 
-### Keeping a local project current
+---
 
-After the initial setup, use this to update a checked-out branch from the internâ€™s own remote:
+# Running the Application
+
+Start the development server:
 
 ```bash
-git switch intern/your-name
-git pull --ff-only origin intern/your-name
+npm run dev
 ```
 
-If a mentor gives the intern an approved upstream remote, add it once and fetch updates without pushing to it:
+Next.js will display a local development URL in the terminal.
+
+Open that URL in your browser to access the application.
+
+---
+
+# Production Build
+
+Create an optimized production build:
 
 ```bash
-git remote add upstream <approved-starter-url>
-git fetch upstream
-git merge upstream/<approved-branch>
+npm run build
 ```
 
-Never push to the upstream starter repository unless the mentor has explicitly granted access.
+Run the production version:
 
-### Commit standard
-
-Make small, meaningful commits. A commit should be safe to review, revert, and describe in one sentence.
-
-```text
-feat(appointments): add doctor filter
-fix(booking): preserve selected time on validation error
-docs(readme): document task branch workflow
-chore(tooling): align lint script
+```bash
+npm run start
 ```
 
-Do not create commits such as `update`, `changes`, `wip`, or a large â€œall workâ€ commit. Avoid committing generated output, `.env` files, secrets, or unrelated formatting changes.
+---
 
-### Pull request checklist
+# Available Scripts
 
-Each task PR lives in the internâ€™s **personal** repository and targets `intern/your-name`. Include:
+## Development Server
 
-1. A concise problem and solution summary.
-2. Screenshots or a short recording for visual changes.
-3. API contract or mock-data changes, if any.
-4. Verification results: `npm run lint` and `npm run build`.
-5. Known limitations or follow-up work.
-6. A link to the assigned ticket/task.
+```bash
+npm run dev
+```
 
-Only merge a task PR after review. Interns share the PR URL or their repository URL with the mentor; they do not open PRs against `PearlThoughts/frontend-internship` unless they are granted collaborator access.
+Runs the application in development mode.
 
-## Before requesting review
+---
 
-- [ ] Branch name follows the documented convention.
-- [ ] Change is scoped to one task and no unrelated files are included.
-- [ ] UI has keyboard access and meaningful loading, error, and empty states.
-- [ ] Mock/API contract remains typed and is not imported into visual components.
-- [ ] `npm run lint` and `npm run build` pass.
-- [ ] PR description, screenshots, and verification notes are complete.
+## Production Build
 
-## UI delivery checks
+```bash
+npm run build
+```
 
-- Prefer small, focused components and typed boundaries.
-- Use real loading, empty, and error states for data-driven UI.
-- Design mobile-first; verify 320px, 768px, 1024px, and 1440px.
-- Keep motion purposeful, fast, and respectful of reduced-motion preferences.
+Creates an optimized production build of the application.
+
+---
+
+## Production Server
+
+```bash
+npm run start
+```
+
+Runs the production build.
+
+---
+
+## Linting
+
+```bash
+npm run lint
+```
+
+Runs ESLint checks on the project.
+
+---
+
+# User Roles
+
+Schedula currently supports three primary user contexts.
+
+## Guest
+
+Guests can:
+
+* Explore the application.
+* Browse doctors.
+* Learn how Schedula works.
+* Use the Schedula Assistant for application guidance.
+* Create a patient account.
+* Register as a doctor.
+* Access the appropriate login pages.
+
+Account-specific information requires authentication.
+
+---
+
+## Patient
+
+Patients can:
+
+* Find doctors.
+* Book appointments.
+* View appointments.
+* Manage eligible appointments.
+* Access appointment-related prescriptions.
+* Review doctors.
+* Rebook appointments when applicable.
+* Manage profile information.
+* Access notifications.
+* Use the Schedula Assistant for application guidance.
+
+---
+
+## Doctor
+
+Doctors can:
+
+* Access the Doctor Dashboard.
+* Manage appointments.
+* Manage appointment availability.
+* Manage appointment slots.
+* Use the Doctor Calendar.
+* Manage professional profile information.
+* Manage prescriptions.
+* Use applicable patient-side functionality.
+* Use the Schedula Assistant for application guidance.
+
+---
+
+# Future Improvements
+
+The current version focuses primarily on implementing the complete frontend application workflow.
+
+Possible future improvements include:
+
+* Backend integration.
+* Database integration.
+* Persistent authentication.
+* Server-side appointment management.
+* Real-time notifications.
+* Persistent chatbot conversations.
+* Improved mobile navigation.
+* Additional accessibility improvements.
+* Improved responsive behavior.
+* Further UI and interaction polish.
+
+---
+
+# Current Development Status
+
+The core application structure and major workflows have been implemented.
+
+The final development focus is on:
+
+* UI refinement.
+* Improving visual consistency.
+* Polishing interactions.
+* Improving the overall user experience.
+* Testing edge cases across patient and doctor workflows.
+* Improving responsiveness where necessary.
+
+---
+
+## Author
+
+Developed as a frontend healthcare appointment management application project.
