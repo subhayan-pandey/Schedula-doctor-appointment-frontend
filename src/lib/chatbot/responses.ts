@@ -5,16 +5,81 @@ import type {
   ChatUserRole,
 } from "@/types/chatbot";
 
+type SupportedIntent = Exclude<
+  ChatIntent,
+  "out_of_scope" | "unknown"
+>;
+
 const RESPONSES: Record<
-  Exclude<
-    ChatIntent,
-    "out_of_scope" | "unknown"
-  >,
+  SupportedIntent,
   ChatResponse
 > = {
+  login: {
+    content:
+      "If you already have a patient account, use Log in in the navigation bar. Doctors use the separate Doctor Login page for their doctor account.",
+    action: {
+      label: "Log in",
+      href: "/login",
+    },
+  },
+
+  logout: {
+    content:
+      "Use the Log out button in the top-right area of the navigation bar. Logging out clears your current session and redirects you to the Schedula home page.",
+    action: {
+      label: "Go to home",
+      href: "/",
+    },
+  },
+
+  signup: {
+    content:
+      "If you're new to Schedula as a patient, use Get started in the navigation bar to create an account.",
+    action: {
+      label: "Get started",
+      href: "/signup",
+    },
+  },
+
+  doctor_registration: {
+    content:
+      "If you're joining Schedula as a doctor, register for a doctor account first. After registration, you can use Doctor Login to access the doctor tools.",
+    action: {
+      label: "Register as a doctor",
+      href: "/doctor/register",
+    },
+  },
+
+  find_doctor: {
+    content:
+      "You can browse and check doctors from the Find Doctors page. Open a doctor's profile to view their available information and appointment options.",
+    action: {
+      label: "Find doctors",
+      href: "/doctors",
+    },
+  },
+
+  doctor_details: {
+    content:
+      "To view a doctor's details, open Find Doctors and select the doctor. Their page contains the information available for that doctor, including professional details and appointment availability.",
+    action: {
+      label: "Find doctors",
+      href: "/doctors",
+    },
+  },
+
   book_appointment: {
     content:
-      "To book an appointment, browse the available doctors, open a doctor's profile, choose an available date and time slot, and confirm your booking. I can't book it for you, but I can guide you to the right place.",
+      "To book an appointment, open Find Doctors, select a doctor, choose an available date and time slot, and complete the booking flow. I can't book it for you, but I can explain each step.",
+    action: {
+      label: "Find doctors",
+      href: "/doctors",
+    },
+  },
+
+  appointment_slots: {
+    content:
+      "Appointment slots are the times made available by doctors. Open a doctor's page to check available slots, then select a suitable date and time during booking.",
     action: {
       label: "Find doctors",
       href: "/doctors",
@@ -23,7 +88,7 @@ const RESPONSES: Record<
 
   reschedule_appointment: {
     content:
-      "You can reschedule an eligible upcoming appointment without cancelling it first. Go to My Appointments, open the appointment, and choose a new available slot. The appointment is updated when the new slot is confirmed.",
+      "To reschedule an eligible appointment, open My Appointments and select the appointment you want to change. You can then choose another available date or time slot when the rescheduling option is available.",
     action: {
       label: "My appointments",
       href: "/appointments",
@@ -39,36 +104,45 @@ const RESPONSES: Record<
     },
   },
 
-  appointment_status: {
-    content:
-      "Schedula uses appointment statuses to show where a visit is in its lifecycle. Appointments can be pending, confirmed, upcoming, completed, cancelled, or missed. The available actions depend on the current status.",
-    action: {
-      label: "View appointments",
-      href: "/appointments",
-    },
-  },
-
   view_appointments: {
     content:
-      "You can check upcoming and past appointments from My Appointments. This is also where you can follow the appointment status and access available appointment actions.",
+      "You can check your appointments from My Appointments in the navigation bar after logging in. This is where you can view appointment details and manage the actions available for each appointment.",
     action: {
       label: "My appointments",
       href: "/appointments",
     },
   },
 
-  completed_appointment: {
+  appointment_status: {
     content:
-      "Completed appointments can provide follow-up options such as viewing a prescription when one is available, downloading the prescription PDF, reviewing the doctor, or rebooking with the same doctor.",
+      "Schedula uses appointment statuses to show the current stage of an appointment. The available statuses are pending, confirmed, upcoming, completed, cancelled, and missed. The actions available depend on the appointment's status.",
     action: {
       label: "View appointments",
       href: "/appointments",
     },
   },
 
+  completed_appointment: {
+    content:
+      "After an appointment is completed, open it from My Appointments. Depending on the available features, you can access prescription information, review the doctor, or rebook another appointment.",
+    action: {
+      label: "View appointments",
+      href: "/appointments",
+    },
+  },
+
+  missed_appointment: {
+    content:
+      "A missed appointment means the appointment was not completed as scheduled. You can check its details from My Appointments and book another appointment if needed.",
+    action: {
+      label: "My appointments",
+      href: "/appointments",
+    },
+  },
+
   prescription: {
     content:
-      "Prescriptions are connected to completed appointments. When a doctor has created one, you can view it from the completed appointment and download a PDF copy when that option is available.",
+      "Prescriptions are connected to appointments. When a prescription is available, open the relevant appointment to access its prescription information and download it when a download option is provided.",
     action: {
       label: "View appointments",
       href: "/appointments",
@@ -77,16 +151,16 @@ const RESPONSES: Record<
 
   review_doctor: {
     content:
-      "I can't submit a review for you. After an appointment is completed, open that appointment and use the Review Doctor option to leave your own feedback.",
+      "I can't submit a review for you. After an appointment is completed, open the appointment and use the available Review Doctor option to submit your own feedback.",
     action: {
-      label: "Completed appointments",
+      label: "View appointments",
       href: "/appointments",
     },
   },
 
   rebook_appointment: {
     content:
-      "You can rebook from a completed appointment when the rebooking option is available. Schedula will guide you back to choosing an available appointment slot with the doctor.",
+      "When rebooking is available for an appointment, open the completed appointment and use the rebooking option to start another appointment with that doctor.",
     action: {
       label: "View appointments",
       href: "/appointments",
@@ -95,25 +169,21 @@ const RESPONSES: Record<
 
   patient_profile: {
     content:
-      "Your profile is where you can manage personal details and other profile information available in Schedula. I can't change the information for you, but you can update it directly from the profile page.",
+      "You can access My Profile from the navigation bar after logging in. The profile page contains the patient account information that can be viewed or managed in Schedula.",
     action: {
       label: "My profile",
       href: "/profile",
     },
   },
 
-  find_doctor: {
+  notifications: {
     content:
-      "You can browse doctors by specialty, availability, and location. Open a doctor's profile to see more details and available appointment slots.",
-    action: {
-      label: "Find doctors",
-      href: "/doctors",
-    },
+      "When you're logged in, the notification bell appears in the navigation bar. Select it to check the notifications currently available for your account.",
   },
 
   doctor_dashboard: {
     content:
-      "The Doctor Dashboard provides an overview of upcoming appointments and quick access to the main doctor tools.",
+      "The Doctor Dashboard is the main overview page for doctors. It provides access to doctor-side information and quick navigation to appointments, calendar, availability, profile, and other doctor tools.",
     action: {
       label: "Doctor dashboard",
       href: "/doctor/dashboard",
@@ -122,7 +192,7 @@ const RESPONSES: Record<
 
   doctor_appointments: {
     content:
-      "Doctors can manage appointments from the appointments page. It provides appointment details, status-based actions, search, and filtering. I can't change an appointment for you.",
+      "Doctors can manage patient appointments from the Doctor Appointments page. The page provides appointment information, status-based details, search and filtering, and the management actions supported by the application.",
     action: {
       label: "Doctor appointments",
       href: "/doctor/appointments",
@@ -131,7 +201,7 @@ const RESPONSES: Record<
 
   doctor_calendar: {
     content:
-      "The doctor calendar supports day, week, and month views for appointments and availability. Appointment changes are subject to slot availability and status restrictions.",
+      "The Doctor Calendar provides a calendar view of appointments and scheduling information. Use the calendar controls to navigate between the available day, week, or month views and inspect appointments on the relevant dates.",
     action: {
       label: "Doctor calendar",
       href: "/doctor/calendar",
@@ -140,7 +210,7 @@ const RESPONSES: Record<
 
   doctor_availability: {
     content:
-      "Doctors can manage appointment availability by creating and managing date and time slots. Only available and unbooked slots can be selected by patients.",
+      "Doctors manage appointment availability from the slot management page. The available slots you create or manage are the times patients can select when booking appointments.",
     action: {
       label: "Manage availability",
       href: "/doctor/slot",
@@ -149,7 +219,7 @@ const RESPONSES: Record<
 
   doctor_profile: {
     content:
-      "Doctors can view and update their professional details from the doctor profile page. Availability is managed separately through the availability tools.",
+      "Doctors can access their professional profile from the Profile link in the doctor navigation. This page contains the doctor information that can be viewed or updated within the application.",
     action: {
       label: "Doctor profile",
       href: "/doctor/profile",
@@ -158,34 +228,16 @@ const RESPONSES: Record<
 
   doctor_prescriptions: {
     content:
-      "Doctors can view, create, and edit prescriptions. A prescription can include a diagnosis, medicines, dosage, duration, and instructions, and it becomes available through the related completed appointment.",
+      "Doctors manage prescriptions from the Prescriptions page. The prescription workflow allows doctors to work with appointment-related prescription information, including the medical details supported by the application.",
     action: {
       label: "Manage prescriptions",
       href: "/doctor/prescriptions",
     },
   },
 
-  doctor_registration: {
-    content:
-      "If you're new to Schedula as a doctor, register first. After registration, you can log in and access the doctor dashboard, profile, availability, appointments, calendar, and prescription tools.",
-    action: {
-      label: "Register as a doctor",
-      href: "/doctor/register",
-    },
-  },
-
-  login: {
-    content:
-      "Existing patients can log in to access their appointments and profile. New patients can create an account first. Doctors have separate login and registration pages.",
-    action: {
-      label: "Log in",
-      href: "/login",
-    },
-  },
-
   how_schedula_works: {
     content:
-      "Schedula helps patients find doctors, view available slots, and manage appointments. Doctors can manage their profile, availability, appointments, calendar, and prescriptions.",
+      "Schedula has separate patient and doctor workflows. Patients can find doctors, book and manage appointments, access appointment-related information, prescriptions, reviews, and their profile. Doctors can use the dashboard, manage appointments, calendar, availability, profile, and prescriptions.",
     action: {
       label: "Find doctors",
       href: "/doctors",
@@ -193,14 +245,14 @@ const RESPONSES: Record<
   },
 };
 
-export const OUT_OF_SCOPE_RESPONSE: ChatResponse = {
+const OUT_OF_SCOPE_RESPONSE: ChatResponse = {
   content:
-    "I can only help with using Schedula. You can ask me about doctors, appointments, booking, prescriptions, profiles, availability, and other features in this application.",
+    "Schedula Guide is focused only on this application. I can explain how to use Schedula, including accounts, finding doctors, appointments, booking, prescriptions, profiles, notifications, doctor dashboards, calendars, availability, and doctor tools.",
 };
 
-export const UNKNOWN_RESPONSE: ChatResponse = {
+const UNKNOWN_RESPONSE: ChatResponse = {
   content:
-    "I'm not able to answer that reliably. I can help you understand and navigate Schedula, including appointments, doctors, prescriptions, profiles, availability, and doctor tools.",
+    "I can help you navigate Schedula and explain its features. You can ask where to find something, how a feature works, or how to complete a workflow. For example: logging in or out, finding doctors, booking appointments, appointment statuses, prescriptions, profiles, doctor calendars, availability, and doctor tools.",
 };
 
 export function getResponseForIntent(
@@ -221,7 +273,77 @@ export function getResponseForIntent(
   ) {
     return {
       content:
-        "The Doctor Dashboard is available after signing in with a doctor account. If you're new to Schedula as a doctor, register first.",
+        "The Doctor Dashboard is available after signing in with a doctor account. If you already have one, use Doctor Login. New doctors need to register first.",
+      action: {
+        label: "Doctor login",
+        href: "/doctor/login",
+      },
+    };
+  }
+
+  if (
+    role === "guest" &&
+    intent === "doctor_appointments"
+  ) {
+    return {
+      content:
+        "Doctor appointment management is available after signing in with a doctor account. Register as a doctor first if you don't already have a doctor account.",
+      action: {
+        label: "Doctor login",
+        href: "/doctor/login",
+      },
+    };
+  }
+
+  if (
+    role === "guest" &&
+    intent === "doctor_calendar"
+  ) {
+    return {
+      content:
+        "The Doctor Calendar is available to logged-in doctors. Use Doctor Login if you already have a doctor account or register first if you're new.",
+      action: {
+        label: "Doctor login",
+        href: "/doctor/login",
+      },
+    };
+  }
+
+  if (
+    role === "guest" &&
+    intent === "doctor_availability"
+  ) {
+    return {
+      content:
+        "Appointment availability and slot management are doctor features. Sign in with a doctor account to access these tools.",
+      action: {
+        label: "Doctor login",
+        href: "/doctor/login",
+      },
+    };
+  }
+
+  if (
+    role === "guest" &&
+    intent === "doctor_profile"
+  ) {
+    return {
+      content:
+        "The Doctor Profile is available after signing in with a doctor account.",
+      action: {
+        label: "Doctor login",
+        href: "/doctor/login",
+      },
+    };
+  }
+
+  if (
+    role === "guest" &&
+    intent === "doctor_prescriptions"
+  ) {
+    return {
+      content:
+        "Prescription management is available to logged-in doctors. Use Doctor Login to access doctor tools.",
       action: {
         label: "Doctor login",
         href: "/doctor/login",
@@ -236,24 +358,30 @@ export function getGuestAccessResponse(
   response: ChatResponse,
   intent: ChatIntent,
 ): ChatResponse {
-  const patientOnlyIntents: ChatIntent[] = [
-    "book_appointment",
-    "reschedule_appointment",
-    "cancel_appointment",
-    "view_appointments",
-    "completed_appointment",
-    "prescription",
-    "review_doctor",
-    "rebook_appointment",
-    "patient_profile",
-  ];
+  const accountRequiredIntents: ChatIntent[] =
+    [
+      "reschedule_appointment",
+      "cancel_appointment",
+      "view_appointments",
+      "completed_appointment",
+      "missed_appointment",
+      "prescription",
+      "review_doctor",
+      "rebook_appointment",
+      "patient_profile",
+      "notifications",
+    ];
 
-  if (!patientOnlyIntents.includes(intent)) {
+  if (
+    !accountRequiredIntents.includes(
+      intent,
+    )
+  ) {
     return response;
   }
 
   return {
-    content: `${response.content} To use account-specific appointment and profile features, log in first. If you're new to Schedula, create an account.`,
+    content: `${response.content} To access your own appointment or account information, log in first. If you're new to Schedula as a patient, create an account before logging in.`,
     action: {
       label: "Log in",
       href: "/login",
@@ -265,37 +393,61 @@ export function getInitialSuggestions(
   pathname: string,
   role: ChatUserRole,
 ): ChatSuggestion[] {
-  if (pathname === "/doctors") {
+  if (pathname === "/") {
     return [
       {
-        label: "Find the right doctor",
+        label: "How Schedula works",
         message:
-          "How do I find the right doctor?",
+          "How does Schedula work?",
       },
       {
-        label: "Check availability",
+        label: "Find doctors",
         message:
-          "How do appointment slots work?",
+          "How can I check doctors?",
       },
       {
-        label: "How booking works",
+        label: "Getting started",
         message:
-          "How does booking an appointment work?",
+          "How do I create an account?",
       },
     ];
   }
 
-  if (pathname === "/appointments") {
+  if (
+    pathname === "/doctors"
+  ) {
     return [
+      {
+        label: "Browse doctors",
+        message:
+          "How can I check doctors?",
+      },
+      {
+        label: "Doctor details",
+        message:
+          "How can I see doctor details?",
+      },
+      {
+        label: "Book an appointment",
+        message:
+          "How do I book an appointment?",
+      },
+    ];
+  }
+
+  if (
+    pathname === "/appointments"
+  ) {
+    return [
+      {
+        label: "My appointments",
+        message:
+          "How can I check my appointments?",
+      },
       {
         label: "Reschedule",
         message:
           "How do I reschedule my appointment?",
-      },
-      {
-        label: "Cancel an appointment",
-        message:
-          "How do I cancel an appointment?",
       },
       {
         label: "Appointment status",
@@ -305,49 +457,30 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (pathname === "/profile") {
+  if (
+    pathname === "/profile"
+  ) {
     return [
       {
-        label: "Update my profile",
+        label: "My profile",
         message:
           "How do I update my profile?",
       },
       {
-        label: "Profile information",
+        label: "My appointments",
         message:
-          "What information can I manage in my profile?",
+          "How can I check my appointments?",
       },
       {
-        label: "My prescriptions",
+        label: "Prescriptions",
         message:
           "How do prescriptions work?",
       },
     ];
   }
 
-  if (pathname === "/doctor/calendar") {
-    return [
-      {
-        label: "Using the calendar",
-        message:
-          "How does the doctor calendar work?",
-      },
-      {
-        label: "Manage availability",
-        message:
-          "How do I manage appointment availability?",
-      },
-      {
-        label: "Appointment statuses",
-        message:
-          "What appointment statuses can doctors manage?",
-      },
-    ];
-  }
-
   if (
-    pathname === "/doctor/dashboard" ||
-    pathname === "/doctor/appointments"
+    pathname === "/doctor/dashboard"
   ) {
     return [
       {
@@ -356,9 +489,31 @@ export function getInitialSuggestions(
           "How do I manage appointments as a doctor?",
       },
       {
-        label: "Calendar",
+        label: "Use the calendar",
         message:
           "How does the doctor calendar work?",
+      },
+      {
+        label: "Manage availability",
+        message:
+          "How do I manage appointment availability?",
+      },
+    ];
+  }
+
+  if (
+    pathname === "/doctor/appointments"
+  ) {
+    return [
+      {
+        label: "Appointments",
+        message:
+          "How do I manage appointments as a doctor?",
+      },
+      {
+        label: "Appointment statuses",
+        message:
+          "What do appointment statuses mean?",
       },
       {
         label: "Prescriptions",
@@ -369,15 +524,31 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/profile" ||
-    pathname === "/doctor/slot"
+    pathname === "/doctor/calendar"
   ) {
     return [
       {
-        label: "Update profile",
+        label: "Using the calendar",
         message:
-          "How do I update my doctor profile?",
+          "How does the doctor calendar work?",
       },
+      {
+        label: "Calendar views",
+        message:
+          "How do day, week and month views work?",
+      },
+      {
+        label: "Availability",
+        message:
+          "How do I manage appointment availability?",
+      },
+    ];
+  }
+
+  if (
+    pathname === "/doctor/slot"
+  ) {
+    return [
       {
         label: "Manage availability",
         message:
@@ -388,6 +559,33 @@ export function getInitialSuggestions(
         message:
           "How do appointment slots work?",
       },
+      {
+        label: "Doctor calendar",
+        message:
+          "How does the doctor calendar work?",
+      },
+    ];
+  }
+
+  if (
+    pathname === "/doctor/profile"
+  ) {
+    return [
+      {
+        label: "Doctor profile",
+        message:
+          "How do I update my doctor profile?",
+      },
+      {
+        label: "Availability",
+        message:
+          "How do I manage appointment availability?",
+      },
+      {
+        label: "Appointments",
+        message:
+          "How do I manage appointments as a doctor?",
+      },
     ];
   }
 
@@ -396,7 +594,7 @@ export function getInitialSuggestions(
   ) {
     return [
       {
-        label: "Create prescriptions",
+        label: "Prescriptions",
         message:
           "How does prescription management work?",
       },
@@ -406,7 +604,7 @@ export function getInitialSuggestions(
           "What information can a prescription include?",
       },
       {
-        label: "Patient appointments",
+        label: "Appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
@@ -416,33 +614,33 @@ export function getInitialSuggestions(
   if (role === "doctor") {
     return [
       {
-        label: "Doctor appointments",
+        label: "Doctor dashboard",
+        message:
+          "How does the Doctor Dashboard work?",
+      },
+      {
+        label: "Appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
       {
-        label: "Manage availability",
+        label: "Calendar",
         message:
-          "How do I manage appointment availability?",
-      },
-      {
-        label: "Prescriptions",
-        message:
-          "How does prescription management work?",
+          "How does the doctor calendar work?",
       },
     ];
   }
 
   return [
     {
-      label: "Find a doctor",
+      label: "Find doctors",
       message:
-        "How do I find a doctor?",
+        "How can I check doctors?",
     },
     {
-      label: "How appointments work",
+      label: "Book appointments",
       message:
-        "How does booking an appointment work?",
+        "How do I book an appointment?",
     },
     {
       label: "Using Schedula",
