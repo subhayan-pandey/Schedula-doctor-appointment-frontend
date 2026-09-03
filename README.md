@@ -506,13 +506,13 @@ Make sure the following are installed:
 ### Clone the Repository
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/subhayan-pandey/Schedula-doctor-appointment-frontend
 ```
 
 ### Navigate to the Project
 
 ```bash
-cd <project-folder>
+cd Schedula-doctor-appointment-frontend
 ```
 
 ### Install Dependencies
