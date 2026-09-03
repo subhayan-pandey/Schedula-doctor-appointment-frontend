@@ -1,7 +1,14 @@
 ﻿import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+} from "next/font/google";
+
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+
+import ChatbotProvider from "./ChatbotProvider";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,11 +22,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Schedula | Appointment operations starter",
-  description: "A production-minded starter for doctor appointment booking workflows.",
+  title:
+    "Schedula | Appointment operations starter",
+  description:
+    "A production-minded starter for doctor appointment booking workflows.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: LayoutProps<"/">) {
   return (
     <html
       lang="en"
@@ -27,8 +38,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col">
         <Navbar />
-        <div className="flex-1">{children}</div>
+
+        <div className="flex-1">
+          {children}
+        </div>
+
         <Footer />
+
+        <ChatbotProvider />
       </body>
     </html>
   );
