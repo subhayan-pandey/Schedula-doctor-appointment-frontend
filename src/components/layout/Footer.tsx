@@ -62,9 +62,9 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-10 flex flex-col gap-2 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col gap-2 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-contnet">
           <p>© {new Date().getFullYear()} Schedula. All rights reserved.</p>
-          <p>This is a frontend demo project — no real appointments are booked.</p>
+          
         </div>
       </div>
     </footer>
