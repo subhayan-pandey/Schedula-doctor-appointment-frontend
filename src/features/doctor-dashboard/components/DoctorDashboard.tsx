@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import {
   useEffect,
   useMemo,
@@ -11,36 +12,40 @@ import {
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
-import StatCard from "@/features/doctor-dashboard/components/StatCard";
-
 import {
-  getSession,
-  clearSession,
-} from "@/lib/storage";
-
-import {
-  getDoctorAccount,
-} from "@/lib/doctor-account-store";
+  calculateDoctorAnalytics,
+} from "@/lib/analytics/doctor-analytics";
 
 import {
   getAllBookings,
 } from "@/lib/bookings-store";
 
 import {
+  getDoctorAccount,
+} from "@/lib/doctor-account-store";
+
+import {
   getSlotsForDoctor,
 } from "@/lib/slots-store";
+
+import {
+  clearSession,
+  getSession,
+} from "@/lib/storage";
 
 import {
   toISODate,
 } from "@/lib/utils/date";
 
-import type {
-  DoctorAccount,
-} from "@/types/doctorAccount";
+import StatCard from "@/features/doctor-dashboard/components/StatCard";
 
 import type {
   Booking,
 } from "@/types/booking";
+
+import type {
+  DoctorAccount,
+} from "@/types/doctorAccount";
 
 const QUICK_LINKS = [
   {
@@ -65,11 +70,13 @@ const QUICK_LINKS = [
       "See every patient appointment and its status",
   },
   {
-    href: "/doctor/prescriptions",
-    title: "Prescriptions",
+    href:
+      "/doctor/prescriptions",
+    title:
+      "Prescriptions",
     description:
-    "Create and manage patient prescriptions",
-},
+      "Create and manage patient prescriptions",
+  },
   {
     href:
       "/doctor/calendar",
@@ -100,16 +107,18 @@ export default function DoctorDashboard() {
   const [
     account,
     setAccount,
-  ] = useState<
-    DoctorAccount | null
-  >(null);
+  ] =
+    useState<
+      DoctorAccount | null
+    >(null);
 
   const [
     bookings,
     setBookings,
-  ] = useState<
-    Booking[]
-  >([]);
+  ] =
+    useState<Booking[]>(
+      [],
+    );
 
   const [
     availableSlotCount,
@@ -163,7 +172,9 @@ export default function DoctorDashboard() {
           ).length,
         );
 
-        setStatus("ready");
+        setStatus(
+          "ready",
+        );
       },
     );
   }, []);
@@ -210,6 +221,16 @@ export default function DoctorDashboard() {
         "completed",
     ).length;
 
+  const analyticsPreview =
+    useMemo(
+      () =>
+        calculateDoctorAnalytics(
+          bookings,
+          "30d",
+        ),
+      [bookings],
+    );
+
   function handleLogout() {
     clearSession();
 
@@ -217,7 +238,8 @@ export default function DoctorDashboard() {
   }
 
   if (
-    status === "loading"
+    status ===
+    "loading"
   ) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">
@@ -237,8 +259,7 @@ export default function DoctorDashboard() {
         </h1>
 
         <p className="mt-2 text-sm text-[var(--muted)]">
-          Log in with your doctor account
-          to access your dashboard.
+          Log in with your doctor account to access your dashboard.
         </p>
 
         <Link
@@ -269,16 +290,16 @@ export default function DoctorDashboard() {
           </h1>
 
           <p className="mt-2 text-sm text-[var(--muted)]">
-            Manage appointments,
-            availability and your
-            professional profile.
+            Manage appointments, availability and your professional profile.
           </p>
         </div>
 
         <Button
           variant="outline"
           size="sm"
-          onClick={handleLogout}
+          onClick={
+            handleLogout
+          }
         >
           Log out
         </Button>
@@ -287,25 +308,33 @@ export default function DoctorDashboard() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Upcoming"
-          value={upcomingCount}
+          value={
+            upcomingCount
+          }
           description="Appointments scheduled"
         />
 
         <StatCard
           label="Completed"
-          value={completedCount}
+          value={
+            completedCount
+          }
           description="Visits completed"
         />
 
         <StatCard
           label="Available slots"
-          value={availableSlotCount}
+          value={
+            availableSlotCount
+          }
           description="Open for booking"
         />
 
         <StatCard
           label="Today"
-          value={todayBookings.length}
+          value={
+            todayBookings.length
+          }
           description="Appointments today"
         />
       </div>
@@ -318,8 +347,7 @@ export default function DoctorDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Manage your practice
-              from one place.
+              Manage your practice from one place.
             </p>
           </div>
         </div>
@@ -328,8 +356,12 @@ export default function DoctorDashboard() {
           {QUICK_LINKS.map(
             (link) => (
               <Link
-                key={link.href}
-                href={link.href}
+                key={
+                  link.href
+                }
+                href={
+                  link.href
+                }
                 className="group rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 transition hover:border-[var(--brand)] hover:shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -347,13 +379,122 @@ export default function DoctorDashboard() {
                     </p>
                   </div>
 
-                  <span className="text-lg text-[var(--brand)]">
+                  <span className="text-lg text-[var(--brand)] transition-transform group-hover:translate-x-0.5">
                     →
                   </span>
                 </div>
               </Link>
             ),
           )}
+        </div>
+      </section>
+
+      <section className="mt-8 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
+        <div className="flex flex-col gap-5 border-b border-[var(--line)] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--brand-deep)]">
+              Practice performance
+            </p>
+
+            <h2 className="mt-2 text-xl font-semibold text-[var(--ink)]">
+              Analytics overview
+            </h2>
+
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              A quick view of your appointment activity from the last 30 days.
+            </p>
+          </div>
+
+          <Link
+            href="/doctor/analytics"
+          >
+            <Button
+              size="sm"
+            >
+              View analytics
+            </Button>
+          </Link>
+        </div>
+
+        <div className="grid gap-px bg-[var(--line)] sm:grid-cols-2 lg:grid-cols-4">
+          <div className="bg-[var(--surface)] p-5">
+            <p className="text-sm font-medium text-[var(--muted)]">
+              Appointments
+            </p>
+
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {
+                analyticsPreview.totalAppointments
+              }
+            </p>
+
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Last 30 days
+            </p>
+          </div>
+
+          <div className="bg-[var(--surface)] p-5">
+            <p className="text-sm font-medium text-[var(--muted)]">
+              Completion rate
+            </p>
+
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {
+                analyticsPreview.completionRate
+              }%
+            </p>
+
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Completed appointments
+            </p>
+          </div>
+
+          <div className="bg-[var(--surface)] p-5">
+            <p className="text-sm font-medium text-[var(--muted)]">
+              Cancelled
+            </p>
+
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {
+                analyticsPreview.cancelledAppointments
+              }
+            </p>
+
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              {
+                analyticsPreview.cancellationRate
+              }% of appointments
+            </p>
+          </div>
+
+          <div className="bg-[var(--surface)] p-5">
+            <p className="text-sm font-medium text-[var(--muted)]">
+              Busiest day
+            </p>
+
+            <p className="mt-2 text-xl font-semibold tracking-tight text-[var(--ink)]">
+              {
+                analyticsPreview.busiestDay ??
+                "—"
+              }
+            </p>
+
+            <p className="mt-2 text-xs text-[var(--muted)]">
+              Based on booking activity
+            </p>
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--line)] bg-[var(--canvas)]/50 px-5 py-4 sm:px-6">
+          <Link
+            href="/doctor/analytics"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--brand-deep)] hover:underline"
+          >
+            Explore appointment trends, insights and growth opportunities
+            <span>
+              →
+            </span>
+          </Link>
         </div>
       </section>
 
@@ -365,8 +506,7 @@ export default function DoctorDashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Your upcoming appointments
-              for today.
+              Your upcoming appointments for today.
             </p>
           </div>
 
@@ -390,7 +530,9 @@ export default function DoctorDashboard() {
               {todayBookings.map(
                 (booking) => (
                   <div
-                    key={booking.id}
+                    key={
+                      booking.id
+                    }
                     className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
