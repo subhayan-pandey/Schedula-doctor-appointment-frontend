@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -13,27 +14,16 @@ import {
   markNotificationAsRead,
 } from "@/lib/notifications-store";
 
-import {
-  getSession,
-} from "@/lib/storage";
+import { getSession } from "@/lib/storage";
 
-import type {
-  AppNotification,
-} from "@/types/notification";
+import type { AppNotification } from "@/types/notification";
 
-function formatNotificationTime(
-  value: string,
-) {
+function formatNotificationTime(value: string) {
   const date = new Date(value);
 
-  const difference =
-    Date.now() -
-    date.getTime();
+  const difference = Date.now() - date.getTime();
 
-  const minutes =
-    Math.floor(
-      difference / 60000,
-    );
+  const minutes = Math.floor(difference / 60000);
 
   if (minutes < 1) {
     return "Just now";
@@ -43,27 +33,19 @@ function formatNotificationTime(
     return `${minutes}m ago`;
   }
 
-  const hours =
-    Math.floor(
-      minutes / 60,
-    );
+  const hours = Math.floor(minutes / 60);
 
   if (hours < 24) {
     return `${hours}h ago`;
   }
 
-  return date.toLocaleDateString(
-    "en-IN",
-    {
-      day: "numeric",
-      month: "short",
-    },
-  );
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
-function getNotificationIcon(
-  notification: AppNotification,
-) {
+function getNotificationIcon(notification: AppNotification) {
   switch (notification.type) {
     case "confirmation":
       return "✓";
@@ -83,44 +65,33 @@ function getNotificationIcon(
 }
 
 export default function NotificationBell() {
-  const [isOpen, setIsOpen] =
-    useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const [userId, setUserId] =
-    useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const [
-    notifications,
-    setNotifications,
-  ] = useState<AppNotification[]>(
+  const [notifications, setNotifications] = useState<AppNotification[]>(
     [],
   );
 
-  const containerRef =
-    useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  function refreshNotifications(
-    currentUserId?: string | null,
-  ) {
-    const id =
-      currentUserId ?? userId;
+  const refreshNotifications = useCallback(
+    (currentUserId?: string | null) => {
+      const id = currentUserId ?? userId;
 
-    if (!id) {
-      setNotifications([]);
-      return;
-    }
+      if (!id) {
+        setNotifications([]);
+        return;
+      }
 
-    setNotifications(
-      getNotificationsByUserId(
-        id,
-      ),
-    );
-  }
+      setNotifications(getNotificationsByUserId(id));
+    },
+    [userId],
+  );
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      const session =
-        getSession();
+      const session = getSession();
 
       if (!session) {
         setUserId(null);
@@ -130,22 +101,17 @@ export default function NotificationBell() {
 
       setUserId(session.id);
 
-      refreshNotifications(
-        session.id,
-      );
+      refreshNotifications(session.id);
     });
 
     function handleUpdate() {
-      const session =
-        getSession();
+      const session = getSession();
 
       if (!session) {
         return;
       }
 
-      refreshNotifications(
-        session.id,
-      );
+      refreshNotifications(session.id);
     }
 
     window.addEventListener(
@@ -153,23 +119,16 @@ export default function NotificationBell() {
       handleUpdate,
     );
 
-    function handleClickOutside(
-      event: MouseEvent,
-    ) {
+    function handleClickOutside(event: MouseEvent) {
       if (
         containerRef.current &&
-        !containerRef.current.contains(
-          event.target as Node,
-        )
+        !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
       }
     }
 
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside,
-    );
+    document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
       window.removeEventListener(
@@ -182,21 +141,15 @@ export default function NotificationBell() {
         handleClickOutside,
       );
     };
-  }, []);
+  }, [refreshNotifications]);
 
-  const unreadCount =
-    notifications.filter(
-      (notification) =>
-        !notification.isRead,
-    ).length;
+  const unreadCount = notifications.filter(
+    (notification) => !notification.isRead,
+  ).length;
 
-  function handleNotificationClick(
-    notification: AppNotification,
-  ) {
+  function handleNotificationClick(notification: AppNotification) {
     if (!notification.isRead) {
-      markNotificationAsRead(
-        notification.id,
-      );
+      markNotificationAsRead(notification.id);
     }
 
     refreshNotifications();
@@ -209,17 +162,14 @@ export default function NotificationBell() {
       return;
     }
 
-    markAllNotificationsAsRead(
-      userId,
-    );
+    markAllNotificationsAsRead(userId);
 
     refreshNotifications(userId);
   }
 
   /*
-    Do not render until the component has
-    mounted and the browser session has
-    been read safely.
+    Do not render until the component has mounted
+    and the browser session has been read safely.
   */
   if (!userId) {
     return null;
@@ -233,22 +183,19 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() =>
-          setIsOpen(
-            (value) => !value,
-          )
+          setIsOpen((value) => !value)
         }
         className="relative grid size-10 place-items-center rounded-lg text-[var(--muted)] transition hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
         aria-label="Notifications"
+        aria-expanded={isOpen}
       >
-        <span className="text-xl">
+        <span className="text-xl" aria-hidden="true">
           🔔
         </span>
 
         {unreadCount > 0 && (
           <span className="absolute right-0 top-0 grid min-w-5 place-items-center rounded-full bg-[var(--urgent)] px-1 py-0.5 text-[10px] font-semibold text-white">
-            {unreadCount > 9
-              ? "9+"
-              : unreadCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
@@ -271,9 +218,7 @@ export default function NotificationBell() {
             {unreadCount > 0 && (
               <button
                 type="button"
-                onClick={
-                  handleMarkAllAsRead
-                }
+                onClick={handleMarkAllAsRead}
                 className="text-xs font-medium text-[var(--brand-deep)] hover:underline"
               >
                 Mark all read
@@ -282,101 +227,81 @@ export default function NotificationBell() {
           </div>
 
           <div className="max-h-[420px] overflow-y-auto">
-            {notifications.length ===
-            0 ? (
+            {notifications.length === 0 ? (
               <div className="px-5 py-10 text-center">
                 <p className="text-sm font-medium text-[var(--ink)]">
                   No notifications
                 </p>
 
                 <p className="mt-1 text-xs text-[var(--muted)]">
-                  Appointment updates will
-                  appear here.
+                  Appointment updates will appear here.
                 </p>
               </div>
             ) : (
-              notifications.map(
-                (notification) => {
-                  const content = (
-                    <div
-                      className={`flex gap-3 border-b border-[var(--line)] px-4 py-4 transition hover:bg-[var(--canvas)] ${
-                        !notification.isRead
-                          ? "bg-[var(--brand-soft)]/30"
-                          : ""
-                      }`}
-                    >
-                      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--canvas)] text-sm">
-                        {getNotificationIcon(
-                          notification,
+              notifications.map((notification) => {
+                const content = (
+                  <div
+                    className={`flex gap-3 border-b border-[var(--line)] px-4 py-4 transition hover:bg-[var(--canvas)] ${
+                      !notification.isRead
+                        ? "bg-[var(--brand-soft)]/30"
+                        : ""
+                    }`}
+                  >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--canvas)] text-sm">
+                      {getNotificationIcon(notification)}
+                    </span>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-semibold text-[var(--ink)]">
+                          {notification.title}
+                        </p>
+
+                        {!notification.isRead && (
+                          <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[var(--brand)]" />
                         )}
-                      </span>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-[var(--ink)]">
-                            {
-                              notification.title
-                            }
-                          </p>
-
-                          {!notification.isRead && (
-                            <span className="mt-1.5 size-2 shrink-0 rounded-full bg-[var(--brand)]" />
-                          )}
-                        </div>
-
-                        <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
-                          {
-                            notification.message
-                          }
-                        </p>
-
-                        <p className="mt-2 text-[11px] text-[var(--muted)]">
-                          {formatNotificationTime(
-                            notification.createdAt,
-                          )}
-                        </p>
                       </div>
+
+                      <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                        {notification.message}
+                      </p>
+
+                      <p className="mt-2 text-[11px] text-[var(--muted)]">
+                        {formatNotificationTime(
+                          notification.createdAt,
+                        )}
+                      </p>
                     </div>
-                  );
+                  </div>
+                );
 
-                  if (
-                    notification.appointmentId
-                  ) {
-                    return (
-                      <Link
-                        key={
-                          notification.id
-                        }
-                        href={`/appointments/${notification.appointmentId}`}
-                        onClick={() =>
-                          handleNotificationClick(
-                            notification,
-                          )
-                        }
-                      >
-                        {content}
-                      </Link>
-                    );
-                  }
-
+                if (notification.appointmentId) {
                   return (
-                    <button
-                      key={
-                        notification.id
-                      }
-                      type="button"
-                      className="block w-full text-left"
+                    <Link
+                      key={notification.id}
+                      href={`/appointments/${notification.appointmentId}`}
                       onClick={() =>
-                        handleNotificationClick(
-                          notification,
-                        )
+                        handleNotificationClick(notification)
                       }
                     >
                       {content}
-                    </button>
+                    </Link>
                   );
-                },
-              )
+                }
+
+                return (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    className="block w-full text-left"
+                    onClick={() =>
+                      handleNotificationClick(notification)
+                    }
+                  >
+                    {content}
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

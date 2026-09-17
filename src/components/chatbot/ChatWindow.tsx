@@ -9,10 +9,6 @@ import {
 
 import ChatMessage from "./ChatMessage";
 
-import {
-  getInitialSuggestions,
-} from "@/lib/chatbot/responses";
-
 import type {
   ChatMessage as ChatMessageType,
   ChatSuggestion,
