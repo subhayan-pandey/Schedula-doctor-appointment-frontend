@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 
+import ProfileMenu from "@/components/layout/ProfileMenu";
 import Button from "@/components/ui/Button";
 import NotificationBell from "@/components/ui/NotificationBell";
 
@@ -18,9 +19,7 @@ import {
   getSession,
 } from "@/lib/storage";
 
-import type {
-  User,
-} from "@/types/user";
+import type { User } from "@/types/user";
 
 const navLinks = [
   {
@@ -34,15 +33,20 @@ const navLinks = [
 ];
 
 export default function Navbar() {
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname =
+    usePathname();
+
+  const router =
+    useRouter();
 
   const [user, setUser] =
     useState<User | null>(null);
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      setUser(getSession());
+      setUser(
+        getSession(),
+      );
     });
   }, [pathname]);
 
@@ -74,19 +78,22 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`text-sm font-medium transition-colors ${
-                pathname === link.href
-                  ? "text-[var(--brand-deep)]"
-                  : "text-[var(--muted)] hover:text-[var(--ink)]"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map(
+            (link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm font-medium transition-colors ${
+                  pathname ===
+                  link.href
+                    ? "text-[var(--brand-deep)]"
+                    : "text-[var(--muted)] hover:text-[var(--ink)]"
+                }`}
+              >
+                {link.label}
+              </Link>
+            ),
+          )}
 
           {user &&
             (isDoctor ? (
@@ -168,7 +175,8 @@ export default function Navbar() {
                 <Link
                   href="/profile"
                   className={`text-sm font-medium transition-colors ${
-                    pathname === "/profile"
+                    pathname ===
+                    "/profile"
                       ? "text-[var(--brand-deep)]"
                       : "text-[var(--muted)] hover:text-[var(--ink)]"
                   }`}
@@ -185,19 +193,12 @@ export default function Navbar() {
           )}
 
           {user ? (
-            <>
-              <span className="hidden max-w-32 truncate text-sm font-medium text-[var(--ink)] sm:block">
-                {user.name}
-              </span>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-              >
-                Log out
-              </Button>
-            </>
+            <ProfileMenu
+              user={user}
+              onLogout={
+                handleLogout
+              }
+            />
           ) : (
             <>
               <Link
