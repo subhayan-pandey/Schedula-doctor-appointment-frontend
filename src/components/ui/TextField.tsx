@@ -1,9 +1,10 @@
 import type { InputHTMLAttributes } from "react";
 
-type TextFieldProps = InputHTMLAttributes<HTMLInputElement> & {
-  label: string;
-  error?: string;
-};
+type TextFieldProps =
+  InputHTMLAttributes<HTMLInputElement> & {
+    label: string;
+    error?: string;
+  };
 
 export default function TextField({
   label,
@@ -11,6 +12,10 @@ export default function TextField({
   id,
   ...props
 }: TextFieldProps) {
+  const errorId = id
+    ? `${id}-error`
+    : undefined;
+
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -23,18 +28,18 @@ export default function TextField({
       <input
         id={id}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={`w-full rounded-lg border bg-[var(--surface)] px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] transition-colors focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)] ${
+        aria-describedby={error ? errorId : undefined}
+        className={`min-h-11 w-full rounded-lg border bg-[var(--surface)] px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] transition-all duration-200 focus:ring-2 focus:ring-[var(--brand-soft)] ${
           error
-            ? "border-[var(--urgent)]"
-            : "border-[var(--line)] hover:border-slate-300"
+            ? "border-[var(--urgent)] focus:border-[var(--urgent)]"
+            : "border-[var(--line)] hover:border-[var(--brand)]/40 focus:border-[var(--brand)]"
         }`}
         {...props}
       />
 
       {error && (
         <p
-          id={`${id}-error`}
+          id={errorId}
           className="text-xs font-medium text-[var(--urgent-deep)]"
         >
           {error}
