@@ -6,13 +6,10 @@ import {
   useState,
 } from "react";
 
-import {
-  useRouter,
-} from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import Button from "@/components/ui/Button";
 import DateStrip from "@/components/ui/DateStrip";
-
 import SlotGrid from "@/features/booking/components/SlotGrid";
 
 import {
@@ -33,16 +30,15 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 
-import type {
-  Slot,
-} from "@/types/slot";
+import type { Slot } from "@/types/slot";
 
 export default function BookingPanel({
   doctorId,
 }: {
   doctorId: string;
 }) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
   const days = useMemo(
     () => getNextDays(6),
@@ -59,12 +55,14 @@ export default function BookingPanel({
   const [
     selectedSlotId,
     setSelectedSlotId,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
-  const [slots, setSlots] =
-    useState<Slot[]>([]);
+  const [
+    slots,
+    setSlots,
+  ] = useState<Slot[]>([]);
 
   const [
     isLoading,
@@ -79,14 +77,16 @@ export default function BookingPanel({
   const [
     bookingError,
     setBookingError,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     Promise.resolve().then(() => {
       setSlots(
-        getSlotsForDoctor(doctorId),
+        getSlotsForDoctor(
+          doctorId,
+        ),
       );
 
       setIsLoading(false);
@@ -96,29 +96,45 @@ export default function BookingPanel({
   const slotsForDate =
     slots.filter(
       (slot) =>
-        slot.date === selectedDate,
+        slot.date ===
+        selectedDate,
     );
 
   const morningSlots =
     slotsForDate.filter(
       (slot) =>
-        slot.period === "Morning",
+        slot.period ===
+        "Morning",
     );
 
   const eveningSlots =
     slotsForDate.filter(
       (slot) =>
-        slot.period === "Evening",
+        slot.period ===
+        "Evening",
+    );
+
+  const selectedSlot =
+    slotsForDate.find(
+      (slot) =>
+        slot.id ===
+        selectedSlotId,
     );
 
   function handleSelectDate(
     isoDate: string,
   ) {
-    setSelectedDate(isoDate);
+    setSelectedDate(
+      isoDate,
+    );
 
-    setSelectedSlotId(null);
+    setSelectedSlotId(
+      null,
+    );
 
-    setBookingError(null);
+    setBookingError(
+      null,
+    );
   }
 
   function handleConfirmBooking() {
@@ -138,7 +154,8 @@ export default function BookingPanel({
     }
 
     if (
-      session.role !== "patient"
+      session.role !==
+      "patient"
     ) {
       setBookingError(
         "Please use a patient account to book an appointment.",
@@ -148,7 +165,6 @@ export default function BookingPanel({
     }
 
     setIsBooking(true);
-
     setBookingError(null);
 
     window.setTimeout(() => {
@@ -169,7 +185,9 @@ export default function BookingPanel({
           ),
         );
 
-        setSelectedSlotId(null);
+        setSelectedSlotId(
+          null,
+        );
 
         setIsBooking(false);
 
@@ -198,31 +216,26 @@ export default function BookingPanel({
 
       addBooking({
         id: bookingId,
-
         doctorId,
-
-        slotId: bookedSlot.id,
-
+        slotId:
+          bookedSlot.id,
         patientId:
           session.id,
-
         patientName:
           session.name ??
           "Guest Patient",
-
         date:
           bookedSlot.date,
-
         time:
           bookedSlot.time,
-
         status: "pending",
-
         createdAt:
           new Date().toISOString(),
       });
 
-      setSlots(updatedSlots);
+      setSlots(
+        updatedSlots,
+      );
 
       setIsBooking(false);
 
@@ -233,12 +246,24 @@ export default function BookingPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-      <p className="font-semibold text-[var(--ink)]">
-        Book Appointment
-      </p>
+    <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--brand-deep)]">
+            Availability
+          </p>
 
-      <div className="mt-4">
+          <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--ink)]">
+            Book an appointment
+          </h2>
+        </div>
+
+        <p className="text-xs text-[var(--muted)]">
+          Select a date and available time
+        </p>
+      </div>
+
+      <div className="mt-5">
         <DateStrip
           days={days}
           selectedDate={
@@ -250,54 +275,135 @@ export default function BookingPanel({
         />
       </div>
 
-      <div className="mt-5 flex flex-col gap-5">
+      <div className="mt-6 border-t border-[var(--line)] pt-5">
         {isLoading ? (
-          <p className="text-sm text-[var(--muted)]">
-            Loading availability…
-          </p>
+          <div className="space-y-3">
+            <div className="h-4 w-28 animate-pulse rounded bg-[var(--line)]" />
+
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {Array.from(
+                { length: 6 },
+                (_, index) => (
+                  <div
+                    key={index}
+                    className="h-11 animate-pulse rounded-lg bg-[var(--line)]"
+                  />
+                ),
+              )}
+            </div>
+          </div>
         ) : slotsForDate.length ===
           0 ? (
-          <p className="text-sm text-[var(--muted)]">
-            No slots configured for
-            this date. Try another
-            day.
-          </p>
+          <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--canvas)] px-5 py-7 text-center">
+            <span className="mx-auto grid size-10 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect
+                  x="3"
+                  y="4"
+                  width="18"
+                  height="17"
+                  rx="2"
+                />
+                <path d="M8 2v4" />
+                <path d="M16 2v4" />
+                <path d="M3 9h18" />
+              </svg>
+            </span>
+
+            <p className="mt-3 text-sm font-semibold text-[var(--ink)]">
+              No slots available
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              There are no configured slots for this date. Try another day.
+            </p>
+          </div>
         ) : (
-          <>
+          <div className="flex flex-col gap-6">
             <SlotGrid
-              title="Select slot"
+              title="Morning"
               slots={morningSlots}
               selectedSlotId={
                 selectedSlotId
               }
               onSelect={
-                setSelectedSlotId
+                (
+                  slotId,
+                ) => {
+                  setSelectedSlotId(
+                    slotId,
+                  );
+                  setBookingError(
+                    null,
+                  );
+                }
               }
             />
 
             <SlotGrid
-              title="Evening Slot"
+              title="Evening"
               slots={eveningSlots}
               selectedSlotId={
                 selectedSlotId
               }
               onSelect={
-                setSelectedSlotId
+                (
+                  slotId,
+                ) => {
+                  setSelectedSlotId(
+                    slotId,
+                  );
+                  setBookingError(
+                    null,
+                  );
+                }
               }
             />
-          </>
+          </div>
         )}
       </div>
 
+      {selectedSlot && (
+        <div className="mt-6 rounded-xl border border-[var(--brand)]/20 bg-[var(--brand-soft)] px-4 py-3.5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--brand-deep)]">
+                Selected slot
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                {selectedSlot.time}
+              </p>
+            </div>
+
+            <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-medium text-[var(--brand-deep)]">
+              Available
+            </span>
+          </div>
+        </div>
+      )}
+
       {bookingError && (
-        <p className="mt-4 rounded-lg bg-[var(--urgent-soft)] px-3.5 py-2.5 text-sm font-medium text-[var(--urgent-deep)]">
-          {bookingError}
-        </p>
+        <div className="mt-4 rounded-xl border border-[var(--urgent)]/20 bg-[var(--urgent-soft)] px-3.5 py-3">
+          <p className="text-sm font-medium leading-5 text-[var(--urgent-deep)]">
+            {bookingError}
+          </p>
+        </div>
       )}
 
       <Button
         size="lg"
-        className="mt-6 w-full"
+        className="mt-5 w-full"
         disabled={
           !selectedSlotId ||
           isBooking
@@ -310,6 +416,10 @@ export default function BookingPanel({
           ? "Booking…"
           : "Book appointment"}
       </Button>
-    </div>
+
+      <p className="mt-2 text-center text-xs text-[var(--muted)]">
+        You can review your appointment details after booking.
+      </p>
+    </section>
   );
 }
