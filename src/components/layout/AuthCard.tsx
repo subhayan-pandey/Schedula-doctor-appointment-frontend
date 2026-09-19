@@ -13,37 +13,50 @@ export default function AuthCard({
   wide?: boolean;
 }) {
   return (
-    <main className="mx-auto flex min-h-[calc(100vh-140px)] w-full flex-col justify-center px-4 py-10 sm:px-6 sm:py-12">
+    <main className="relative flex min-h-[calc(100vh-140px)] items-center justify-center overflow-hidden px-4 py-10 sm:px-6 sm:py-14">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[var(--brand-soft)]/55" />
+
       <div
-        className={`mx-auto w-full ${
-          wide
-            ? "max-w-2xl"
-            : "max-w-md"
+        className={`relative w-full ${
+          wide ? "max-w-2xl" : "max-w-md"
         }`}
       >
-        <div className="flex flex-col items-center text-center">
+        <div className="text-center">
           <Link
             href="/"
-            aria-label="Go to Schedula home"
-            className="grid size-14 place-items-center rounded-2xl bg-[var(--brand)] text-xl font-bold text-white shadow-sm transition-transform duration-200 hover:-translate-y-0.5"
+            aria-label="Return to Schedula home"
+            className="mx-auto grid size-14 place-items-center rounded-2xl bg-[var(--brand)] text-xl font-bold text-white shadow-sm transition-transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:ring-offset-2"
           >
             S
           </Link>
 
           {subtitle && (
-            <span className="mt-4 rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-deep)]">
+            <span className="mt-4 inline-flex items-center rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-deep)]">
               {subtitle}
             </span>
           )}
 
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-[26px]">
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
             {title}
           </h1>
+
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+            {subtitle === "For Doctors"
+              ? "Manage your professional profile, availability, and appointments with Schedula."
+              : title === "Login"
+                ? "Sign in to manage your appointments and continue your care journey."
+                : "Create your Schedula account to find doctors and book appointments."}
+          </p>
         </div>
 
-        <section className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm sm:p-7">
+        <div className="mt-7 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm sm:p-7">
           {children}
-        </section>
+        </div>
+
+        <p className="mt-5 text-center text-xs leading-5 text-[var(--muted)]">
+          Schedula is a frontend demonstration. Authentication
+          is simulated locally.
+        </p>
       </div>
     </main>
   );
