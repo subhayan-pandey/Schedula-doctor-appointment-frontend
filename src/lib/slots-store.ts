@@ -7,55 +7,120 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+function emitSlotsUpdated(doctorId: string): void {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("schedula:slots-updated", {
+      detail: {
+        doctorId,
+      },
+    }),
+  );
+}
+
 function readSlots(doctorId: string): Slot[] {
-  if (!isBrowser()) return [];
+  if (!isBrowser()) {
+    return [];
+  }
+
   const key = KEY_PREFIX + doctorId;
   const raw = window.localStorage.getItem(key);
+
   if (raw) {
     try {
       return JSON.parse(raw) as Slot[];
     } catch {
-      // fall through and reseed if the stored value is corrupted
+      // Fall through and reseed if the stored value is corrupted.
     }
   }
+
   const seeded = buildSeedSlots(doctorId);
-  window.localStorage.setItem(key, JSON.stringify(seeded));
+
+  window.localStorage.setItem(
+    key,
+    JSON.stringify(seeded),
+  );
+
   return seeded;
 }
 
-function writeSlots(doctorId: string, slots: Slot[]): void {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(KEY_PREFIX + doctorId, JSON.stringify(slots));
+function writeSlots(
+  doctorId: string,
+  slots: Slot[],
+): void {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    KEY_PREFIX + doctorId,
+    JSON.stringify(slots),
+  );
+
+  emitSlotsUpdated(doctorId);
 }
 
-/** Read a doctor's current slot calendar (seeds it on first read). */
-export function getSlotsForDoctor(doctorId: string): Slot[] {
+/**
+ * Reads the doctor's current slot calendar.
+ * The calendar is seeded on first access.
+ */
+export function getSlotsForDoctor(
+  doctorId: string,
+): Slot[] {
   return readSlots(doctorId);
 }
 
 /**
- * Marks a slot as booked. Returns the updated list, or null if the slot
- * could not be booked (already taken, or someone booked it a moment ago).
+ * Marks an available slot as booked.
+ * Returns null when the slot is missing or already unavailable.
  */
-export function bookSlot(doctorId: string, slotId: string): Slot[] | null {
+export function bookSlot(
+  doctorId: string,
+  slotId: string,
+): Slot[] | null {
   const slots = readSlots(doctorId);
-  const target = slots.find((slot) => slot.id === slotId);
-  if (!target || target.status !== "available") {
+
+  const target = slots.find(
+    (slot) => slot.id === slotId,
+  );
+
+  if (
+    !target ||
+    target.status !== "available"
+  ) {
     return null;
   }
+
   const updated = slots.map((slot) =>
-    slot.id === slotId ? { ...slot, status: "booked" as const } : slot,
+    slot.id === slotId
+      ? {
+          ...slot,
+          status: "booked" as const,
+        }
+      : slot,
   );
+
   writeSlots(doctorId, updated);
+
   return updated;
 }
 
-/** Adds a new available slot to a doctor's calendar. */
+/**
+ * Adds a new available slot to the doctor's calendar.
+ */
 export function createSlot(
   doctorId: string,
-  slot: { date: string; time: string; period: Slot["period"] },
+  slot: {
+    date: string;
+    time: string;
+    period: Slot["period"];
+  },
 ): Slot[] {
   const slots = readSlots(doctorId);
+
   const newSlot: Slot = {
     id: `${doctorId}-${slot.date}-${slot.period.toLowerCase()}-${Date.now()}`,
     doctorId,
@@ -64,47 +129,108 @@ export function createSlot(
     period: slot.period,
     status: "available",
   };
-  const updated = [...slots, newSlot];
-  writeSlots(doctorId, updated);
+
+  const updated = [
+    ...slots,
+    newSlot,
+  ];
+
+  writeSlots(
+    doctorId,
+    updated,
+  );
+
   return updated;
 }
 
 /**
- * Removes a slot entirely. Booked slots can't be removed this way — a
- * doctor shouldn't be able to silently delete a patient's appointment by
- * deleting the slot underneath it.
+ * Removes a slot entirely.
+ * Booked slots cannot be removed because they belong to appointments.
  */
-export function removeSlot(doctorId: string, slotId: string): Slot[] {
+export function removeSlot(
+  doctorId: string,
+  slotId: string,
+): Slot[] {
   const slots = readSlots(doctorId);
-  const target = slots.find((slot) => slot.id === slotId);
+
+  const target = slots.find(
+    (slot) => slot.id === slotId,
+  );
+
   if (target?.status === "booked") {
     return slots;
   }
-  const updated = slots.filter((slot) => slot.id !== slotId);
-  writeSlots(doctorId, updated);
-  return updated;
-}
 
-/** Toggles a slot between "available" and "unavailable". Has no effect on booked slots. */
-export function toggleSlotAvailability(doctorId: string, slotId: string): Slot[] {
-  const slots = readSlots(doctorId);
-  const updated = slots.map((slot) => {
-    if (slot.id !== slotId || slot.status === "booked") return slot;
-    return { ...slot, status: slot.status === "available" ? "unavailable" : "available" } as Slot;
-  });
-  writeSlots(doctorId, updated);
+  const updated = slots.filter(
+    (slot) => slot.id !== slotId,
+  );
+
+  writeSlots(
+    doctorId,
+    updated,
+  );
+
   return updated;
 }
 
 /**
- * Frees a booked slot back to "available" — used when a doctor cancels an
- * appointment, so the slot can be booked by someone else again.
+ * Toggles an available/unavailable slot.
+ * Booked slots remain untouched.
  */
-export function releaseSlot(doctorId: string, slotId: string): Slot[] {
+export function toggleSlotAvailability(
+  doctorId: string,
+  slotId: string,
+): Slot[] {
   const slots = readSlots(doctorId);
-  const updated = slots.map((slot) =>
-    slot.id === slotId ? { ...slot, status: "available" as const } : slot,
+
+  const updated = slots.map((slot) => {
+    if (
+      slot.id !== slotId ||
+      slot.status === "booked"
+    ) {
+      return slot;
+    }
+
+    return {
+      ...slot,
+      status:
+        slot.status === "available"
+          ? "unavailable"
+          : "available",
+    } as Slot;
+  });
+
+  writeSlots(
+    doctorId,
+    updated,
   );
-  writeSlots(doctorId, updated);
+
+  return updated;
+}
+
+/**
+ * Releases a booked slot back to available.
+ * Used when an appointment is cancelled or moved to another slot.
+ */
+export function releaseSlot(
+  doctorId: string,
+  slotId: string,
+): Slot[] {
+  const slots = readSlots(doctorId);
+
+  const updated = slots.map((slot) =>
+    slot.id === slotId
+      ? {
+          ...slot,
+          status: "available" as const,
+        }
+      : slot,
+  );
+
+  writeSlots(
+    doctorId,
+    updated,
+  );
+
   return updated;
 }

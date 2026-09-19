@@ -1,36 +1,69 @@
 "use client";
 
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import Button from "@/components/ui/Button";
 
-import { getBookingsByPatientId } from "@/lib/bookings-store";
-import { getAllPrescriptions } from "@/lib/prescriptions-store";
-import { getSession } from "@/lib/storage";
+import {
+  getBookingsByPatientId,
+} from "@/lib/bookings-store";
+
+import {
+  getAllPrescriptions,
+} from "@/lib/prescriptions-store";
+
+import {
+  getSession,
+} from "@/lib/storage";
+
 import {
   getUserProfile,
   saveUserProfile,
 } from "@/lib/user-profile-store";
 
-import type { UserProfile } from "@/types/user-profile";
+import type {
+  UserProfile,
+} from "@/types/user-profile";
 
 export default function UserProfileManager() {
-  const [profile, setProfile] =
-    useState<UserProfile | null>(null);
+  const [
+    profile,
+    setProfile,
+  ] = useState<UserProfile | null>(
+    null,
+  );
 
-  const [userName, setUserName] = useState("");
+  const [
+    userName,
+    setUserName,
+  ] = useState("");
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [
+    message,
+    setMessage,
+  ] = useState<string | null>(
+    null,
+  );
 
-  const [stats, setStats] = useState({
+  const [
+    stats,
+    setStats,
+  ] = useState({
     prescriptions: 0,
     completedAppointments: 0,
     testReports: 0,
@@ -52,7 +85,9 @@ export default function UserProfileManager() {
         getUserProfile(session.id);
 
       const bookings =
-        getBookingsByPatientId(session.id);
+        getBookingsByPatientId(
+          session.id,
+        );
 
       const prescriptions =
         getAllPrescriptions();
@@ -60,7 +95,8 @@ export default function UserProfileManager() {
       const completedAppointments =
         bookings.filter(
           (booking) =>
-            booking.status === "completed",
+            booking.status ===
+            "completed",
         ).length;
 
       const userPrescriptions =
@@ -75,8 +111,13 @@ export default function UserProfileManager() {
             ),
         );
 
-      setProfile(loadedProfile);
-      setUserName(session.name ?? "");
+      setProfile(
+        loadedProfile,
+      );
+
+      setUserName(
+        session.name ?? "",
+      );
 
       setStats({
         prescriptions:
@@ -85,8 +126,9 @@ export default function UserProfileManager() {
         completedAppointments,
 
         /*
-         * There is currently no test-report
-         * data model in the project.
+         * There is currently no
+         * test-report data model
+         * in the project.
          */
         testReports: 0,
       });
@@ -133,130 +175,128 @@ export default function UserProfileManager() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-8">
-        <ProfileSkeleton />
+      <div className="mx-auto max-w-5xl px-4 py-16 sm:px-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-10 text-center">
+          <div className="mx-auto grid size-11 place-items-center rounded-full bg-[var(--brand-soft)]">
+            <span className="size-5 animate-pulse rounded-full bg-[var(--brand)]" />
+          </div>
+
+          <p className="mt-4 text-sm font-medium text-[var(--muted)]">
+            Loading your profile...
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-20 text-center sm:px-8">
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-deep)]">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="size-6"
-            aria-hidden="true"
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7 shadow-sm">
+          <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand-deep)]">
+            S
+          </div>
+
+          <h1 className="mt-4 text-xl font-semibold tracking-tight text-[var(--ink)]">
+            Patient account required
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            Please log in with a patient account to manage your profile.
+          </p>
+
+          <Link
+            href="/login"
+            className="mt-6 inline-block"
           >
-            <circle cx="12" cy="8" r="3.2" />
-            <path
-              d="M5.5 20c.8-3.4 3-5.2 6.5-5.2s5.7 1.8 6.5 5.2"
-              strokeLinecap="round"
-            />
-          </svg>
+            <Button>
+              Log in
+            </Button>
+          </Link>
         </div>
-
-        <h1 className="mt-5 text-xl font-semibold tracking-tight text-[var(--ink)]">
-          Patient account required
-        </h1>
-
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">
-          Please log in with a patient
-          account to manage your profile.
-        </p>
-
-        <Link
-          href="/login"
-          className="mt-6 inline-block"
-        >
-          <Button>
-            Patient login
-          </Button>
-        </Link>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">
-      <header className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[var(--brand-soft)] text-lg font-semibold text-[var(--brand-deep)]">
-              {getInitials(userName)}
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
+      <div className="flex flex-col gap-7">
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
+            Patient profile
+          </p>
+
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
+            My Profile
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            Keep your personal and health information up to date so your
+            appointment records stay complete.
+          </p>
+        </header>
+
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand-deep)]">
+                {getInitials(userName)}
+              </div>
+
+              <div className="min-w-0">
+                <p className="truncate text-base font-semibold text-[var(--ink)]">
+                  {userName || "Patient"}
+                </p>
+
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  Your saved health and contact details
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-deep)]">
-                Patient profile
+            <div className="rounded-xl bg-[var(--canvas)] px-3.5 py-2.5">
+              <p className="text-xs font-medium text-[var(--muted)]">
+                Profile information
               </p>
 
-              <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {userName || "My Profile"}
-              </h1>
-
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                Keep your personal and health
-                information up to date.
+              <p className="mt-0.5 text-xs font-semibold text-[var(--ink)]">
+                Stored locally in this demo
               </p>
             </div>
           </div>
+        </section>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link href="/appointments">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-              >
-                My appointments
-              </Button>
-            </Link>
-
-            <Link href="/doctors">
-              <Button className="w-full sm:w-auto">
-                Find a doctor
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <section
-        aria-label="Profile summary"
-        className="mt-5 grid gap-3 sm:grid-cols-3"
-      >
-        <StatCard
-          label="Prescriptions"
-          value={stats.prescriptions}
-          icon={<PrescriptionIcon />}
-        />
-
-        <StatCard
-          label="Completed appointments"
-          value={stats.completedAppointments}
-          icon={<CalendarIcon />}
-        />
-
-        <StatCard
-          label="Test reports"
-          value={stats.testReports}
-          icon={<ReportIcon />}
-        />
-      </section>
-
-      <div className="mt-5 grid gap-5">
-        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
-          <SectionHeader
-            eyebrow="Identity"
-            title="Personal information"
-            description="Basic details used across your Schedula account."
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatCard
+            label="Prescriptions"
+            value={stats.prescriptions}
+            description="Available in your records"
           />
 
-          <div className="border-t border-[var(--line)] p-5 sm:p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Completed appointments"
+            value={
+              stats.completedAppointments
+            }
+            description="Finished consultations"
+          />
+
+          <StatCard
+            label="Test reports"
+            value={stats.testReports}
+            description="Reports currently recorded"
+          />
+        </div>
+
+        <div className="flex flex-col gap-5">
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+            <SectionHeader
+              eyebrow="Personal details"
+              title="Personal Information"
+              description="Basic information used for your appointment records."
+            />
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <Field
                 label="Full name"
                 value={userName}
@@ -318,21 +358,21 @@ export default function UserProfileManager() {
                 />
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
-          <SectionHeader
-            eyebrow="Measurements"
-            title="Physical details"
-            description="Optional information that can help doctors understand your profile."
-          />
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+            <SectionHeader
+              eyebrow="Physical information"
+              title="Physical Details"
+              description="Basic physical details that can help contextualize your records."
+            />
 
-          <div className="border-t border-[var(--line)] p-5 sm:p-6">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
               <SelectField
                 label="Blood group"
-                value={profile.bloodGroup}
+                value={
+                  profile.bloodGroup
+                }
                 onChange={(value) =>
                   updateField(
                     "bloodGroup",
@@ -376,18 +416,16 @@ export default function UserProfileManager() {
                 }
               />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
-          <SectionHeader
-            eyebrow="Health"
-            title="Medical information"
-            description="Keep relevant medical information available for appointments."
-          />
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+            <SectionHeader
+              eyebrow="Health records"
+              title="Medical Information"
+              description="Keep these details current for more complete appointment records."
+            />
 
-          <div className="border-t border-[var(--line)] p-5 sm:p-6">
-            <div className="grid gap-4">
+            <div className="mt-6 flex flex-col gap-4">
               <TextAreaField
                 label="Medical conditions"
                 placeholder="List any ongoing medical conditions"
@@ -428,18 +466,16 @@ export default function UserProfileManager() {
                 }
               />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
-          <SectionHeader
-            eyebrow="Coverage"
-            title="Insurance details"
-            description="Store your insurance information for reference."
-          />
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+            <SectionHeader
+              eyebrow="Coverage"
+              title="Insurance Details"
+              description="Add your insurance information for reference."
+            />
 
-          <div className="border-t border-[var(--line)] p-5 sm:p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <Field
                 label="Insurance provider"
                 value={
@@ -466,18 +502,16 @@ export default function UserProfileManager() {
                 }
               />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
-          <SectionHeader
-            eyebrow="Safety"
-            title="Emergency contact"
-            description="A person Schedula can associate with your emergency information."
-          />
+          <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+            <SectionHeader
+              eyebrow="Safety information"
+              title="Emergency Contact"
+              description="Provide a person who can be contacted when necessary."
+            />
 
-          <div className="border-t border-[var(--line)] p-5 sm:p-6">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
               <Field
                 label="Contact name"
                 value={
@@ -518,72 +552,40 @@ export default function UserProfileManager() {
                 }
               />
             </div>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
 
-      <div className="sticky bottom-3 z-10 mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur sm:static sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div
-            aria-live="polite"
-            className="min-h-5"
-          >
-            {message ? (
-              <div className="inline-flex items-center gap-2 text-sm font-medium text-[var(--success)]">
-                <span className="grid size-5 place-items-center rounded-full bg-[var(--success-soft)]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.3"
-                    className="size-3"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="m6 12 4 4 8-8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-                {message}
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--muted)]">
-                Your profile is stored locally in
-                this frontend demo.
-              </p>
-            )}
-          </div>
+        <div className="sticky bottom-3 z-10 rounded-2xl border border-[var(--line)] bg-[var(--surface)]/95 p-3 shadow-lg backdrop-blur sm:bottom-5 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              {message ? (
+                <p
+                  className="text-sm font-medium text-[var(--success)]"
+                  role="status"
+                >
+                  {message}
+                </p>
+              ) : (
+                <p className="text-xs leading-5 text-[var(--muted)]">
+                  Save your latest profile changes when you&apos;re finished.
+                </p>
+              )}
+            </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={isSaving}
-          >
-            {isSaving
-              ? "Saving..."
-              : "Save profile"}
-          </Button>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full sm:w-auto"
+            >
+              {isSaving
+                ? "Saving..."
+                : "Save profile"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
-}
-
-function getInitials(name: string) {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) {
-    return "PT";
-  }
-
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 }
 
 function SectionHeader({
@@ -596,8 +598,8 @@ function SectionHeader({
   description: string;
 }) {
   return (
-    <div className="p-5 sm:p-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-deep)]">
+    <div className="border-b border-[var(--line)] pb-5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
         {eyebrow}
       </p>
 
@@ -605,7 +607,7 @@ function SectionHeader({
         {title}
       </h2>
 
-      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+      <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
         {description}
       </p>
     </div>
@@ -615,26 +617,32 @@ function SectionHeader({
 function StatCard({
   label,
   value,
-  icon,
+  description,
 }: {
   label: string;
   value: number;
-  icon: React.ReactNode;
+  description: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="grid size-10 place-items-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand-deep)]">
-          {icon}
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {label}
+          </p>
+
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+            {value}
+          </p>
         </div>
 
-        <p className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
+        <span className="grid size-9 place-items-center rounded-xl bg-[var(--brand-soft)] text-xs font-bold text-[var(--brand-deep)]">
           {value}
-        </p>
+        </span>
       </div>
 
-      <p className="mt-4 text-sm font-medium text-[var(--muted)]">
-        {label}
+      <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+        {description}
       </p>
     </div>
   );
@@ -650,14 +658,16 @@ function Field({
 }: {
   label: string;
   value: string;
-  onChange?: (value: string) => void;
+  onChange?: (
+    value: string,
+  ) => void;
   type?: string;
   placeholder?: string;
   disabled?: boolean;
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[var(--ink)]">
+      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">
         {label}
       </span>
 
@@ -667,9 +677,11 @@ function Field({
         placeholder={placeholder}
         disabled={disabled}
         onChange={(event) =>
-          onChange?.(event.target.value)
+          onChange?.(
+            event.target.value,
+          )
         }
-        className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10 disabled:cursor-not-allowed disabled:bg-[var(--canvas)] disabled:text-[var(--muted)]"
+        className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-sm text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--muted)] hover:border-slate-300 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:cursor-not-allowed disabled:bg-[var(--canvas)] disabled:text-[var(--muted)]"
       />
     </label>
   );
@@ -683,12 +695,14 @@ function TextAreaField({
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (
+    value: string,
+  ) => void;
   placeholder?: string;
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[var(--ink)]">
+      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">
         {label}
       </span>
 
@@ -697,9 +711,11 @@ function TextAreaField({
         value={value}
         placeholder={placeholder}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value,
+          )
         }
-        className="w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 py-3 text-sm leading-6 text-[var(--ink)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10"
+        className="w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 py-3 text-sm leading-6 text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--muted)] hover:border-slate-300 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
       />
     </label>
   );
@@ -713,26 +729,35 @@ function SelectField({
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (
+    value: string,
+  ) => void;
   options: string[];
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[var(--ink)]">
+      <span className="mb-1.5 block text-xs font-semibold text-[var(--ink)]">
         {label}
       </span>
 
       <select
         value={value}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value,
+          )
         }
-        className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10"
+        className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-sm text-[var(--ink)] outline-none transition-colors hover:border-slate-300 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
       >
-        <option value="">Select</option>
+        <option value="">
+          Select
+        </option>
 
         {options
-          .filter((option) => option !== "")
+          .filter(
+            (option) =>
+              option !== "",
+          )
           .map((option) => (
             <option
               key={option}
@@ -746,93 +771,24 @@ function SelectField({
   );
 }
 
-function PrescriptionIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="size-5"
-      aria-hidden="true"
-    >
-      <rect
-        x="5"
-        y="3.5"
-        width="14"
-        height="17"
-        rx="2"
-      />
-      <path
-        d="M8.5 8h7M8.5 11.5h7M8.5 15h4"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+function getInitials(
+  name: string,
+): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 
-function CalendarIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="size-5"
-      aria-hidden="true"
-    >
-      <rect
-        x="4"
-        y="5"
-        width="16"
-        height="15"
-        rx="2"
-      />
-      <path
-        d="M8 3v4M16 3v4M4 10h16"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+  if (parts.length === 0) {
+    return "S";
+  }
 
-function ReportIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="size-5"
-      aria-hidden="true"
-    >
-      <path
-        d="M6 20V10M12 20V4M18 20v-7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <div
-      className="animate-pulse"
-      aria-label="Loading profile"
-    >
-      <div className="h-32 rounded-2xl bg-[var(--canvas)]" />
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="h-28 rounded-2xl bg-[var(--canvas)]" />
-        <div className="h-28 rounded-2xl bg-[var(--canvas)]" />
-        <div className="h-28 rounded-2xl bg-[var(--canvas)]" />
-      </div>
-
-      <div className="mt-5 space-y-5">
-        <div className="h-72 rounded-2xl bg-[var(--canvas)]" />
-        <div className="h-48 rounded-2xl bg-[var(--canvas)]" />
-        <div className="h-72 rounded-2xl bg-[var(--canvas)]" />
-      </div>
-    </div>
-  );
+  return parts
+    .slice(0, 2)
+    .map(
+      (part) =>
+        part[0]?.toUpperCase() ??
+        "",
+    )
+    .join("");
 }

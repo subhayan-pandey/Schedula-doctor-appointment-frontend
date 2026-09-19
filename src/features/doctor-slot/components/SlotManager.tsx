@@ -2,72 +2,265 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+
 import Button from "@/components/ui/Button";
-import DateStrip from "@/components/ui/DateStrip";
 import EmptyState from "@/components/ui/EmptyState";
 import AddSlotForm from "@/features/doctor-slot/components/AddSlotForm";
 import SlotManagerGrid from "@/features/doctor-slot/components/SlotManagerGrid";
+
 import { getSession } from "@/lib/storage";
+
 import {
   getSlotsForDoctor,
   createSlot,
   removeSlot,
   toggleSlotAvailability,
 } from "@/lib/slots-store";
-import { getNextDays, toISODate } from "@/lib/utils/date";
+
+import { toISODate } from "@/lib/utils/date";
+
 import type { Slot } from "@/types/slot";
 
 type Status = "loading" | "unauthorized" | "ready";
 
-const MANAGE_DAYS_AHEAD = 14;
+function getTodayISO(): string {
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+
+  return toISODate(today);
+}
+
+function formatSelectedDate(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00`).toLocaleDateString(
+    "en-IN",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    },
+  );
+}
 
 export default function SlotManager() {
-  const [status, setStatus] = useState<Status>("loading");
-  const [doctorId, setDoctorId] = useState<string | null>(null);
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const days = useMemo(() => getNextDays(MANAGE_DAYS_AHEAD), []);
-  const [selectedDate, setSelectedDate] = useState(() => toISODate(days[0]));
+  const [status, setStatus] =
+    useState<Status>("loading");
+
+  const [doctorId, setDoctorId] =
+    useState<string | null>(null);
+
+  const [slots, setSlots] =
+    useState<Slot[]>([]);
+
+  const [selectedDate, setSelectedDate] =
+    useState<string>(getTodayISO);
+
+  const today = useMemo(
+    () => getTodayISO(),
+    [],
+  );
 
   useEffect(() => {
     Promise.resolve().then(() => {
       const session = getSession();
+
       if (!session || session.role !== "doctor") {
         setStatus("unauthorized");
         return;
       }
+
       setDoctorId(session.id);
-      setSlots(getSlotsForDoctor(session.id));
+
+      setSlots(
+        getSlotsForDoctor(session.id),
+      );
+
       setStatus("ready");
     });
   }, []);
 
-  const slotsForDate = slots.filter((slot) => slot.date === selectedDate);
-  const morningSlots = slotsForDate
-    .filter((slot) => slot.period === "Morning")
-    .sort((a, b) => (a.time > b.time ? 1 : -1));
-  const eveningSlots = slotsForDate
-    .filter((slot) => slot.period === "Evening")
-    .sort((a, b) => (a.time > b.time ? 1 : -1));
+  useEffect(() => {
+    if (!doctorId) {
+      return;
+    }
 
-  function handleAdd(newSlot: { time: string; period: Slot["period"] }) {
-    if (!doctorId) return;
-    setSlots(createSlot(doctorId, { date: selectedDate, ...newSlot }));
+    const currentDoctorId = doctorId;
+
+    function refreshSlots() {
+      setSlots(
+        getSlotsForDoctor(currentDoctorId),
+      );
+    }
+
+    function handleStorage(
+      event: StorageEvent,
+    ) {
+      if (
+        event.key ===
+        `schedula:slots:${currentDoctorId}`
+      ) {
+        refreshSlots();
+      }
+    }
+
+    function handleSlotsUpdated(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<{
+          doctorId?: string;
+        }>;
+
+      if (
+        !customEvent.detail?.doctorId ||
+        customEvent.detail.doctorId ===
+          currentDoctorId
+      ) {
+        refreshSlots();
+      }
+    }
+
+    window.addEventListener(
+      "storage",
+      handleStorage,
+    );
+
+    window.addEventListener(
+      "schedula:slots-updated",
+      handleSlotsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "storage",
+        handleStorage,
+      );
+
+      window.removeEventListener(
+        "schedula:slots-updated",
+        handleSlotsUpdated,
+      );
+    };
+  }, [doctorId]);
+
+  const slotsForDate = useMemo(
+    () =>
+      slots.filter(
+        (slot) =>
+          slot.date === selectedDate,
+      ),
+    [slots, selectedDate],
+  );
+
+  const morningSlots = useMemo(
+    () =>
+      slotsForDate
+        .filter(
+          (slot) =>
+            slot.period === "Morning",
+        )
+        .sort((a, b) =>
+          a.time.localeCompare(b.time),
+        ),
+    [slotsForDate],
+  );
+
+  const eveningSlots = useMemo(
+    () =>
+      slotsForDate
+        .filter(
+          (slot) =>
+            slot.period === "Evening",
+        )
+        .sort((a, b) =>
+          a.time.localeCompare(b.time),
+        ),
+    [slotsForDate],
+  );
+
+  const availableCount =
+    slotsForDate.filter(
+      (slot) =>
+        slot.status === "available",
+    ).length;
+
+  const bookedCount =
+    slotsForDate.filter(
+      (slot) =>
+        slot.status === "booked",
+    ).length;
+
+  const unavailableCount =
+    slotsForDate.filter(
+      (slot) =>
+        slot.status === "unavailable",
+    ).length;
+
+  function handleDateChange(
+    value: string,
+  ) {
+    if (!value || value < today) {
+      return;
+    }
+
+    setSelectedDate(value);
   }
 
-  function handleToggle(slotId: string) {
-    if (!doctorId) return;
-    setSlots(toggleSlotAvailability(doctorId, slotId));
+  function handleAdd(newSlot: {
+    time: string;
+    period: Slot["period"];
+  }) {
+    if (!doctorId) {
+      return;
+    }
+
+    setSlots(
+      createSlot(doctorId, {
+        date: selectedDate,
+        ...newSlot,
+      }),
+    );
   }
 
-  function handleRemove(slotId: string) {
-    if (!doctorId) return;
-    setSlots(removeSlot(doctorId, slotId));
+  function handleToggle(
+    slotId: string,
+  ) {
+    if (!doctorId) {
+      return;
+    }
+
+    setSlots(
+      toggleSlotAvailability(
+        doctorId,
+        slotId,
+      ),
+    );
+  }
+
+  function handleRemove(
+    slotId: string,
+  ) {
+    if (!doctorId) {
+      return;
+    }
+
+    setSlots(
+      removeSlot(
+        doctorId,
+        slotId,
+      ),
+    );
   }
 
   if (status === "loading") {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-16 text-center text-sm text-[var(--muted)]">
-        Loading availability…
+      <div className="mx-auto max-w-4xl px-4 py-16 sm:px-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
+          <p className="text-sm text-[var(--muted)]">
+            Loading availability...
+          </p>
+        </div>
       </div>
     );
   }
@@ -75,59 +268,173 @@ export default function SlotManager() {
   if (status === "unauthorized") {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-xl font-semibold text-[var(--ink)]">
-          You need to log in as a doctor
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Log in to manage your appointment slots.
-        </p>
-        <Link href="/doctor/login" className="mt-6 inline-block">
-          <Button>Doctor login</Button>
-        </Link>
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7 shadow-sm">
+          <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand-deep)]">
+            S
+          </div>
+
+          <h1 className="mt-4 text-xl font-semibold text-[var(--ink)]">
+            Doctor access required
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            Log in to manage your appointment availability.
+          </p>
+
+          <Link
+            href="/doctor/login"
+            className="mt-6 inline-block"
+          >
+            <Button>
+              Doctor login
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
-      <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">
-        Manage Availability
-      </h1>
-      <p className="mt-1 text-[var(--muted)]">
-        Add new slots, or mark existing ones unavailable. Booked slots can&apos;t
-        be edited or removed here.
-      </p>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
+      <div className="flex flex-col gap-6">
+        <header>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
+                Doctor portal
+              </p>
 
-      <div className="mt-6">
-        <DateStrip days={days} selectedDate={selectedDate} onSelect={setSelectedDate} />
-      </div>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
+                Manage availability
+              </h1>
 
-      <div className="mt-5">
-        <AddSlotForm onAdd={handleAdd} />
-      </div>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                Select any future date to create, disable, or review your
+                appointment slots. Booked slots remain reserved and cannot
+                be edited here.
+              </p>
+            </div>
 
-      <div className="mt-6 flex flex-col gap-6">
-        {slotsForDate.length === 0 ? (
-          <EmptyState
-            title="No slots for this date"
-            description="Add your first slot for this day using the form above."
-          />
-        ) : (
-          <>
-            <SlotManagerGrid
-              title="Morning"
-              slots={morningSlots}
-              onToggle={handleToggle}
-              onRemove={handleRemove}
-            />
-            <SlotManagerGrid
-              title="Evening"
-              slots={eveningSlots}
-              onToggle={handleToggle}
-              onRemove={handleRemove}
-            />
-          </>
-        )}
+            <Link
+              href="/doctor/calendar"
+              className="text-sm font-semibold text-[var(--brand-deep)] hover:underline"
+            >
+              Open calendar
+            </Link>
+          </div>
+        </header>
+
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Selected date
+              </p>
+
+              <p className="mt-1 text-base font-semibold text-[var(--ink)]">
+                {formatSelectedDate(
+                  selectedDate,
+                )}
+              </p>
+            </div>
+
+            <div className="w-full sm:w-auto">
+              <label
+                htmlFor="doctor-slot-date"
+                className="mb-1.5 block text-xs font-semibold text-[var(--muted)]"
+              >
+                Choose a future date
+              </label>
+
+              <input
+                id="doctor-slot-date"
+                type="date"
+                min={today}
+                value={selectedDate}
+                onChange={(event) =>
+                  handleDateChange(
+                    event.target.value,
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--ink)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)] sm:w-52"
+              />
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-3 gap-2.5 sm:gap-3">
+            <div className="rounded-xl bg-[var(--success-soft)] px-3 py-3">
+              <p className="text-lg font-semibold text-[var(--success)]">
+                {availableCount}
+              </p>
+
+              <p className="mt-0.5 text-xs font-medium text-[var(--success)]">
+                Available
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-[var(--brand-soft)] px-3 py-3">
+              <p className="text-lg font-semibold text-[var(--brand-deep)]">
+                {bookedCount}
+              </p>
+
+              <p className="mt-0.5 text-xs font-medium text-[var(--brand-deep)]">
+                Booked
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-stone-100 px-3 py-3">
+              <p className="text-lg font-semibold text-[var(--muted)]">
+                {unavailableCount}
+              </p>
+
+              <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
+                Unavailable
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <AddSlotForm
+          onAdd={handleAdd}
+        />
+
+        <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5">
+          <div className="border-b border-[var(--line)] pb-4">
+            <p className="text-sm font-semibold text-[var(--ink)]">
+              Slots for this date
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              Available slots are offered to patients. Booked slots are
+              reserved and temporarily unavailable for new bookings.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-7">
+            {slotsForDate.length === 0 ? (
+              <EmptyState
+                title="No slots for this date"
+                description="Create the first appointment slot for this date using the availability form above."
+              />
+            ) : (
+              <>
+                <SlotManagerGrid
+                  title="Morning"
+                  slots={morningSlots}
+                  onToggle={handleToggle}
+                  onRemove={handleRemove}
+                />
+
+                <SlotManagerGrid
+                  title="Evening"
+                  slots={eveningSlots}
+                  onToggle={handleToggle}
+                  onRemove={handleRemove}
+                />
+              </>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );
