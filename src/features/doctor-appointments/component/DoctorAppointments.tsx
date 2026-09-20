@@ -1,11 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -15,17 +11,25 @@ import {
   updateBookingStatus,
 } from "@/lib/bookings-store";
 
-import { getDoctorById } from "@/lib/doctors-store";
+import {
+  getDoctorById,
+} from "@/lib/doctors-store";
 
 import {
   createNotification,
 } from "@/lib/notifications-store";
 
-import { releaseSlot } from "@/lib/slots-store";
+import {
+  releaseSlot,
+} from "@/lib/slots-store";
 
-import { getSession } from "@/lib/storage";
+import {
+  getSession,
+} from "@/lib/storage";
 
-import { formatLongDate } from "@/lib/utils/date";
+import {
+  formatLongDate,
+} from "@/lib/utils/date";
 
 import type {
   Booking,
@@ -76,22 +80,22 @@ function getStatusBadgeClass(
 ) {
   switch (status) {
     case "pending":
-      return "border-[var(--warning)]/20 bg-[var(--warning-soft)] text-[var(--warning)]";
+      return "bg-[var(--warning-soft)] text-[var(--warning)]";
 
     case "confirmed":
-      return "border-blue-200 bg-blue-50 text-blue-700";
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
 
     case "upcoming":
-      return "border-[var(--success)]/20 bg-[var(--success-soft)] text-[var(--success)]";
+      return "bg-[var(--success-soft)] text-[var(--success)]";
 
     case "completed":
-      return "border-[var(--brand)]/20 bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
 
     case "cancelled":
-      return "border-[var(--urgent)]/20 bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
 
     case "missed":
-      return "border-slate-200 bg-slate-100 text-slate-600";
+      return "bg-[var(--canvas)] text-[var(--muted)]";
   }
 }
 
@@ -120,22 +124,110 @@ function getStatusLabel(
 }
 
 function getInitials(name: string) {
-  const parts = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) {
-    return "PT";
-  }
-
-  return parts
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0))
+    .join("")
     .slice(0, 2)
-    .map(
-      (part) =>
-        part[0]?.toUpperCase() ?? "",
-    )
-    .join("");
+    .toUpperCase();
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 3v3m10-3v3M4.5 9.5h15M6.5 5.5h11A2.5 2.5 0 0 1 20 8v10.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5V8a2.5 2.5 0 0 1 2.5-2.5Z"
+      />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="8.5" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 7.5v5l3.25 1.75"
+      />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="3" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5.5 19.5a6.5 6.5 0 0 1 13 0"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m6.5 12.5 3.5 3.5 7.5-8"
+      />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="m7 7 10 10M17 7 7 17"
+      />
+    </svg>
+  );
 }
 
 export default function DoctorAppointments() {
@@ -148,10 +240,12 @@ export default function DoctorAppointments() {
   const [bookings, setBookings] =
     useState<Booking[]>([]);
 
-  const [activeFilter, setActiveFilter] =
-    useState<
-      BookingStatus | "all"
-    >("all");
+  const [
+    activeFilter,
+    setActiveFilter,
+  ] = useState<
+    BookingStatus | "all"
+  >("all");
 
   const [
     processingBookingId,
@@ -160,13 +254,17 @@ export default function DoctorAppointments() {
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      const session = getSession();
+      const session =
+        getSession();
 
       if (
         !session ||
         session.role !== "doctor"
       ) {
-        setPageStatus("unauthorized");
+        setPageStatus(
+          "unauthorized",
+        );
+
         return;
       }
 
@@ -194,35 +292,56 @@ export default function DoctorAppointments() {
     );
   }
 
-  const visibleBookings = useMemo(() => {
-    const filtered =
-      activeFilter === "all"
-        ? bookings
-        : bookings.filter(
-            (booking) =>
-              booking.status ===
-              activeFilter,
+  const visibleBookings =
+    useMemo(() => {
+      const filtered =
+        activeFilter === "all"
+          ? bookings
+          : bookings.filter(
+              (booking) =>
+                booking.status ===
+                activeFilter,
+            );
+
+      return [...filtered].sort(
+        (a, b) => {
+          const first =
+            `${a.date} ${a.time}`;
+
+          const second =
+            `${b.date} ${b.time}`;
+
+          return first.localeCompare(
+            second,
           );
+        },
+      );
+    }, [
+      bookings,
+      activeFilter,
+    ]);
 
-    return [...filtered].sort(
-      (a, b) => {
-        const first =
-          `${a.date} ${a.time}`;
+  const statusCounts =
+    useMemo(() => {
+      return FILTERS.reduce(
+        (counts, filter) => {
+          counts[filter.status] =
+            filter.status === "all"
+              ? bookings.length
+              : bookings.filter(
+                  (booking) =>
+                    booking.status ===
+                    filter.status,
+                ).length;
 
-        const second =
-          `${b.date} ${b.time}`;
-
-        return first.localeCompare(
-          second,
-        );
-      },
-    );
-  }, [bookings, activeFilter]);
-
-  const filterCount =
-    activeFilter === "all"
-      ? bookings.length
-      : visibleBookings.length;
+          return counts;
+        },
+        {} as Record<
+          BookingStatus | "all",
+          number
+        >,
+      );
+    }, [bookings]);
 
   function notifyPatient(
     booking: Booking,
@@ -234,21 +353,25 @@ export default function DoctorAppointments() {
       | "cancellation",
   ) {
     /*
-     * Older bookings created before patientId
-     * existed may not contain a patient id.
-     * New bookings do, so notifications work
-     * normally for current flows.
-     */
+      Older bookings created before
+      Phase 15 may not have patientId.
+
+      Preserve compatibility while
+      ensuring new bookings receive
+      notifications correctly.
+    */
     if (!booking.patientId) {
       return;
     }
 
     createNotification({
-      userId: booking.patientId,
+      userId:
+        booking.patientId,
       title,
       message,
       type,
-      appointmentId: booking.id,
+      appointmentId:
+        booking.id,
     });
   }
 
@@ -391,36 +514,45 @@ export default function DoctorAppointments() {
 
   if (pageStatus === "loading") {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8">
-        <AppointmentsSkeleton />
+      <div className="mx-auto max-w-5xl px-4 py-16 sm:px-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
+          <p className="text-sm text-[var(--muted)]">
+            Loading appointments...
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (pageStatus === "unauthorized") {
+  if (
+    pageStatus ===
+    "unauthorized"
+  ) {
     return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-deep)]">
-          <ShieldIcon />
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
+          <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+            <UserIcon />
+          </div>
+
+          <h1 className="mt-4 text-xl font-semibold text-[var(--ink)]">
+            Doctor access required
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            Log in with a doctor account
+            to manage appointments.
+          </p>
+
+          <Link
+            href="/doctor/login"
+            className="mt-6 inline-block"
+          >
+            <Button>
+              Doctor login
+            </Button>
+          </Link>
         </div>
-
-        <h1 className="mt-5 text-xl font-semibold tracking-tight text-[var(--ink)]">
-          Doctor access required
-        </h1>
-
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">
-          Log in with a doctor account
-          to manage appointments.
-        </p>
-
-        <Link
-          href="/doctor/login"
-          className="mt-6 inline-block"
-        >
-          <Button>
-            Doctor login
-          </Button>
-        </Link>
       </div>
     );
   }
@@ -431,439 +563,345 @@ export default function DoctorAppointments() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
-      <header className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      <header>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-deep)]">
-              Doctor portal
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
+              Doctor Portal
             </p>
 
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
               Appointments
             </h1>
 
-            <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-              Review, confirm, complete,
-              reschedule, or cancel patient
-              appointments.
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+              Review and manage your patient appointments.
             </p>
           </div>
 
           {doctor && (
-            <div className="flex items-center gap-3">
-              <div className="grid size-10 place-items-center rounded-xl bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
-                {getInitials(
-                  doctor.name,
-                )}
-              </div>
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+              <p className="text-xs font-medium text-[var(--muted)]">
+                Signed in as
+              </p>
 
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--ink)]">
-                  {doctor.name}
-                </p>
-
-                <p className="truncate text-xs text-[var(--muted)]">
-                  {doctor.specialty}
-                </p>
-              </div>
+              <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                {doctor.name}
+              </p>
             </div>
           )}
         </div>
-      </header>
 
-      <section className="mt-5">
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max gap-1 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-1">
-            {FILTERS.map((filter) => {
-              const isActive =
-                activeFilter ===
-                filter.status;
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+            <p className="text-xs font-medium text-[var(--muted)]">
+              Total appointments
+            </p>
 
-              const count =
-                filter.status === "all"
-                  ? bookings.length
-                  : bookings.filter(
-                      (booking) =>
-                        booking.status ===
-                        filter.status,
-                    ).length;
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {bookings.length}
+            </p>
+          </div>
 
-              return (
-                <button
-                  key={filter.status}
-                  type="button"
-                  onClick={() =>
-                    setActiveFilter(
-                      filter.status,
-                    )
-                  }
-                  aria-pressed={isActive}
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 ${
-                    isActive
-                      ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
-                      : "text-[var(--muted)] hover:bg-[var(--surface)]/70 hover:text-[var(--ink)]"
-                  }`}
-                >
-                  {filter.label}
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+            <p className="text-xs font-medium text-[var(--muted)]">
+              Upcoming
+            </p>
 
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                      isActive
-                        ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
-                        : "bg-[var(--surface)] text-[var(--muted)]"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {statusCounts.upcoming}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+            <p className="text-xs font-medium text-[var(--muted)]">
+              Pending review
+            </p>
+
+            <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
+              {statusCounts.pending}
+            </p>
           </div>
         </div>
+      </header>
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="text-sm text-[var(--muted)]">
-            Showing{" "}
-            <span className="font-semibold text-[var(--ink)]">
-              {filterCount}
-            </span>{" "}
-            {filterCount === 1
-              ? "appointment"
-              : "appointments"}
-          </p>
+      <section className="mt-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
+          <div className="border-b border-[var(--line)] p-3 sm:p-4">
+            <div className="flex gap-2 overflow-x-auto">
+              {FILTERS.map(
+                (filter) => {
+                  const isActive =
+                    activeFilter ===
+                    filter.status;
 
-          <Link
-            href="/doctor/calendar"
-            className="text-sm font-semibold text-[var(--brand-deep)] hover:underline"
-          >
-            Open calendar
-          </Link>
-        </div>
-      </section>
+                  return (
+                    <button
+                      key={
+                        filter.status
+                      }
+                      type="button"
+                      onClick={() =>
+                        setActiveFilter(
+                          filter.status,
+                        )
+                      }
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium transition ${
+                        isActive
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                          : "text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
+                      }`}
+                    >
+                      <span>
+                        {filter.label}
+                      </span>
 
-      <section className="mt-5">
-        {visibleBookings.length === 0 ? (
-          <EmptyState
-            title="No appointments found"
-            description="Appointments matching this filter will appear here."
-          />
-        ) : (
-          <div className="flex flex-col gap-3">
-            {visibleBookings.map(
-              (booking) => {
-                const isProcessing =
-                  processingBookingId ===
-                  booking.id;
-
-                const initials =
-                  getInitials(
-                    booking.patientName,
+                      <span
+                        className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold ${
+                          isActive
+                            ? "bg-[var(--surface)] text-[var(--brand-deep)]"
+                            : "bg-[var(--canvas)] text-[var(--muted)]"
+                        }`}
+                      >
+                        {
+                          statusCounts[
+                            filter.status
+                          ]
+                        }
+                      </span>
+                    </button>
                   );
+                },
+              )}
+            </div>
+          </div>
 
-                return (
-                  <article
-                    key={booking.id}
-                    className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] transition-shadow hover:shadow-sm"
-                  >
-                    <div className="p-4 sm:p-5">
-                      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="flex min-w-0 gap-3.5">
-                          <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
-                            {initials}
+          <div className="p-4 sm:p-5">
+            {visibleBookings.length ===
+            0 ? (
+              <EmptyState
+                title="No appointments found"
+                description="Appointments matching this filter will appear here."
+              />
+            ) : (
+              <div className="flex flex-col gap-4">
+                {visibleBookings.map(
+                  (booking) => {
+                    const initials =
+                      getInitials(
+                        booking.patientName,
+                      );
+
+                    const isProcessing =
+                      processingBookingId ===
+                      booking.id;
+
+                    return (
+                      <article
+                        key={booking.id}
+                        className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 transition-shadow hover:shadow-sm"
+                      >
+                        <div className="flex flex-col gap-5">
+                          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex min-w-0 gap-4">
+                              <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
+                                {initials}
+                              </div>
+
+                              <div className="min-w-0">
+                                <h2 className="truncate text-base font-semibold text-[var(--ink)]">
+                                  {
+                                    booking.patientName
+                                  }
+                                </h2>
+
+                                <div className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <CalendarIcon />
+                                    {
+                                      formatLongDate(
+                                        booking.date,
+                                      )
+                                    }
+                                  </span>
+
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <ClockIcon />
+                                    {
+                                      booking.time
+                                    }
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <span
+                              className={`w-fit rounded-full px-3 py-1.5 text-xs font-semibold ${getStatusBadgeClass(
+                                booking.status,
+                              )}`}
+                            >
+                              {getStatusLabel(
+                                booking.status,
+                              )}
+                            </span>
                           </div>
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h2 className="truncate text-base font-semibold text-[var(--ink)] sm:text-lg">
-                                {booking.patientName}
-                              </h2>
+                          <div className="flex flex-col gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-xs font-medium text-[var(--muted)]">
+                                Appointment ID
+                              </p>
 
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
-                                  booking.status,
-                                )}`}
-                              >
+                              <p className="mt-1 break-all text-sm font-medium text-[var(--ink)]">
+                                {booking.id}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-xs font-medium text-[var(--muted)]">
+                                Current status
+                              </p>
+
+                              <p className="mt-1 text-sm font-medium text-[var(--ink)]">
                                 {getStatusLabel(
                                   booking.status,
                                 )}
-                              </span>
+                              </p>
                             </div>
-
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                              <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
-                                <CalendarIcon />
-                                <span>
-                                  {formatLongDate(
-                                    booking.date,
-                                  )}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-2 text-sm text-[var(--muted)]">
-                                <ClockIcon />
-                                <span>
-                                  {booking.time}
-                                </span>
-                              </div>
-                            </div>
-
-                            <p className="mt-3 text-xs text-[var(--muted)]">
-                              Booking ID:{" "}
-                              <span className="font-medium text-[var(--ink)]">
-                                {booking.id}
-                              </span>
-                            </p>
                           </div>
+
+                          {booking.status ===
+                            "pending" && (
+                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
+                              <Button
+                                size="sm"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleConfirm(
+                                    booking,
+                                  )
+                                }
+                              >
+                                <span className="inline-flex items-center gap-1.5">
+                                  <CheckIcon />
+                                  Confirm appointment
+                                </span>
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleCancel(
+                                    booking,
+                                  )
+                                }
+                              >
+                                <span className="inline-flex items-center gap-1.5">
+                                  <XIcon />
+                                  Cancel
+                                </span>
+                              </Button>
+                            </div>
+                          )}
+
+                          {booking.status ===
+                            "confirmed" && (
+                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
+                              <Button
+                                size="sm"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleMarkUpcoming(
+                                    booking,
+                                  )
+                                }
+                              >
+                                Mark as upcoming
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleCancel(
+                                    booking,
+                                  )
+                                }
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
+
+                          {booking.status ===
+                            "upcoming" && (
+                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
+                              <Button
+                                size="sm"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleComplete(
+                                    booking,
+                                  )
+                                }
+                              >
+                                Mark completed
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleMissed(
+                                    booking,
+                                  )
+                                }
+                              >
+                                Mark missed
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={
+                                  isProcessing
+                                }
+                                onClick={() =>
+                                  handleCancel(
+                                    booking,
+                                  )
+                                }
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          )}
                         </div>
-
-                        <span className="hidden shrink-0 text-xs text-[var(--muted)] lg:block">
-                          Patient appointment
-                        </span>
-                      </div>
-
-                      {booking.status ===
-                        "pending" && (
-                        <ActionBar>
-                          <Button
-                            size="sm"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleConfirm(
-                                booking,
-                              )
-                            }
-                          >
-                            Confirm appointment
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleCancel(
-                                booking,
-                              )
-                            }
-                          >
-                            Cancel
-                          </Button>
-                        </ActionBar>
-                      )}
-
-                      {booking.status ===
-                        "confirmed" && (
-                        <ActionBar>
-                          <Button
-                            size="sm"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleMarkUpcoming(
-                                booking,
-                              )
-                            }
-                          >
-                            Mark as upcoming
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleCancel(
-                                booking,
-                              )
-                            }
-                          >
-                            Cancel
-                          </Button>
-                        </ActionBar>
-                      )}
-
-                      {booking.status ===
-                        "upcoming" && (
-                        <ActionBar>
-                          <Button
-                            size="sm"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleComplete(
-                                booking,
-                              )
-                            }
-                          >
-                            Mark completed
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleMissed(
-                                booking,
-                              )
-                            }
-                          >
-                            Mark missed
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              isProcessing
-                            }
-                            onClick={() =>
-                              handleCancel(
-                                booking,
-                              )
-                            }
-                          >
-                            Cancel
-                          </Button>
-                        </ActionBar>
-                      )}
-
-                      {(booking.status ===
-                        "completed" ||
-                        booking.status ===
-                          "cancelled" ||
-                        booking.status ===
-                          "missed") && (
-                        <div className="mt-5 border-t border-[var(--line)] pt-4">
-                          <p className="text-xs leading-5 text-[var(--muted)]">
-                            This appointment is
-                            read-only from the
-                            appointment list.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              },
+                      </article>
+                    );
+                  },
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </section>
     </div>
-  );
-}
-
-function ActionBar({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-5 flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:flex-wrap">
-      {children}
-    </div>
-  );
-}
-
-function AppointmentsSkeleton() {
-  return (
-    <div
-      className="animate-pulse"
-      aria-label="Loading appointments"
-    >
-      <div className="h-32 rounded-2xl bg-[var(--canvas)]" />
-
-      <div className="mt-5 h-12 rounded-xl bg-[var(--canvas)]" />
-
-      <div className="mt-5 space-y-3">
-        {Array.from({ length: 4 }).map(
-          (_, index) => (
-            <div
-              key={index}
-              className="h-36 rounded-2xl bg-[var(--canvas)]"
-            />
-          ),
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="size-4 shrink-0 text-[var(--brand-deep)]"
-      aria-hidden="true"
-    >
-      <rect
-        x="4"
-        y="5"
-        width="16"
-        height="15"
-        rx="2"
-      />
-      <path
-        d="M8 3v4M16 3v4M4 10h16"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="size-4 shrink-0 text-[var(--brand-deep)]"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="8" />
-      <path
-        d="M12 8v4l2.5 1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className="size-6"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 3.5 19 7v5c0 4.3-2.7 7.3-7 8.8C7.7 19.3 5 16.3 5 12V7l7-3.5Z"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.5 12.5 11.3 14l3.5-4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
