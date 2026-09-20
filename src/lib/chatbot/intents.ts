@@ -8,25 +8,6 @@ const INTENT_RULES: Array<{
   patterns: RegExp[];
 }> = [
   {
-    intent: "logout",
-    patterns: [
-      /\blog ?out\b/,
-      /\bsign ?out\b/,
-      /\bleave.*account\b/,
-      /\bexit.*account\b/,
-    ],
-  },
-  {
-    intent: "signup",
-    patterns: [
-      /\bsign ?up\b/,
-      /\bcreate.*account\b/,
-      /\bmake.*account\b/,
-      /\bnew.*account\b/,
-      /\bregister.*account\b/,
-    ],
-  },
-  {
     intent: "doctor_registration",
     patterns: [
       /\bdoctor registration\b/,
@@ -34,67 +15,106 @@ const INTENT_RULES: Array<{
       /\bdoctor sign ?up\b/,
       /\bcreate.*doctor.*account\b/,
       /\bbecome.*doctor\b/,
+      /\bsign ?up.*doctor\b/,
+      /\bregister.*as.*doctor\b/,
     ],
   },
+
   {
-    intent: "login",
+    intent: "doctor_login",
     patterns: [
-      /\blog ?in\b/,
-      /\bsign ?in\b/,
       /\bdoctor login\b/,
-      /\bpatient login\b/,
-      /\baccess.*account\b/,
+      /\bdoctor sign ?in\b/,
+      /\blog ?in.*doctor\b/,
+      /\bsign ?in.*doctor\b/,
+      /\bdoctor.*access.*account\b/,
     ],
   },
+
   {
-    intent: "find_doctor",
+    intent: "doctor_prescriptions",
     patterns: [
-      /\bfind.*doctor\b/,
-      /\bsearch.*doctor\b/,
-      /\bbrowse.*doctor\b/,
-      /\bcheck.*doctor\b/,
-      /\bsee.*doctor\b/,
-      /\bview.*doctor\b/,
-      /\bshow.*doctor\b/,
-      /\blook.*doctor\b/,
-      /\bavailable.*doctor\b/,
-      /\bdoctor.*list\b/,
-      /\blist.*doctor\b/,
+      /\bcreate.*prescription\b/,
+      /\bedit.*prescription\b/,
+      /\bmanage.*prescription\b/,
+      /\bdoctor.*prescription\b/,
+      /\bwrite.*prescription\b/,
+      /\bprescribe\b/,
+      /\bdoctor.*medication\b/,
     ],
   },
+
   {
-    intent: "doctor_details",
+    intent: "doctor_appointments",
     patterns: [
-      /\bdoctor.*detail\b/,
-      /\bdetails.*doctor\b/,
-      /\babout.*doctor\b/,
-      /\bdoctor.*information\b/,
-      /\bdoctor.*specialty\b/,
-      /\bdoctor.*location\b/,
+      /\bdoctor appointments\b/,
+      /\bmanage.*appointments?.*doctor\b/,
+      /\bmanage.*appointments?.*as.*doctor\b/,
+      /\bpatient appointments\b/,
+      /\bdoctor.*booking\b/,
+      /\bappointment management\b/,
     ],
   },
+
   {
-    intent: "book_appointment",
+    intent: "doctor_calendar",
     patterns: [
-      /\bbook.*appointment\b/,
-      /\bmake.*appointment\b/,
-      /\bschedule.*appointment\b/,
-      /\bappointment.*book\b/,
-      /\bbook.*doctor\b/,
-      /\bconsult.*doctor\b/,
+      /\bdoctor calendar\b/,
+      /\bcalendar.*doctor\b/,
+      /\bcalendar.*work\b/,
+      /\bhow.*calendar.*work\b/,
+      /\bday view\b/,
+      /\bweek view\b/,
+      /\bmonth view\b/,
+      /\bappointment calendar\b/,
+      /\bview.*calendar\b/,
     ],
   },
+
   {
-    intent: "appointment_slots",
+    intent: "doctor_availability",
     patterns: [
-      /\bappointment.*slot\b/,
-      /\bavailable.*slot\b/,
-      /\btime.*slot\b/,
-      /\bbooking.*slot\b/,
-      /\bavailable.*time\b/,
-      /\bslot.*work\b/,
+      /\bdoctor availability\b/,
+      /\bmanage.*availability\b/,
+      /\bavailability\b/,
+      /\bmanage slots?\b/,
+      /\bcreate slots?\b/,
+      /\bset.*availability\b/,
+      /\bwhen.*available\b/,
     ],
   },
+
+  {
+    intent: "doctor_profile",
+    patterns: [
+      /\bdoctor profile\b/,
+      /\bupdate.*doctor.*profile\b/,
+      /\bedit.*doctor.*profile\b/,
+      /\bprofessional profile\b/,
+    ],
+  },
+
+  {
+    intent: "doctor_dashboard",
+    patterns: [
+      /\bdoctor dashboard\b/,
+      /\bdoctor home\b/,
+      /\bdoctor overview\b/,
+      /\bdashboard\b/,
+    ],
+  },
+
+  {
+    intent: "rebook_appointment",
+    patterns: [
+      /\brebook\b/,
+      /\bbook.*again\b/,
+      /\bappointment.*again\b/,
+      /\bsame doctor.*again\b/,
+      /\bbook.*same doctor\b/,
+    ],
+  },
+
   {
     intent: "reschedule_appointment",
     patterns: [
@@ -109,6 +129,7 @@ const INTENT_RULES: Array<{
       /\banother.*slot\b/,
     ],
   },
+
   {
     intent: "cancel_appointment",
     patterns: [
@@ -118,6 +139,34 @@ const INTENT_RULES: Array<{
       /\bdelete.*appointment\b/,
     ],
   },
+
+  {
+    intent: "book_appointment",
+    patterns: [
+      /\bbook.*appointment\b/,
+      /\bmake.*appointment\b/,
+      /\bschedule.*appointment\b/,
+      /\bappointment.*book\b/,
+      /\bbook.*doctor\b/,
+      /\bbook.*slot\b/,
+      /\bconsult.*doctor\b/,
+      /\bschedule.*doctor\b/,
+    ],
+  },
+
+  {
+    intent: "appointment_slots",
+    patterns: [
+      /\bappointment.*slot\b/,
+      /\bavailable.*slot\b/,
+      /\btime.*slot\b/,
+      /\bbooking.*slot\b/,
+      /\bavailable.*time\b/,
+      /\bslot.*work\b/,
+      /\bwhat.*slots?\b/,
+    ],
+  },
+
   {
     intent: "view_appointments",
     patterns: [
@@ -133,6 +182,7 @@ const INTENT_RULES: Array<{
       /\bappointment history\b/,
     ],
   },
+
   {
     intent: "appointment_status",
     patterns: [
@@ -154,6 +204,7 @@ const INTENT_RULES: Array<{
       /\bmissed.*mean\b/,
     ],
   },
+
   {
     intent: "completed_appointment",
     patterns: [
@@ -164,6 +215,7 @@ const INTENT_RULES: Array<{
       /\bafter.*consultation\b/,
     ],
   },
+
   {
     intent: "missed_appointment",
     patterns: [
@@ -174,6 +226,18 @@ const INTENT_RULES: Array<{
       /\bdidnt attend\b/,
     ],
   },
+
+  {
+    intent: "review_doctor",
+    patterns: [
+      /\breview.*doctor\b/,
+      /\brate.*doctor\b/,
+      /\bleave.*review\b/,
+      /\bgive.*review\b/,
+      /\bfeedback.*doctor\b/,
+    ],
+  },
+
   {
     intent: "prescription",
     patterns: [
@@ -186,26 +250,7 @@ const INTENT_RULES: Array<{
       /\bprescription.*pdf\b/,
     ],
   },
-  {
-    intent: "review_doctor",
-    patterns: [
-      /\breview.*doctor\b/,
-      /\brate.*doctor\b/,
-      /\bleave.*review\b/,
-      /\bgive.*review\b/,
-      /\bfeedback.*doctor\b/,
-    ],
-  },
-  {
-    intent: "rebook_appointment",
-    patterns: [
-      /\brebook\b/,
-      /\bbook.*again\b/,
-      /\bappointment.*again\b/,
-      /\bsame doctor.*again\b/,
-      /\bbook.*same doctor\b/,
-    ],
-  },
+
   {
     intent: "patient_profile",
     patterns: [
@@ -220,6 +265,7 @@ const INTENT_RULES: Array<{
       /\bemergency contact\b/,
     ],
   },
+
   {
     intent: "notifications",
     patterns: [
@@ -229,71 +275,67 @@ const INTENT_RULES: Array<{
       /\balerts?\b/,
     ],
   },
+
   {
-    intent: "doctor_dashboard",
+    intent: "find_doctor",
     patterns: [
-      /\bdoctor dashboard\b/,
-      /\bdoctor home\b/,
-      /\bdoctor overview\b/,
-      /\bdashboard\b/,
+      /\bfind.*doctor\b/,
+      /\bsearch.*doctor\b/,
+      /\bbrowse.*doctor\b/,
+      /\bcheck.*doctor\b/,
+      /\bsee.*doctor\b/,
+      /\bview.*doctor\b/,
+      /\bshow.*doctor\b/,
+      /\blook.*doctor\b/,
+      /\bavailable.*doctor\b/,
+      /\bdoctor.*list\b/,
+      /\blist.*doctor\b/,
     ],
   },
+
   {
-    intent: "doctor_appointments",
+    intent: "doctor_details",
     patterns: [
-      /\bdoctor appointments\b/,
-      /\bmanage.*appointments\b/,
-      /\bpatient appointments\b/,
-      /\bdoctor.*booking\b/,
-      /\bappointment management\b/,
+      /\bdoctor.*detail\b/,
+      /\bdetails.*doctor\b/,
+      /\babout.*doctor\b/,
+      /\bdoctor.*information\b/,
+      /\bdoctor.*specialty\b/,
+      /\bdoctor.*location\b/,
     ],
   },
+
   {
-    intent: "doctor_calendar",
+    intent: "login",
     patterns: [
-      /\bdoctor calendar\b/,
-      /\bcalendar.*doctor\b/,
-      /\bcalendar.*work\b/,
-      /\bhow.*calendar.*work\b/,
-      /\bday view\b/,
-      /\bweek view\b/,
-      /\bmonth view\b/,
-      /\bappointment calendar\b/,
-      /\bview.*calendar\b/,
+      /\blog ?in\b/,
+      /\bsign ?in\b/,
+      /\bpatient login\b/,
+      /\baccess.*account\b/,
     ],
   },
+
   {
-    intent: "doctor_availability",
+    intent: "logout",
     patterns: [
-      /\bavailability\b/,
-      /\bmanage.*availability\b/,
-      /\bdoctor availability\b/,
-      /\bmanage slots?\b/,
-      /\bcreate slots?\b/,
-      /\bset.*availability\b/,
-      /\bwhen.*available\b/,
+      /\blog ?out\b/,
+      /\bsign ?out\b/,
+      /\bleave.*account\b/,
+      /\bexit.*account\b/,
     ],
   },
+
   {
-    intent: "doctor_profile",
+    intent: "signup",
     patterns: [
-      /\bdoctor profile\b/,
-      /\bupdate.*doctor.*profile\b/,
-      /\bedit.*doctor.*profile\b/,
-      /\bprofessional profile\b/,
+      /\bsign ?up\b/,
+      /\bcreate.*account\b/,
+      /\bmake.*account\b/,
+      /\bnew.*account\b/,
+      /\bregister.*account\b/,
     ],
   },
-  {
-    intent: "doctor_prescriptions",
-    patterns: [
-      /\bcreate.*prescription\b/,
-      /\bedit.*prescription\b/,
-      /\bmanage.*prescription\b/,
-      /\bdoctor.*prescription\b/,
-      /\bwrite.*prescription\b/,
-      /\bprescribe\b/,
-    ],
-  },
+
   {
     intent: "how_schedula_works",
     patterns: [
@@ -361,7 +403,8 @@ function isActionRequest(
   message: string,
 ) {
   return ACTION_PATTERNS.some(
-    (pattern) => pattern.test(message),
+    (pattern) =>
+      pattern.test(message),
   );
 }
 
@@ -369,7 +412,8 @@ function hasSchedulaContext(
   message: string,
 ) {
   return SCHEDULA_CONTEXT_WORDS.some(
-    (word) => message.includes(word),
+    (word) =>
+      message.includes(word),
   );
 }
 
@@ -388,20 +432,27 @@ export function detectIntent(
 
   for (const rule of INTENT_RULES) {
     const matches =
-      rule.patterns.some((pattern) =>
-        pattern.test(normalized),
+      rule.patterns.some(
+        (pattern) =>
+          pattern.test(normalized),
       );
 
     if (matches) {
       return {
         intent: rule.intent,
         isActionRequest:
-          isActionRequest(normalized),
+          isActionRequest(
+            normalized,
+          ),
       };
     }
   }
 
-  if (!hasSchedulaContext(normalized)) {
+  if (
+    !hasSchedulaContext(
+      normalized,
+    )
+  ) {
     return {
       intent: "out_of_scope",
       isActionRequest: false,
@@ -411,6 +462,8 @@ export function detectIntent(
   return {
     intent: "unknown",
     isActionRequest:
-      isActionRequest(normalized),
+      isActionRequest(
+        normalized,
+      ),
   };
 }

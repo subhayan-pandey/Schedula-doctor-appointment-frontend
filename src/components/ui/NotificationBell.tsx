@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -62,8 +64,7 @@ function formatNotificationTime(
 function getNotificationIcon(
   notification: AppNotification,
 ) {
-  const iconClass =
-    "size-4";
+  const iconClass = "size-4";
 
   switch (notification.type) {
     case "confirmation":
@@ -115,6 +116,7 @@ function getNotificationIcon(
             d="M7 3.5h7l4 4V20.5H7z"
             strokeLinejoin="round"
           />
+
           <path
             d="M14 3.5v4h4M9.5 12h5M9.5 15h5"
             strokeLinecap="round"
@@ -139,6 +141,7 @@ function getNotificationIcon(
             height="15"
             rx="2"
           />
+
           <path
             d="M8 3.5v3M16 3.5v3M4 9h16"
             strokeLinecap="round"
@@ -161,6 +164,7 @@ function getNotificationIcon(
             cy="12"
             r="8.5"
           />
+
           <path
             d="M12 10.5v5M12 7.5h.01"
             strokeLinecap="round"
@@ -212,24 +216,44 @@ export default function NotificationBell() {
   const containerRef =
     useRef<HTMLDivElement>(null);
 
-  function refreshNotifications(
-    currentUserId?: string | null,
-  ) {
-    const id =
-      currentUserId ?? userId;
+  /*
+   * Refresh notifications for an explicit
+   * user ID rather than reading userId from
+   * the callback closure.
+   */
+  const refreshNotifications =
+    useCallback(
+      (currentUserId: string | null) => {
+        if (!currentUserId) {
+          setNotifications([]);
+          return;
+        }
 
-    if (!id) {
-      setNotifications([]);
-      return;
-    }
-
-    setNotifications(
-      getNotificationsByUserId(id),
+        setNotifications(
+          getNotificationsByUserId(
+            currentUserId,
+          ),
+        );
+      },
+      [],
     );
-  }
 
   useEffect(() => {
+    let cancelled = false;
+
+    /*
+     * Defer the initial state synchronization.
+     *
+     * This keeps the effect focused on synchronizing
+     * with the external session/notification stores
+     * while avoiding React's synchronous-setState-
+     * inside-effect lint rule.
+     */
     Promise.resolve().then(() => {
+      if (cancelled) {
+        return;
+      }
+
       const session =
         getSession();
 
@@ -246,6 +270,9 @@ export default function NotificationBell() {
       );
     });
 
+    /*
+     * React to notification-store updates.
+     */
     function handleUpdate() {
       const session =
         getSession();
@@ -302,6 +329,8 @@ export default function NotificationBell() {
     );
 
     return () => {
+      cancelled = true;
+
       window.removeEventListener(
         "schedula:notifications-updated",
         handleUpdate,
@@ -317,7 +346,9 @@ export default function NotificationBell() {
         handleEscape,
       );
     };
-  }, []);
+  }, [
+    refreshNotifications,
+  ]);
 
   const unreadCount =
     notifications.filter(
@@ -334,7 +365,9 @@ export default function NotificationBell() {
       );
     }
 
-    refreshNotifications();
+    refreshNotifications(
+      userId,
+    );
 
     setIsOpen(false);
   }
@@ -474,6 +507,7 @@ export default function NotificationBell() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
+
                     <path
                       d="M10 21h4"
                       strokeLinecap="round"
@@ -578,7 +612,7 @@ export default function NotificationBell() {
                             notification,
                           )
                         }
-                        className="block focus-visible:outline-none"
+                        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]"
                       >
                         {content}
                       </Link>
@@ -591,7 +625,7 @@ export default function NotificationBell() {
                         notification.id
                       }
                       type="button"
-                      className="block w-full text-left focus-visible:outline-none"
+                      className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]"
                       onClick={() =>
                         handleNotificationClick(
                           notification,

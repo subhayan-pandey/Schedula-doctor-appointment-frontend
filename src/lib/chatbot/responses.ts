@@ -10,26 +10,41 @@ type SupportedIntent = Exclude<
   "out_of_scope" | "unknown"
 >;
 
+const DOCTOR_ONLY_INTENTS: ChatIntent[] = [
+  "doctor_login",
+  "doctor_dashboard",
+  "doctor_appointments",
+  "doctor_calendar",
+  "doctor_availability",
+  "doctor_profile",
+  "doctor_prescriptions",
+];
+
 const RESPONSES: Record<
   SupportedIntent,
   ChatResponse
 > = {
   login: {
     content:
-      "If you already have a patient account, use Log in in the navigation bar. Doctors use the separate Doctor Login page for their doctor account.",
+      "If you have a patient account, use Log in in the navigation bar. Doctors should use the separate Doctor Login page.",
     action: {
-      label: "Log in",
+      label: "Patient login",
       href: "/login",
+    },
+  },
+
+  doctor_login: {
+    content:
+      "Doctor accounts use the separate Doctor Login page. Sign in there to access the doctor dashboard, appointments, calendar, availability, profile, and prescription tools.",
+    action: {
+      label: "Doctor login",
+      href: "/doctor/login",
     },
   },
 
   logout: {
     content:
-      "Use the Log out button in the top-right area of the navigation bar. Logging out clears your current session and redirects you to the Schedula home page.",
-    action: {
-      label: "Go to home",
-      href: "/",
-    },
+      "Use the Log out option in the top-right area of the navigation bar to end your current Schedula session.",
   },
 
   signup: {
@@ -255,6 +270,20 @@ const UNKNOWN_RESPONSE: ChatResponse = {
     "I can help you navigate Schedula and explain its features. You can ask where to find something, how a feature works, or how to complete a workflow. For example: logging in or out, finding doctors, booking appointments, appointment statuses, prescriptions, profiles, doctor calendars, availability, and doctor tools.",
 };
 
+const DOCTOR_ACCESS_RESPONSE: ChatResponse = {
+  content:
+    "That feature is part of the doctor workflow. Sign in with a doctor account to access the corresponding Schedula tool.",
+  action: {
+    label: "Doctor login",
+    href: "/doctor/login",
+  },
+};
+
+const GUEST_ACCOUNT_ACTION = {
+  label: "Log in",
+  href: "/login",
+};
+
 export function getResponseForIntent(
   intent: ChatIntent,
   role: ChatUserRole,
@@ -268,87 +297,56 @@ export function getResponseForIntent(
   }
 
   if (
-    role === "guest" &&
-    intent === "doctor_dashboard"
+    role === "patient" &&
+    DOCTOR_ONLY_INTENTS.includes(intent)
   ) {
-    return {
-      content:
-        "The Doctor Dashboard is available after signing in with a doctor account. If you already have one, use Doctor Login. New doctors need to register first.",
-      action: {
-        label: "Doctor login",
-        href: "/doctor/login",
-      },
-    };
+    return DOCTOR_ACCESS_RESPONSE;
   }
 
-  if (
-    role === "guest" &&
-    intent === "doctor_appointments"
-  ) {
-    return {
-      content:
-        "Doctor appointment management is available after signing in with a doctor account. Register as a doctor first if you don't already have a doctor account.",
-      action: {
-        label: "Doctor login",
-        href: "/doctor/login",
-      },
-    };
+  if (role === "doctor") {
+    if (intent === "login") {
+      return RESPONSES.doctor_login;
+    }
+
+    if (intent === "signup") {
+      return RESPONSES.doctor_registration;
+    }
+
+    if (intent === "logout") {
+      return {
+        content:
+          "Use the Log out option in the top-right area of the doctor navigation to end your current doctor session.",
+      };
+    }
   }
 
-  if (
-    role === "guest" &&
-    intent === "doctor_calendar"
-  ) {
-    return {
-      content:
-        "The Doctor Calendar is available to logged-in doctors. Use Doctor Login if you already have a doctor account or register first if you're new.",
-      action: {
-        label: "Doctor login",
-        href: "/doctor/login",
-      },
-    };
-  }
+  if (role === "guest") {
+    if (
+      intent === "doctor_login" ||
+      DOCTOR_ONLY_INTENTS.includes(
+        intent,
+      )
+    ) {
+      return {
+        content:
+          "This is a doctor-only feature. Use Doctor Login to access the doctor workflow. New doctors can register for a doctor account first.",
+        action: {
+          label: "Doctor login",
+          href: "/doctor/login",
+        },
+      };
+    }
 
-  if (
-    role === "guest" &&
-    intent === "doctor_availability"
-  ) {
-    return {
-      content:
-        "Appointment availability and slot management are doctor features. Sign in with a doctor account to access these tools.",
-      action: {
-        label: "Doctor login",
-        href: "/doctor/login",
-      },
-    };
-  }
-
-  if (
-    role === "guest" &&
-    intent === "doctor_profile"
-  ) {
-    return {
-      content:
-        "The Doctor Profile is available after signing in with a doctor account.",
-      action: {
-        label: "Doctor login",
-        href: "/doctor/login",
-      },
-    };
-  }
-
-  if (
-    role === "guest" &&
-    intent === "doctor_prescriptions"
-  ) {
-    return {
-      content:
-        "Prescription management is available to logged-in doctors. Use Doctor Login to access doctor tools.",
-      action: {
-        label: "Doctor login",
-        href: "/doctor/login",
-      },
-    };
+    if (intent === "logout") {
+      return {
+        content:
+          "You're already logged out. Use Log in to access an existing patient account.",
+        action: {
+          label: "Log in",
+          href: "/login",
+        },
+      };
+    }
   }
 
   return RESPONSES[intent];
@@ -358,19 +356,20 @@ export function getGuestAccessResponse(
   response: ChatResponse,
   intent: ChatIntent,
 ): ChatResponse {
-  const accountRequiredIntents: ChatIntent[] =
-    [
-      "reschedule_appointment",
-      "cancel_appointment",
-      "view_appointments",
-      "completed_appointment",
-      "missed_appointment",
-      "prescription",
-      "review_doctor",
-      "rebook_appointment",
-      "patient_profile",
-      "notifications",
-    ];
+  const accountRequiredIntents: ChatIntent[] = [
+    "book_appointment",
+    "appointment_slots",
+    "reschedule_appointment",
+    "cancel_appointment",
+    "view_appointments",
+    "completed_appointment",
+    "missed_appointment",
+    "prescription",
+    "review_doctor",
+    "rebook_appointment",
+    "patient_profile",
+    "notifications",
+  ];
 
   if (
     !accountRequiredIntents.includes(
@@ -381,11 +380,13 @@ export function getGuestAccessResponse(
   }
 
   return {
-    content: `${response.content} To access your own appointment or account information, log in first. If you're new to Schedula as a patient, create an account before logging in.`,
-    action: {
-      label: "Log in",
-      href: "/login",
-    },
+    content:
+      `${response.content} To access your own appointment or account information, log in first.`,
+    action:
+      response.action?.href ===
+      "/doctor/login"
+        ? response.action
+        : GUEST_ACCOUNT_ACTION,
   };
 }
 
@@ -480,7 +481,8 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/dashboard"
+    pathname ===
+    "/doctor/dashboard"
   ) {
     return [
       {
@@ -502,7 +504,8 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/appointments"
+    pathname ===
+    "/doctor/appointments"
   ) {
     return [
       {
@@ -524,7 +527,8 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/calendar"
+    pathname ===
+    "/doctor/calendar"
   ) {
     return [
       {
@@ -546,7 +550,8 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/slot"
+    pathname ===
+    "/doctor/slot"
   ) {
     return [
       {
@@ -568,7 +573,8 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/profile"
+    pathname ===
+    "/doctor/profile"
   ) {
     return [
       {
@@ -590,7 +596,8 @@ export function getInitialSuggestions(
   }
 
   if (
-    pathname === "/doctor/prescriptions"
+    pathname ===
+    "/doctor/prescriptions"
   ) {
     return [
       {

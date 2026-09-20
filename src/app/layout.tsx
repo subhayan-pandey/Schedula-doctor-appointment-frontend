@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
 import Script from "next/script";
+
 import {
   Geist,
   Geist_Mono,
@@ -7,7 +8,11 @@ import {
 
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
-import { ThemeProvider } from "@/context/ThemeContext";
+import ChatbotProvider from "@/app/ChatbotProvider";
+
+import {
+  ThemeProvider,
+} from "@/context/ThemeContext";
 
 import "./globals.css";
 
@@ -98,6 +103,8 @@ export default function RootLayout({
           </div>
 
           <Footer />
+
+          <ChatbotProvider />
         </ThemeProvider>
       </body>
     </html>

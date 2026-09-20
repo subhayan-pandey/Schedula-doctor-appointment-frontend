@@ -5,6 +5,7 @@ export type ChatUserRole =
 
 export type ChatIntent =
   | "login"
+  | "doctor_login"
   | "logout"
   | "signup"
   | "doctor_registration"

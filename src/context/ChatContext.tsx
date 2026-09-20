@@ -2,10 +2,13 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
 } from "react";
+
+import type { ReactNode } from "react";
 
 import type {
   ChatConversationMap,
@@ -34,55 +37,56 @@ const ChatContext =
 export function ChatProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const [
     conversations,
     setConversations,
-  ] =
-    useState<ChatConversationMap>({});
+  ] = useState<ChatConversationMap>({});
 
   const [
     isOpen,
     setIsOpen,
-  ] =
-    useState(false);
+  ] = useState(false);
 
-  function openChat() {
+  const openChat = useCallback(() => {
     setIsOpen(true);
-  }
+  }, []);
 
-  function closeChat() {
+  const closeChat = useCallback(() => {
     setIsOpen(false);
-  }
+  }, []);
 
-  function addMessage(
-    pathname: string,
-    message: ChatMessage,
-  ) {
-    setConversations((current) => ({
-      ...current,
-
-      [pathname]: [
-        ...(current[pathname] ?? []),
-        message,
-      ],
-    }));
-  }
-
-  function clearConversation(
-    pathname: string,
-  ) {
-    setConversations((current) => {
-      const next = {
+  const addMessage = useCallback(
+    (
+      pathname: string,
+      message: ChatMessage,
+    ) => {
+      setConversations((current) => ({
         ...current,
-      };
+        [pathname]: [
+          ...(current[pathname] ?? []),
+          message,
+        ],
+      }));
+    },
+    [],
+  );
 
-      delete next[pathname];
+  const clearConversation = useCallback(
+    (pathname: string) => {
+      setConversations((current) => {
+        const next = {
+          ...current,
+        };
 
-      return next;
-    });
-  }
+        delete next[pathname];
+
+        return next;
+      });
+    },
+    [],
+  );
 
   const value =
     useMemo<ChatContextValue>(
@@ -97,13 +101,15 @@ export function ChatProvider({
       [
         conversations,
         isOpen,
+        openChat,
+        closeChat,
+        addMessage,
+        clearConversation,
       ],
     );
 
   return (
-    <ChatContext.Provider
-      value={value}
-    >
+    <ChatContext.Provider value={value}>
       {children}
     </ChatContext.Provider>
   );
