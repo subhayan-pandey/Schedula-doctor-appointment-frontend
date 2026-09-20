@@ -99,6 +99,7 @@ const STATUS_ORDER: BookingStatus[] = [
   "upcoming",
   "confirmed",
   "pending",
+  "declined",
   "cancelled",
   "missed",
 ];
@@ -360,6 +361,9 @@ function getStatusClass(
     case "missed":
       return "bg-slate-500";
 
+    case "declined":
+      return "bg-[var(--urgent-deep)]";  
+
     default:
       return "bg-[var(--muted)]";
   }
@@ -386,6 +390,9 @@ function getStatusDotClass(
 
     case "missed":
       return "bg-slate-500";
+
+    case "declined":
+      return "bg-[var(--urgent-deep)]";
 
     default:
       return "bg-[var(--muted)]";

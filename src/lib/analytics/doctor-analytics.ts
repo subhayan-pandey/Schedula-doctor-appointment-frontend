@@ -22,47 +22,85 @@ const DAY_NAMES = [
   "Saturday",
 ];
 
-function getPeriodDays(period: AnalyticsPeriod) {
+function getPeriodDays(
+  period: AnalyticsPeriod,
+) {
   switch (period) {
     case "7d":
       return 7;
+
     case "30d":
       return 30;
+
     case "90d":
       return 90;
+
     case "all":
       return null;
   }
 }
 
-function startOfDay(date: Date) {
-  const nextDate = new Date(date);
+function startOfDay(
+  date: Date,
+) {
+  const nextDate = new Date(
+    date,
+  );
 
-  nextDate.setHours(0, 0, 0, 0);
+  nextDate.setHours(
+    0,
+    0,
+    0,
+    0,
+  );
 
   return nextDate;
 }
 
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
+function addDays(
+  date: Date,
+  days: number,
+) {
+  const nextDate = new Date(
+    date,
+  );
 
-  nextDate.setDate(nextDate.getDate() + days);
+  nextDate.setDate(
+    nextDate.getDate() + days,
+  );
 
   return nextDate;
 }
 
-function formatDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+function formatDateKey(
+  date: Date,
+) {
+  const year =
+    date.getFullYear();
+
+  const month = String(
+    date.getMonth() + 1,
+  ).padStart(2, "0");
+
+  const day = String(
+    date.getDate(),
+  ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
-function getBookingDate(booking: Booking) {
-  const date = new Date(booking.createdAt);
+function getBookingDate(
+  booking: Booking,
+) {
+  const date = new Date(
+    booking.createdAt,
+  );
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
     return null;
   }
 
@@ -76,97 +114,154 @@ function getStatusCounts(
     pending: 0,
     confirmed: 0,
     upcoming: 0,
+    declined: 0,
     completed: 0,
     cancelled: 0,
     missed: 0,
   };
 
-  bookings.forEach((booking) => {
-    counts[booking.status] += 1;
-  });
+  bookings.forEach(
+    (booking) => {
+      counts[booking.status] += 1;
+    },
+  );
 
   return counts;
 }
 
-function getPercentage(value: number, total: number) {
+function getPercentage(
+  value: number,
+  total: number,
+) {
   if (total === 0) {
     return 0;
   }
 
-  return Math.round((value / total) * 100);
+  return Math.round(
+    (value / total) * 100,
+  );
 }
 
-function getBusiestDay(bookings: Booking[]) {
+function getBusiestDay(
+  bookings: Booking[],
+) {
   if (bookings.length === 0) {
     return null;
   }
 
-  const counts = new Map<string, number>();
+  const counts =
+    new Map<string, number>();
 
-  bookings.forEach((booking) => {
-    const date = new Date(`${booking.date}T00:00:00`);
+  bookings.forEach(
+    (booking) => {
+      const date = new Date(
+        `${booking.date}T00:00:00`,
+      );
 
-    if (Number.isNaN(date.getTime())) {
-      return;
-    }
+      if (
+        Number.isNaN(
+          date.getTime(),
+        )
+      ) {
+        return;
+      }
 
-    const day = DAY_NAMES[date.getDay()];
+      const day =
+        DAY_NAMES[date.getDay()];
 
-    counts.set(day, (counts.get(day) ?? 0) + 1);
-  });
+      counts.set(
+        day,
+        (counts.get(day) ?? 0) +
+          1,
+      );
+    },
+  );
 
-  let busiestDay: string | null = null;
+  let busiestDay:
+    | string
+    | null = null;
+
   let highestCount = 0;
 
-  counts.forEach((count, day) => {
-    if (count > highestCount) {
-      busiestDay = day;
-      highestCount = count;
-    }
-  });
+  counts.forEach(
+    (count, day) => {
+      if (
+        count >
+        highestCount
+      ) {
+        busiestDay = day;
+        highestCount = count;
+      }
+    },
+  );
 
   return busiestDay;
 }
 
-function getPeakTime(bookings: Booking[]) {
+function getPeakTime(
+  bookings: Booking[],
+) {
   if (bookings.length === 0) {
     return null;
   }
 
-  const counts = new Map<string, number>();
+  const counts =
+    new Map<string, number>();
 
-  bookings.forEach((booking) => {
-    counts.set(booking.time, (counts.get(booking.time) ?? 0) + 1);
-  });
+  bookings.forEach(
+    (booking) => {
+      counts.set(
+        booking.time,
+        (counts.get(
+          booking.time,
+        ) ?? 0) + 1,
+      );
+    },
+  );
 
-  let peakTime: string | null = null;
+  let peakTime:
+    | string
+    | null = null;
+
   let highestCount = 0;
 
-  counts.forEach((count, time) => {
-    if (count > highestCount) {
-      peakTime = time;
-      highestCount = count;
-    }
-  });
+  counts.forEach(
+    (count, time) => {
+      if (
+        count >
+        highestCount
+      ) {
+        peakTime = time;
+        highestCount = count;
+      }
+    },
+  );
 
   return peakTime;
 }
 
-function buildInsights(analytics: {
-  totalAppointments: number;
-  completionRate: number;
-  cancellationRate: number;
-  missedRate: number;
-  busiestDay: string | null;
-  peakTime: string | null;
-  appointmentChange: number;
-}): AnalyticsInsight[] {
-  const insights: AnalyticsInsight[] = [];
+function buildInsights(
+  analytics: {
+    totalAppointments: number;
+    completionRate: number;
+    cancellationRate: number;
+    missedRate: number;
+    busiestDay: string | null;
+    peakTime: string | null;
+    appointmentChange: number;
+  },
+): AnalyticsInsight[] {
+  const insights: AnalyticsInsight[] =
+    [];
 
-  if (analytics.totalAppointments === 0) {
+  if (
+    analytics.totalAppointments ===
+    0
+  ) {
     return [
       {
-        title: "No appointment activity yet",
+        title:
+          "No appointment activity yet",
         description:
           "Analytics will become more meaningful as patients book and complete appointments with you.",
         tone: "neutral",
@@ -174,7 +269,9 @@ function buildInsights(analytics: {
     ];
   }
 
-  if (analytics.busiestDay) {
+  if (
+    analytics.busiestDay
+  ) {
     insights.push({
       title: "Busiest day",
       description:
@@ -183,62 +280,88 @@ function buildInsights(analytics: {
     });
   }
 
-  if (analytics.peakTime) {
+  if (
+    analytics.peakTime
+  ) {
     insights.push({
-      title: "Peak appointment time",
+      title:
+        "Peak appointment time",
       description:
         `Your most frequently booked appointment slot is ${analytics.peakTime}.`,
       tone: "neutral",
     });
   }
 
-  if (analytics.completionRate >= 80) {
+  if (
+    analytics.completionRate >=
+    80
+  ) {
     insights.push({
-      title: "Strong completion rate",
+      title:
+        "Strong completion rate",
       description:
         `${analytics.completionRate}% of appointments in this period have been completed.`,
       tone: "positive",
     });
   } else if (
-    analytics.completionRate < 60 &&
-    analytics.totalAppointments > 0
+    analytics.completionRate <
+      60 &&
+    analytics.totalAppointments >
+      0
   ) {
     insights.push({
-      title: "Completion rate needs attention",
+      title:
+        "Completion rate needs attention",
       description:
         `Only ${analytics.completionRate}% of appointments have been completed in the selected period.`,
       tone: "warning",
     });
   }
 
-  if (analytics.cancellationRate > 20) {
+  if (
+    analytics.cancellationRate >
+    20
+  ) {
     insights.push({
-      title: "Cancellation rate is elevated",
+      title:
+        "Cancellation rate is elevated",
       description:
         `${analytics.cancellationRate}% of appointments were cancelled.`,
       tone: "warning",
     });
   }
 
-  if (analytics.missedRate > 10) {
+  if (
+    analytics.missedRate >
+    10
+  ) {
     insights.push({
-      title: "Missed appointments are increasing",
+      title:
+        "Missed appointments are increasing",
       description:
         `${analytics.missedRate}% of appointments were marked as missed.`,
       tone: "warning",
     });
   }
 
-  if (analytics.appointmentChange > 0) {
+  if (
+    analytics.appointmentChange >
+    0
+  ) {
     insights.push({
-      title: "Appointment activity increased",
+      title:
+        "Appointment activity increased",
       description:
         `${analytics.appointmentChange}% more appointments were created compared with the previous equivalent period.`,
       tone: "positive",
     });
-  } else if (analytics.appointmentChange < 0) {
+  } else if (
+    analytics.appointmentChange <
+    0
+  ) {
     insights.push({
-      title: "Appointment activity decreased",
+      title:
+        "Appointment activity decreased",
       description:
         `${Math.abs(
           analytics.appointmentChange,
@@ -247,95 +370,163 @@ function buildInsights(analytics: {
     });
   }
 
-  return insights.slice(0, 5);
+  return insights;
 }
 
-function buildGrowthItems(analytics: {
-  totalAppointments: number;
-  completionRate: number;
-  cancellationRate: number;
-  missedRate: number;
-}) {
-  const strengths: GrowthItem[] = [];
-  const improvements: GrowthItem[] = [];
+function buildGrowthItems(
+  analytics: {
+    totalAppointments: number;
+    completionRate: number;
+    cancellationRate: number;
+    missedRate: number;
+    busiestDay: string | null;
+    peakTime: string | null;
+    appointmentChange: number;
+  },
+): {
+  strengths: GrowthItem[];
+  improvements: GrowthItem[];
+} {
+  const strengths: GrowthItem[] =
+    [];
 
-  if (analytics.totalAppointments === 0) {
-    improvements.push({
-      title: "Build appointment activity",
-      description:
-        "There is not enough appointment data yet to evaluate your practice performance.",
-      type: "improvement",
-    });
+  const improvements: GrowthItem[] =
+    [];
 
-    return {
-      strengths,
-      improvements,
-    };
-  }
-
-  if (analytics.completionRate >= 75) {
+  if (
+    analytics.completionRate >=
+    80
+  ) {
     strengths.push({
-      title: "Strong appointment completion",
+      title:
+        "Strong appointment completion",
       description:
-        `${analytics.completionRate}% of appointments have been completed in the selected period.`,
-      type: "strength",
-    });
-  } else {
-    improvements.push({
-      title: "Improve appointment completion",
-      description:
-        "Review pending, confirmed, and upcoming appointments to improve the proportion of completed visits.",
-      type: "improvement",
+        `Your completion rate is ${analytics.completionRate}%, indicating that most appointments in the selected period reached completion.`,
     });
   }
 
-  if (analytics.cancellationRate <= 15) {
+  if (
+    analytics.cancellationRate <=
+      10 &&
+    analytics.totalAppointments >
+      0
+  ) {
     strengths.push({
-      title: "Controlled cancellation rate",
+      title:
+        "Low cancellation rate",
       description:
-        "Appointment cancellations remain relatively low in the selected period.",
-      type: "strength",
-    });
-  } else {
-    improvements.push({
-      title: "Reduce appointment cancellations",
-      description:
-        "A higher cancellation rate may indicate scheduling conflicts or appointment uncertainty.",
-      type: "improvement",
+        `Only ${analytics.cancellationRate}% of appointments were cancelled during the selected period.`,
     });
   }
 
-  if (analytics.missedRate <= 10) {
+  if (
+    analytics.missedRate <=
+      10 &&
+    analytics.totalAppointments >
+      0
+  ) {
     strengths.push({
-      title: "Good appointment attendance",
+      title:
+        "Low missed appointment rate",
       description:
-        "Missed appointments are currently within a manageable range.",
-      type: "strength",
-    });
-  } else {
-    improvements.push({
-      title: "Reduce missed appointments",
-      description:
-        "A higher number of missed appointments may affect appointment efficiency.",
-      type: "improvement",
+        `The missed appointment rate is ${analytics.missedRate}% for the selected period.`,
     });
   }
 
-  if (strengths.length === 0) {
+  if (
+    analytics.appointmentChange >
+    0
+  ) {
     strengths.push({
-      title: "Practice activity is being tracked",
+      title:
+        "Appointment activity is growing",
       description:
-        "Continue building appointment history to establish clearer performance patterns.",
-      type: "strength",
+        `Appointment creation increased by ${analytics.appointmentChange}% compared with the previous equivalent period.`,
     });
   }
 
-  if (improvements.length === 0) {
-    improvements.push({
-      title: "Maintain current performance",
+  if (
+    analytics.busiestDay
+  ) {
+    strengths.push({
+      title:
+        "Clear scheduling pattern",
       description:
-        "Current appointment indicators are stable. Continue monitoring future trends.",
-      type: "improvement",
+        `${analytics.busiestDay} is currently your busiest appointment day.`,
+    });
+  }
+
+  if (
+    strengths.length === 0
+  ) {
+    strengths.push({
+      title:
+        "Continue building appointment history",
+      description:
+        "More appointment data will make practice performance patterns easier to identify.",
+    });
+  }
+
+  if (
+    analytics.completionRate <
+      60 &&
+    analytics.totalAppointments >
+      0
+  ) {
+    improvements.push({
+      title:
+        "Improve appointment completion",
+      description:
+        `The current completion rate is ${analytics.completionRate}%. Review patient communication and appointment follow-up workflows.`,
+    });
+  }
+
+  if (
+    analytics.cancellationRate >
+    20
+  ) {
+    improvements.push({
+      title:
+        "Reduce cancellations",
+      description:
+        `Cancellations account for ${analytics.cancellationRate}% of appointments in the selected period.`,
+    });
+  }
+
+  if (
+    analytics.missedRate >
+    10
+  ) {
+    improvements.push({
+      title:
+        "Reduce missed appointments",
+      description:
+        `Missed appointments account for ${analytics.missedRate}% of activity in the selected period.`,
+    });
+  }
+
+  if (
+    analytics.appointmentChange <
+    0
+  ) {
+    improvements.push({
+      title:
+        "Monitor appointment activity",
+      description:
+        `Appointment creation is ${Math.abs(
+          analytics.appointmentChange,
+        )}% lower than the previous equivalent period.`,
+    });
+  }
+
+  if (
+    improvements.length === 0
+  ) {
+    improvements.push({
+      title:
+        "Continue monitoring trends",
+      description:
+        "Current appointment patterns do not indicate a major improvement area yet. Continue monitoring the selected period.",
     });
   }
 
@@ -349,201 +540,212 @@ function buildTrendPoints(
   bookings: Booking[],
   period: AnalyticsPeriod,
 ): AnalyticsTrendPoint[] {
-  const now = new Date();
-  const today = startOfDay(now);
-
-  if (period === "7d") {
-    const points: AnalyticsTrendPoint[] = [];
-
-    for (let index = 6; index >= 0; index -= 1) {
-      const date = addDays(today, -index);
-      const key = formatDateKey(date);
-
-      const value = bookings.filter((booking) => {
-        const bookingDate = getBookingDate(booking);
-
-        if (!bookingDate) {
-          return false;
-        }
-
-        return formatDateKey(bookingDate) === key;
-      }).length;
-
-      points.push({
-        label: date.toLocaleDateString(undefined, {
-          weekday: "short",
-        }),
-        value,
-      });
-    }
-
-    return points;
-  }
-
-  if (period === "30d") {
-    const points: AnalyticsTrendPoint[] = [];
-
-    for (let index = 3; index >= 0; index -= 1) {
-      const end = addDays(today, -(index * 7));
-      const start = addDays(end, -6);
-
-      const value = bookings.filter((booking) => {
-        const bookingDate = getBookingDate(booking);
-
-        if (!bookingDate) {
-          return false;
-        }
-
-        const day = startOfDay(bookingDate).getTime();
-
-        return (
-          day >= startOfDay(start).getTime() &&
-          day <= startOfDay(end).getTime()
-        );
-      }).length;
-
-      points.push({
-        label: `Week ${4 - index}`,
-        value,
-      });
-    }
-
-    return points;
-  }
-
-  if (period === "90d") {
-    const points: AnalyticsTrendPoint[] = [];
-
-    for (let index = 2; index >= 0; index -= 1) {
-      const monthDate = new Date(
-        today.getFullYear(),
-        today.getMonth() - index,
-        1,
-      );
-
-      const year = monthDate.getFullYear();
-      const month = monthDate.getMonth();
-
-      const value = bookings.filter((booking) => {
-        const bookingDate = getBookingDate(booking);
-
-        if (!bookingDate) {
-          return false;
-        }
-
-        return (
-          bookingDate.getFullYear() === year &&
-          bookingDate.getMonth() === month
-        );
-      }).length;
-
-      points.push({
-        label: monthDate.toLocaleDateString(undefined, {
-          month: "short",
-          year: "numeric",
-        }),
-        value,
-      });
-    }
-
-    return points;
-  }
-
-  const datedBookings = bookings
-    .map(getBookingDate)
-    .filter((date): date is Date => date !== null);
-
-  if (datedBookings.length === 0) {
+  if (
+    bookings.length === 0
+  ) {
     return [];
   }
 
-  const firstDate = datedBookings.reduce(
-    (earliest, date) => (date < earliest ? date : earliest),
+  if (
+    period === "all"
+  ) {
+    const counts =
+      new Map<string, number>();
+
+    bookings.forEach(
+      (booking) => {
+        const date =
+          getBookingDate(
+            booking,
+          );
+
+        if (!date) {
+          return;
+        }
+
+        const key =
+          formatDateKey(date);
+
+        counts.set(
+          key,
+          (counts.get(key) ?? 0) +
+            1,
+        );
+      },
+    );
+
+    return Array.from(
+      counts.entries(),
+    )
+      .sort(
+        ([first], [second]) =>
+          first.localeCompare(
+            second,
+          ),
+      )
+      .slice(-12)
+      .map(
+        ([label, value]) => ({
+          label,
+          value,
+        }),
+      );
+  }
+
+  const days =
+    getPeriodDays(period);
+
+  if (!days) {
+    return [];
+  }
+
+  const now = new Date();
+
+  const currentStart =
+    startOfDay(
+      addDays(
+        now,
+        -(days - 1),
+      ),
+    );
+
+  const counts =
+    new Map<string, number>();
+
+  for (
+    let index = 0;
+    index < days;
+    index += 1
+  ) {
+    const date =
+      addDays(
+        currentStart,
+        index,
+      );
+
+    counts.set(
+      formatDateKey(date),
+      0,
+    );
+  }
+
+  bookings.forEach(
+    (booking) => {
+      const date =
+        getBookingDate(
+          booking,
+        );
+
+      if (!date) {
+        return;
+      }
+
+      if (
+        date < currentStart ||
+        date > now
+      ) {
+        return;
+      }
+
+      const key =
+        formatDateKey(date);
+
+      if (
+        counts.has(key)
+      ) {
+        counts.set(
+          key,
+          (counts.get(key) ?? 0) +
+            1,
+        );
+      }
+    },
   );
 
-  const firstMonth = new Date(
-    firstDate.getFullYear(),
-    firstDate.getMonth(),
-    1,
-  );
+  const entries =
+    Array.from(
+      counts.entries(),
+    );
 
-  const currentMonth = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    1,
-  );
+  const step =
+    days <= 7
+      ? 1
+      : days <= 30
+        ? 5
+        : 15;
 
-  const points: AnalyticsTrendPoint[] = [];
-  const cursor = new Date(firstMonth);
+  return entries
+    .filter(
+      (_, index) =>
+        index % step === 0,
+    )
+    .map(
+      ([label, value]) => ({
+        label,
+        value,
+      }),
+    );
+}
 
-  while (cursor <= currentMonth) {
-    const year = cursor.getFullYear();
-    const month = cursor.getMonth();
+function filterBookingsByPeriod(
+  bookings: Booking[],
+  period: AnalyticsPeriod,
+) {
+  if (
+    period === "all"
+  ) {
+    return [...bookings];
+  }
 
-    const value = bookings.filter((booking) => {
-      const bookingDate = getBookingDate(booking);
+  const days =
+    getPeriodDays(period);
+
+  if (!days) {
+    return [];
+  }
+
+  const now = new Date();
+
+  const currentStart =
+    startOfDay(
+      addDays(
+        now,
+        -(days - 1),
+      ),
+    );
+
+  return bookings.filter(
+    (booking) => {
+      const bookingDate =
+        getBookingDate(
+          booking,
+        );
 
       if (!bookingDate) {
         return false;
       }
 
       return (
-        bookingDate.getFullYear() === year &&
-        bookingDate.getMonth() === month
+        bookingDate >=
+          currentStart &&
+        bookingDate <= now
       );
-    }).length;
-
-    points.push({
-      label: cursor.toLocaleDateString(undefined, {
-        month: "short",
-        year: "numeric",
-      }),
-      value,
-    });
-
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-
-  return points;
-}
-
-export function filterBookingsByPeriod(
-  bookings: Booking[],
-  period: AnalyticsPeriod,
-) {
-  if (period === "all") {
-    return bookings;
-  }
-
-  const days = getPeriodDays(period);
-
-  if (!days) {
-    return bookings;
-  }
-
-  const now = new Date();
-  const start = addDays(now, -(days - 1));
-
-  return bookings.filter((booking) => {
-    const bookingDate = getBookingDate(booking);
-
-    if (!bookingDate) {
-      return false;
-    }
-
-    return bookingDate >= start && bookingDate <= now;
-  });
+    },
+  );
 }
 
 function getPreviousPeriodBookings(
   bookings: Booking[],
   period: AnalyticsPeriod,
 ) {
-  if (period === "all") {
+  if (
+    period === "all"
+  ) {
     return [];
   }
 
-  const days = getPeriodDays(period);
+  const days =
+    getPeriodDays(period);
 
   if (!days) {
     return [];
@@ -551,74 +753,112 @@ function getPreviousPeriodBookings(
 
   const now = new Date();
 
-  const currentStart = addDays(now, -(days - 1));
+  const currentStart =
+    addDays(
+      now,
+      -(days - 1),
+    );
 
-  const previousEnd = new Date(currentStart);
+  const previousEnd =
+    new Date(
+      currentStart,
+    );
 
   previousEnd.setMilliseconds(
-    previousEnd.getMilliseconds() - 1,
+    previousEnd.getMilliseconds() -
+      1,
   );
 
-  const previousStart = addDays(previousEnd, -days);
-
-  return bookings.filter((booking) => {
-    const bookingDate = getBookingDate(booking);
-
-    if (!bookingDate) {
-      return false;
-    }
-
-    return (
-      bookingDate >= previousStart &&
-      bookingDate <= previousEnd
+  const previousStart =
+    addDays(
+      previousEnd,
+      -days,
     );
-  });
+
+  return bookings.filter(
+    (booking) => {
+      const bookingDate =
+        getBookingDate(
+          booking,
+        );
+
+      if (!bookingDate) {
+        return false;
+      }
+
+      return (
+        bookingDate >=
+          previousStart &&
+        bookingDate <=
+          previousEnd
+      );
+    },
+  );
 }
 
 export function calculateDoctorAnalytics(
   bookings: Booking[],
   period: AnalyticsPeriod,
 ): DoctorAnalytics {
-  const filteredBookings = filterBookingsByPeriod(
-    bookings,
-    period,
-  );
+  const filteredBookings =
+    filterBookingsByPeriod(
+      bookings,
+      period,
+    );
 
-  const previousBookings = getPreviousPeriodBookings(
-    bookings,
-    period,
-  );
+  const previousBookings =
+    getPreviousPeriodBookings(
+      bookings,
+      period,
+    );
 
-  const statusCounts = getStatusCounts(filteredBookings);
+  const statusCounts =
+    getStatusCounts(
+      filteredBookings,
+    );
 
-  const totalAppointments = filteredBookings.length;
+  const totalAppointments =
+    filteredBookings.length;
 
-  const completionRate = getPercentage(
-    statusCounts.completed,
-    totalAppointments,
-  );
+  const completionRate =
+    getPercentage(
+      statusCounts.completed,
+      totalAppointments,
+    );
 
-  const cancellationRate = getPercentage(
-    statusCounts.cancelled,
-    totalAppointments,
-  );
+  const cancellationRate =
+    getPercentage(
+      statusCounts.cancelled,
+      totalAppointments,
+    );
 
-  const missedRate = getPercentage(
-    statusCounts.missed,
-    totalAppointments,
-  );
+  const missedRate =
+    getPercentage(
+      statusCounts.missed,
+      totalAppointments,
+    );
 
   let appointmentChange = 0;
 
-  if (period !== "all") {
-    if (previousBookings.length === 0) {
-      appointmentChange = totalAppointments > 0 ? 100 : 0;
+  if (
+    period !== "all"
+  ) {
+    if (
+      previousBookings.length ===
+      0
+    ) {
+      appointmentChange =
+        totalAppointments > 0
+          ? 100
+          : 0;
     } else {
-      appointmentChange = Math.round(
-        ((totalAppointments - previousBookings.length) /
-          previousBookings.length) *
-          100,
-      );
+      appointmentChange =
+        Math.round(
+          ((totalAppointments -
+            previousBookings.length) /
+            previousBookings.length) *
+            100,
+        );
     }
   }
 
@@ -627,53 +867,109 @@ export function calculateDoctorAnalytics(
     completionRate,
     cancellationRate,
     missedRate,
-    busiestDay: getBusiestDay(filteredBookings),
-    peakTime: getPeakTime(filteredBookings),
+    busiestDay:
+      getBusiestDay(
+        filteredBookings,
+      ),
+    peakTime:
+      getPeakTime(
+        filteredBookings,
+      ),
     appointmentChange,
   };
 
-  const growth = buildGrowthItems(partialAnalytics);
+  const growth =
+    buildGrowthItems(
+      partialAnalytics,
+    );
 
   return {
     period,
+
     totalAppointments,
-    completedAppointments: statusCounts.completed,
-    cancelledAppointments: statusCounts.cancelled,
-    missedAppointments: statusCounts.missed,
-    pendingAppointments: statusCounts.pending,
-    confirmedAppointments: statusCounts.confirmed,
-    upcomingAppointments: statusCounts.upcoming,
+
+    completedAppointments:
+      statusCounts.completed,
+
+    cancelledAppointments:
+      statusCounts.cancelled,
+
+    missedAppointments:
+      statusCounts.missed,
+
+    pendingAppointments:
+      statusCounts.pending,
+
+    confirmedAppointments:
+      statusCounts.confirmed,
+
+    upcomingAppointments:
+      statusCounts.upcoming,
+
     completionRate,
+
     cancellationRate,
+
     missedRate,
-    busiestDay: partialAnalytics.busiestDay,
-    peakTime: partialAnalytics.peakTime,
-    previousPeriodAppointments: previousBookings.length,
+
+    busiestDay:
+      partialAnalytics.busiestDay,
+
+    peakTime:
+      partialAnalytics.peakTime,
+
+    previousPeriodAppointments:
+      previousBookings.length,
+
     appointmentChange,
+
     statusCounts,
-    trendPoints: buildTrendPoints(
-      filteredBookings,
-      period,
-    ),
-    insights: buildInsights(partialAnalytics),
-    strengths: growth.strengths,
-    improvements: growth.improvements,
+
+    trendPoints:
+      buildTrendPoints(
+        filteredBookings,
+        period,
+      ),
+
+    insights:
+      buildInsights(
+        partialAnalytics,
+      ),
+
+    strengths:
+      growth.strengths,
+
+    improvements:
+      growth.improvements,
   };
 }
 
-export function getStatusLabel(status: BookingStatus) {
+export function getStatusLabel(
+  status: BookingStatus,
+) {
   switch (status) {
     case "pending":
       return "Pending";
+
     case "confirmed":
       return "Confirmed";
+
     case "upcoming":
       return "Upcoming";
+
+    case "declined":
+      return "Declined";
+
     case "completed":
       return "Completed";
+
     case "cancelled":
       return "Cancelled";
+
     case "missed":
       return "Missed";
+
+    default:
+      return status;
   }
 }
