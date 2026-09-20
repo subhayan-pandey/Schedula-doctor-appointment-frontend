@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
+
+import AppointmentFilters, {
+  type AppointmentFilterValues,
+} from "@/features/doctor-appointments/component/AppointmentFilters";
 
 import {
   getBookingsByDoctorId,
@@ -62,6 +70,10 @@ const FILTERS: {
     status: "upcoming",
   },
   {
+    label: "Declined",
+    status: "declined",
+  },
+  {
     label: "Completed",
     status: "completed",
   },
@@ -72,10 +84,6 @@ const FILTERS: {
   {
     label: "Missed",
     status: "missed",
-  },
-  {
-    label: "Declined",
-    status: "declined",
   },
 ];
 
@@ -92,6 +100,9 @@ function getStatusBadgeClass(
     case "upcoming":
       return "bg-[var(--success-soft)] text-[var(--success)]";
 
+    case "declined":
+      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+
     case "completed":
       return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
 
@@ -101,8 +112,8 @@ function getStatusBadgeClass(
     case "missed":
       return "bg-[var(--canvas)] text-[var(--muted)]";
 
-    case "declined":
-      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+    default:
+      return "bg-[var(--canvas)] text-[var(--muted)]";
   }
 }
 
@@ -119,6 +130,9 @@ function getStatusLabel(
     case "upcoming":
       return "Upcoming";
 
+    case "declined":
+      return "Declined";
+
     case "completed":
       return "Completed";
 
@@ -128,19 +142,26 @@ function getStatusLabel(
     case "missed":
       return "Missed";
 
-    case "declined":
-      return "Declined";
+    default:
+      return status;
   }
 }
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
+function getInitials(
+  name: string,
+) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
     .filter(Boolean)
-    .map((part) => part.charAt(0))
-    .join("")
     .slice(0, 2)
-    .toUpperCase();
+    .map(
+      (part) =>
+        part.charAt(0).toUpperCase(),
+    )
+    .join("");
+
+  return initials || "PT";
 }
 
 function CalendarIcon() {
@@ -177,7 +198,6 @@ function ClockIcon() {
         cy="12"
         r="8.5"
       />
-
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -194,7 +214,7 @@ function UserIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
-      className="size-4"
+      className="size-5"
       aria-hidden="true"
     >
       <circle
@@ -202,7 +222,6 @@ function UserIcon() {
         cy="8"
         r="3"
       />
-
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -250,16 +269,38 @@ function XIcon() {
   );
 }
 
+function getSearchableBookingText(
+  booking: Booking,
+) {
+  return [
+    booking.patientName,
+    booking.id,
+    booking.patientId,
+    booking.date,
+    booking.time,
+    getStatusLabel(
+      booking.status,
+    ),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 export default function DoctorAppointments() {
   const [
     pageStatus,
     setPageStatus,
-  ] = useState<PageStatus>("loading");
+  ] = useState<PageStatus>(
+    "loading",
+  );
 
   const [
     doctorId,
     setDoctorId,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
   const [
     bookings,
@@ -274,9 +315,23 @@ export default function DoctorAppointments() {
   >("all");
 
   const [
+    filters,
+    setFilters,
+  ] =
+    useState<AppointmentFilterValues>(
+      {
+        search: "",
+        date: "",
+        status: "all",
+      },
+    );
+
+  const [
     processingBookingId,
     setProcessingBookingId,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -294,7 +349,9 @@ export default function DoctorAppointments() {
         return;
       }
 
-      setDoctorId(session.id);
+      setDoctorId(
+        session.id,
+      );
 
       setBookings(
         getBookingsByDoctorId(
@@ -318,56 +375,107 @@ export default function DoctorAppointments() {
     );
   }
 
+  const statusCounts =
+    useMemo(() => {
+      const counts: Record<
+        BookingStatus | "all",
+        number
+      > = {
+        all: bookings.length,
+        pending: 0,
+        confirmed: 0,
+        upcoming: 0,
+        declined: 0,
+        completed: 0,
+        cancelled: 0,
+        missed: 0,
+      };
+
+      bookings.forEach(
+        (booking) => {
+          counts[
+            booking.status
+          ] += 1;
+        },
+      );
+
+      return counts;
+    }, [bookings]);
+
   const visibleBookings =
     useMemo(() => {
+      const search =
+        filters.search
+          .trim()
+          .toLowerCase();
+
       const filtered =
-        activeFilter === "all"
-          ? bookings
-          : bookings.filter(
-              (booking) =>
-                booking.status ===
-                activeFilter,
-            );
+        bookings.filter(
+          (booking) => {
+            if (
+              activeFilter !==
+                "all" &&
+              booking.status !==
+                activeFilter
+            ) {
+              return false;
+            }
+
+            if (
+              filters.status !==
+                "all" &&
+              booking.status !==
+                filters.status
+            ) {
+              return false;
+            }
+
+            if (
+              filters.date &&
+              booking.date !==
+                filters.date
+            ) {
+              return false;
+            }
+
+            if (
+              search &&
+              !getSearchableBookingText(
+                booking,
+              ).includes(search)
+            ) {
+              return false;
+            }
+
+            return true;
+          },
+        );
 
       return [...filtered].sort(
-        (a, b) => {
-          const first =
-            `${a.date} ${a.time}`;
+        (first, second) => {
+          const firstValue =
+            `${first.date} ${first.time}`;
 
-          const second =
-            `${b.date} ${b.time}`;
+          const secondValue =
+            `${second.date} ${second.time}`;
 
-          return first.localeCompare(
-            second,
+          return secondValue.localeCompare(
+            firstValue,
           );
         },
       );
     }, [
       bookings,
       activeFilter,
+      filters,
     ]);
 
-  const statusCounts =
-    useMemo(() => {
-      return FILTERS.reduce(
-        (counts, filter) => {
-          counts[filter.status] =
-            filter.status === "all"
-              ? bookings.length
-              : bookings.filter(
-                  (booking) =>
-                    booking.status ===
-                    filter.status,
-                ).length;
-
-          return counts;
-        },
-        {} as Record<
-          BookingStatus | "all",
-          number
-        >,
-      );
-    }, [bookings]);
+  const hasActiveFilters =
+    filters.search.trim()
+      .length > 0 ||
+    filters.date.length > 0 ||
+    filters.status !== "all" ||
+    activeFilter !== "all";
 
   function notifyPatient(
     booking: Booking,
@@ -378,16 +486,6 @@ export default function DoctorAppointments() {
       | "confirmation"
       | "cancellation",
   ) {
-    /*
-      Older bookings created before
-      patientId was introduced may not
-      contain a patientId.
-
-      Preserve compatibility with
-      those bookings while ensuring
-      current bookings receive
-      notifications correctly.
-    */
     if (!booking.patientId) {
       return;
     }
@@ -410,14 +508,6 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    /*
-      Confirmation now immediately
-      makes the appointment upcoming.
-
-      There is intentionally no
-      intermediate "confirmed"
-      state in the doctor workflow.
-    */
     updateBookingStatus(
       booking.id,
       "upcoming",
@@ -428,13 +518,17 @@ export default function DoctorAppointments() {
       "Appointment confirmed",
       `Your appointment on ${formatLongDate(
         booking.date,
-      )} at ${booking.time} has been confirmed and is now scheduled.`,
+      )} at ${
+        booking.time
+      } has been confirmed and is now upcoming.`,
       "confirmation",
     );
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
   function handleDecline(
@@ -448,24 +542,14 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    /*
-      Declining is intentionally
-      different from cancelling.
-
-      The doctor declines the request,
-      the appointment enters the
-      Declined state, and the slot is
-      released so it can be booked
-      again.
-    */
-    releaseSlot(
-      doctorId,
-      booking.slotId,
-    );
-
     updateBookingStatus(
       booking.id,
       "declined",
+    );
+
+    releaseSlot(
+      doctorId,
+      booking.slotId,
     );
 
     notifyPatient(
@@ -473,13 +557,17 @@ export default function DoctorAppointments() {
       "Appointment declined",
       `Your appointment request for ${formatLongDate(
         booking.date,
-      )} at ${booking.time} was declined by the doctor. You can book another available slot or cancel this appointment.`,
-      "cancellation",
+      )} at ${
+        booking.time
+      } was declined by the doctor. You can book another available slot.`,
+      "appointment",
     );
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
   function handleMarkUpcoming(
@@ -499,13 +587,17 @@ export default function DoctorAppointments() {
       "Appointment is upcoming",
       `Your appointment on ${formatLongDate(
         booking.date,
-      )} at ${booking.time} is coming up.`,
+      )} at ${
+        booking.time
+      } is now upcoming.`,
       "appointment",
     );
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
   function handleComplete(
@@ -529,7 +621,9 @@ export default function DoctorAppointments() {
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
   function handleMissed(
@@ -549,13 +643,17 @@ export default function DoctorAppointments() {
       "Appointment missed",
       `Your appointment scheduled for ${formatLongDate(
         booking.date,
-      )} at ${booking.time} was marked as missed.`,
+      )} at ${
+        booking.time
+      } was marked as missed.`,
       "appointment",
     );
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
   function handleCancel(
@@ -584,23 +682,219 @@ export default function DoctorAppointments() {
       "Appointment cancelled",
       `Your appointment scheduled for ${formatLongDate(
         booking.date,
-      )} at ${booking.time} has been cancelled. The appointment slot is available again.`,
+      )} at ${
+        booking.time
+      } has been cancelled. The appointment slot is available again.`,
       "cancellation",
     );
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
-  if (pageStatus === "loading") {
+  function handleFilterChange(
+    nextFilters: AppointmentFilterValues,
+  ) {
+    setFilters(
+      nextFilters,
+    );
+
+    if (
+      nextFilters.status !==
+      "all"
+    ) {
+      setActiveFilter(
+        nextFilters.status,
+      );
+    }
+  }
+
+  function handleStatusTabChange(
+    status: BookingStatus | "all",
+  ) {
+    setActiveFilter(
+      status,
+    );
+
+    setFilters(
+      (current) => ({
+        ...current,
+        status,
+      }),
+    );
+  }
+
+  function clearAllFilters() {
+    setFilters({
+      search: "",
+      date: "",
+      status: "all",
+    });
+
+    setActiveFilter(
+      "all",
+    );
+  }
+
+  function renderAppointmentActions(
+    booking: Booking,
+  ) {
+    const isProcessing =
+      processingBookingId ===
+      booking.id;
+
+    switch (booking.status) {
+      case "pending":
+        return (
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            <Button
+              size="sm"
+              disabled={isProcessing}
+              onClick={() =>
+                handleConfirm(
+                  booking,
+                )
+              }
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <CheckIcon />
+                Confirm appointment
+              </span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() =>
+                handleDecline(
+                  booking,
+                )
+              }
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <XIcon />
+                Decline
+              </span>
+            </Button>
+          </div>
+        );
+
+      case "confirmed":
+        return (
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            <Button
+              size="sm"
+              disabled={isProcessing}
+              onClick={() =>
+                handleMarkUpcoming(
+                  booking,
+                )
+              }
+            >
+              Mark as upcoming
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() =>
+                handleCancel(
+                  booking,
+                )
+              }
+            >
+              Cancel
+            </Button>
+          </div>
+        );
+
+      case "upcoming":
+        return (
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            <Button
+              size="sm"
+              disabled={isProcessing}
+              onClick={() =>
+                handleComplete(
+                  booking,
+                )
+              }
+            >
+              Mark completed
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() =>
+                handleMissed(
+                  booking,
+                )
+              }
+            >
+              Mark missed
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() =>
+                handleCancel(
+                  booking,
+                )
+              }
+            >
+              Cancel
+            </Button>
+          </div>
+        );
+
+      case "declined":
+        return (
+          <div className="mt-5 border-t border-[var(--line)] pt-4">
+            <p className="text-xs leading-5 text-[var(--muted)]">
+              This request was
+              declined. The patient
+              can book another
+              available slot or
+              cancel the declined
+              appointment.
+            </p>
+          </div>
+        );
+
+      case "completed":
+      case "cancelled":
+      case "missed":
+        return (
+          <div className="mt-5 border-t border-[var(--line)] pt-4">
+            <p className="text-xs leading-5 text-[var(--muted)]">
+              This appointment is
+              read-only in the
+              current status.
+            </p>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  if (
+    pageStatus ===
+    "loading"
+  ) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 sm:px-8">
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            Loading appointments...
-          </p>
-        </div>
+      <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">
+        Loading appointments…
       </div>
     );
   }
@@ -621,8 +915,9 @@ export default function DoctorAppointments() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Log in with a doctor account
-            to manage appointments.
+            Log in with a doctor
+            account to manage
+            appointments.
           </p>
 
           <Link
@@ -638,9 +933,12 @@ export default function DoctorAppointments() {
     );
   }
 
-  const doctor = doctorId
-    ? getDoctorById(doctorId)
-    : undefined;
+  const doctor =
+    doctorId
+      ? getDoctorById(
+          doctorId,
+        )
+      : undefined;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
@@ -656,7 +954,9 @@ export default function DoctorAppointments() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Review and manage your patient appointments.
+              Review and manage
+              your patient
+              appointments.
             </p>
           </div>
 
@@ -690,7 +990,9 @@ export default function DoctorAppointments() {
             </p>
 
             <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-              {statusCounts.upcoming}
+              {
+                statusCounts.upcoming
+              }
             </p>
           </div>
 
@@ -700,14 +1002,26 @@ export default function DoctorAppointments() {
             </p>
 
             <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-              {statusCounts.pending}
+              {
+                statusCounts.pending
+              }
             </p>
           </div>
         </div>
       </header>
 
       <section className="mt-8">
-        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
+        <AppointmentFilters
+          value={filters}
+          onChange={
+            handleFilterChange
+          }
+          resultCount={
+            visibleBookings.length
+          }
+        />
+
+        <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
           <div className="border-b border-[var(--line)] p-3 sm:p-4">
             <div className="flex gap-2 overflow-x-auto">
               {FILTERS.map(
@@ -723,22 +1037,22 @@ export default function DoctorAppointments() {
                       }
                       type="button"
                       onClick={() =>
-                        setActiveFilter(
+                        handleStatusTabChange(
                           filter.status,
                         )
                       }
-                      className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium transition ${
+                      className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
                         isActive
                           ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
                           : "text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
                       }`}
                     >
-                      <span>
-                        {filter.label}
-                      </span>
+                      {
+                        filter.label
+                      }
 
                       <span
-                        className={`min-w-5 rounded-full px-1.5 text-center text-[11px] font-semibold ${
+                        className={`rounded-full px-1.5 py-0.5 text-[11px] ${
                           isActive
                             ? "bg-[var(--surface)] text-[var(--brand-deep)]"
                             : "bg-[var(--canvas)] text-[var(--muted)]"
@@ -757,36 +1071,59 @@ export default function DoctorAppointments() {
             </div>
           </div>
 
-          <div className="p-4 sm:p-5">
+          <div className="p-3 sm:p-4">
             {visibleBookings.length ===
             0 ? (
               <EmptyState
-                title="No appointments found"
-                description="Appointments matching this filter will appear here."
+                title={
+                  bookings.length ===
+                  0
+                    ? "No appointments yet"
+                    : "No matching appointments"
+                }
+                description={
+                  bookings.length ===
+                  0
+                    ? "Appointments booked with you will appear here."
+                    : "Try changing the search or filter criteria."
+                }
+                action={
+                  bookings.length >
+                    0 &&
+                  hasActiveFilters ? (
+                    <Button
+                      variant="outline"
+                      onClick={
+                        clearAllFilters
+                      }
+                    >
+                      Clear filters
+                    </Button>
+                  ) : undefined
+                }
               />
             ) : (
-              <div className="flex flex-col gap-4">
+              <ul className="flex flex-col gap-4">
                 {visibleBookings.map(
                   (booking) => {
-                    const initials =
-                      getInitials(
-                        booking.patientName,
-                      );
-
                     const isProcessing =
                       processingBookingId ===
                       booking.id;
 
                     return (
-                      <article
-                        key={booking.id}
-                        className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 transition-shadow hover:shadow-sm"
+                      <li
+                        key={
+                          booking.id
+                        }
+                        className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5"
                       >
-                        <div className="flex flex-col gap-5">
+                        <article>
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="flex min-w-0 gap-4">
                               <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
-                                {initials}
+                                {getInitials(
+                                  booking.patientName,
+                                )}
                               </div>
 
                               <div className="min-w-0">
@@ -821,186 +1158,57 @@ export default function DoctorAppointments() {
                                 booking.status,
                               )}`}
                             >
-                              {getStatusLabel(
-                                booking.status,
-                              )}
+                              {
+                                getStatusLabel(
+                                  booking.status,
+                                )
+                              }
                             </span>
                           </div>
 
-                          <div className="flex flex-col gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="mt-4 flex flex-col gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <p className="text-xs font-medium text-[var(--muted)]">
                                 Appointment ID
                               </p>
 
                               <p className="mt-1 break-all text-sm font-medium text-[var(--ink)]">
-                                {booking.id}
+                                {
+                                  booking.id
+                                }
                               </p>
                             </div>
 
-                            <div>
-                              <p className="text-xs font-medium text-[var(--muted)]">
-                                Current status
-                              </p>
-
-                              <p className="mt-1 text-sm font-medium text-[var(--ink)]">
-                                {getStatusLabel(
-                                  booking.status,
-                                )}
-                              </p>
-                            </div>
+                            <Link
+                              href={`/appointments/${booking.id}`}
+                              className="shrink-0"
+                            >
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                              >
+                                View details
+                              </Button>
+                            </Link>
                           </div>
 
-                          {booking.status ===
-                            "pending" && (
-                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
-                              <Button
-                                size="sm"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleConfirm(
-                                    booking,
-                                  )
-                                }
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <CheckIcon />
-                                  Confirm appointment
-                                </span>
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleDecline(
-                                    booking,
-                                  )
-                                }
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <XIcon />
-                                  Decline
-                                </span>
-                              </Button>
-                            </div>
+                          {renderAppointmentActions(
+                            booking,
                           )}
 
-                          {booking.status ===
-                            "confirmed" && (
-                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
-                              <Button
-                                size="sm"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleMarkUpcoming(
-                                    booking,
-                                  )
-                                }
-                              >
-                                Mark as upcoming
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleCancel(
-                                    booking,
-                                  )
-                                }
-                              >
-                                Cancel
-                              </Button>
-                            </div>
+                          {isProcessing && (
+                            <p className="mt-3 text-xs text-[var(--muted)]">
+                              Updating
+                              appointment…
+                            </p>
                           )}
-
-                          {booking.status ===
-                            "upcoming" && (
-                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:justify-end">
-                              <Button
-                                size="sm"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleComplete(
-                                    booking,
-                                  )
-                                }
-                              >
-                                Mark completed
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleMissed(
-                                    booking,
-                                  )
-                                }
-                              >
-                                Mark missed
-                              </Button>
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={
-                                  isProcessing
-                                }
-                                onClick={() =>
-                                  handleCancel(
-                                    booking,
-                                  )
-                                }
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          )}
-
-                          {booking.status ===
-                            "declined" && (
-                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-                              <p className="text-xs leading-5 text-[var(--muted)]">
-                                This appointment request was declined. You can reschedule it from the calendar or leave it declined.
-                              </p>
-
-                              <Link
-                                href="/doctor/calendar"
-                                className="shrink-0"
-                              >
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full sm:w-auto"
-                                >
-                                  Reschedule
-                                </Button>
-                              </Link>
-                            </div>
-                          )}
-                        </div>
-                      </article>
+                        </article>
+                      </li>
                     );
                   },
                 )}
-              </div>
+              </ul>
             )}
           </div>
         </div>
