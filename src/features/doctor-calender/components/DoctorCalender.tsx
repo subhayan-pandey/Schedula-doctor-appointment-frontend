@@ -17,6 +17,10 @@ import {
   releaseSlot,
 } from "@/lib/slots-store";
 
+import {
+  createNotification,
+} from "@/lib/notifications-store";
+
 import { getSession } from "@/lib/storage";
 
 import type { Booking } from "@/types/booking";
@@ -47,7 +51,9 @@ function toISODate(date: Date): string {
 }
 
 function parseDate(value: string): Date {
-  return new Date(`${value}T00:00:00`);
+  return new Date(
+    `${value}T00:00:00`,
+  );
 }
 
 function addDays(
@@ -147,7 +153,10 @@ function getMonthDays(
       length: 42,
     },
     (_, index) =>
-      addDays(start, index),
+      addDays(
+        start,
+        index,
+      ),
   );
 }
 
@@ -178,6 +187,12 @@ function getBookingStyle(
     return "border-[var(--warning)]/20 bg-[var(--warning-soft)] text-[var(--warning)]";
   }
 
+  if (
+    status === "declined"
+  ) {
+    return "border-[var(--urgent)]/20 bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+  }
+
   return "border-[var(--success)]/20 bg-[var(--success-soft)] text-[var(--success)]";
 }
 
@@ -202,6 +217,9 @@ function getStatusLabel(
 
     case "missed":
       return "Missed";
+
+    case "declined":
+      return "Declined";
   }
 }
 
@@ -601,6 +619,28 @@ export default function DoctorCalendar() {
     setSuccess(null);
   }
 
+  function notifyPatientOfReschedule(
+    booking: Booking,
+    newSlot: Slot,
+  ) {
+    if (!booking.patientId) {
+      return;
+    }
+
+    createNotification({
+      userId:
+        booking.patientId,
+      title:
+        "Appointment rescheduled",
+      message: `Your appointment has been rescheduled to ${formatFullDate(
+        newSlot.date,
+      )} at ${newSlot.time}.`,
+      type: "appointment",
+      appointmentId:
+        booking.id,
+    });
+  }
+
   function handleReschedule(
     newSlot: Slot,
   ) {
@@ -614,12 +654,17 @@ export default function DoctorCalendar() {
     setError(null);
     setSuccess(null);
 
+    const currentStatus =
+      selectedBooking.status;
+
     if (
-      selectedBooking.status !==
-      "upcoming"
+      currentStatus !==
+        "upcoming" &&
+      currentStatus !==
+        "declined"
     ) {
       setError(
-        "Only upcoming appointments can be rescheduled.",
+        "Only upcoming or declined appointments can be rescheduled.",
       );
 
       return;
@@ -641,6 +686,14 @@ export default function DoctorCalendar() {
       return;
     }
 
+    /*
+      Reserve the new slot first.
+
+      This prevents the existing
+      appointment from losing its
+      current slot if the new slot
+      has already been taken.
+    */
     const newSlotResult =
       bookSlot(
         doctorId,
@@ -661,10 +714,28 @@ export default function DoctorCalendar() {
       return;
     }
 
-    releaseSlot(
-      doctorId,
-      selectedBooking.slotId,
-    );
+    /*
+      A declined appointment has
+      already released its original
+      slot when it was declined.
+
+      Therefore we MUST NOT call
+      releaseSlot() for declined
+      appointments here.
+
+      For an upcoming appointment,
+      the existing slot is still
+      booked and must be released.
+    */
+    if (
+      currentStatus ===
+      "upcoming"
+    ) {
+      releaseSlot(
+        doctorId,
+        selectedBooking.slotId,
+      );
+    }
 
     const updatedBookings =
       updateBooking(
@@ -688,6 +759,33 @@ export default function DoctorCalendar() {
           selectedBooking.id,
       ) ?? null;
 
+    if (!updatedBooking) {
+      /*
+        This should not normally
+        happen, but if the booking
+        cannot be found after the
+        slot was reserved, release
+        the newly booked slot to
+        avoid leaving it locked.
+      */
+      releaseSlot(
+        doctorId,
+        newSlot.id,
+      );
+
+      setSlots(
+        getSlotsForDoctor(
+          doctorId,
+        ),
+      );
+
+      setError(
+        "The appointment could not be updated. Please try again.",
+      );
+
+      return;
+    }
+
     setBookings(
       updatedBookings.filter(
         (booking) =>
@@ -710,8 +808,13 @@ export default function DoctorCalendar() {
       false,
     );
 
+    notifyPatientOfReschedule(
+      updatedBooking,
+      newSlot,
+    );
+
     setSuccess(
-      "Appointment successfully rescheduled.",
+      "Appointment successfully rescheduled and moved to upcoming.",
     );
   }
 
@@ -1305,28 +1408,41 @@ export default function DoctorCalendar() {
                 </p>
               )}
 
-              {selectedBooking.status ===
-              "upcoming" ? (
+              {(
+                selectedBooking.status ===
+                  "upcoming" ||
+                selectedBooking.status ===
+                  "declined"
+              ) ? (
                 <div className="mt-6 border-t border-[var(--line)] pt-5">
                   {!isRescheduling ? (
-                    <Button
-                      className="w-full"
-                      onClick={() => {
-                        setIsRescheduling(
-                          true,
-                        );
+                    <div>
+                      <Button
+                        className="w-full"
+                        onClick={() => {
+                          setIsRescheduling(
+                            true,
+                          );
 
-                        setError(
-                          null,
-                        );
+                          setError(
+                            null,
+                          );
 
-                        setSuccess(
-                          null,
-                        );
-                      }}
-                    >
-                      Reschedule appointment
-                    </Button>
+                          setSuccess(
+                            null,
+                          );
+                        }}
+                      >
+                        Reschedule appointment
+                      </Button>
+
+                      {selectedBooking.status ===
+                        "declined" && (
+                        <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                          Rescheduling this declined appointment will assign a new available slot and move the appointment to upcoming.
+                        </p>
+                      )}
+                    </div>
                   ) : (
                     <div>
                       <div className="flex items-center justify-between gap-3">
@@ -1416,8 +1532,8 @@ export default function DoctorCalendar() {
                 </div>
               ) : (
                 <p className="mt-6 rounded-xl bg-[var(--canvas)] px-3.5 py-3 text-xs leading-5 text-[var(--muted)]">
-                  Completed and cancelled
-                  appointments cannot be
+                  Completed, cancelled and
+                  missed appointments cannot be
                   rescheduled.
                 </p>
               )}

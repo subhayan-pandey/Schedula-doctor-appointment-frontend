@@ -6,8 +6,13 @@ import { useParams } from "next/navigation";
 
 import Button from "@/components/ui/Button";
 
-import { getBookingById } from "@/lib/bookings-store";
+import {
+  getBookingById,
+  updateBookingStatus,
+} from "@/lib/bookings-store";
+
 import { getDoctorById } from "@/lib/doctors-store";
+import { releaseSlot } from "@/lib/slots-store";
 import { formatLongDate } from "@/lib/utils/date";
 
 import type {
@@ -15,14 +20,39 @@ import type {
   BookingStatus,
 } from "@/types/booking";
 
-function getStatusLabel(status: BookingStatus) {
-  return (
-    status.charAt(0).toUpperCase() +
-    status.slice(1)
-  );
+function getStatusLabel(
+  status: BookingStatus,
+) {
+  switch (status) {
+    case "pending":
+      return "Pending";
+
+    case "confirmed":
+      return "Confirmed";
+
+    case "upcoming":
+      return "Upcoming";
+
+    case "declined":
+      return "Declined";
+
+    case "completed":
+      return "Completed";
+
+    case "cancelled":
+      return "Cancelled";
+
+    case "missed":
+      return "Missed";
+
+    default:
+      return status;
+  }
 }
 
-function getStatusClasses(status: BookingStatus) {
+function getStatusClasses(
+  status: BookingStatus,
+) {
   switch (status) {
     case "pending":
       return "text-amber-700";
@@ -32,6 +62,9 @@ function getStatusClasses(status: BookingStatus) {
 
     case "upcoming":
       return "text-[var(--success)]";
+
+    case "declined":
+      return "text-[var(--urgent-deep)]";
 
     case "completed":
       return "text-[var(--brand-deep)]";
@@ -47,7 +80,9 @@ function getStatusClasses(status: BookingStatus) {
   }
 }
 
-function getStatusMessage(status: BookingStatus) {
+function getStatusMessage(
+  status: BookingStatus,
+) {
   switch (status) {
     case "pending":
       return "Your appointment request is waiting for doctor confirmation.";
@@ -57,6 +92,9 @@ function getStatusMessage(status: BookingStatus) {
 
     case "upcoming":
       return "Your appointment is scheduled and upcoming.";
+
+    case "declined":
+      return "The doctor declined this appointment request. You can choose another available date and time.";
 
     case "completed":
       return "This appointment has been completed.";
@@ -72,7 +110,9 @@ function getStatusMessage(status: BookingStatus) {
   }
 }
 
-function getPageHeading(status: BookingStatus) {
+function getPageHeading(
+  status: BookingStatus,
+) {
   switch (status) {
     case "pending":
       return "Appointment Request Sent";
@@ -82,6 +122,9 @@ function getPageHeading(status: BookingStatus) {
 
     case "upcoming":
       return "Appointment Scheduled";
+
+    case "declined":
+      return "Appointment Declined";
 
     case "completed":
       return "Appointment Completed";
@@ -97,7 +140,9 @@ function getPageHeading(status: BookingStatus) {
   }
 }
 
-function getStatusIcon(status: BookingStatus) {
+function getStatusIcon(
+  status: BookingStatus,
+) {
   switch (status) {
     case "pending":
       return "⏳";
@@ -107,6 +152,9 @@ function getStatusIcon(status: BookingStatus) {
 
     case "upcoming":
       return "📅";
+
+    case "declined":
+      return "×";
 
     case "completed":
       return "✓";
@@ -122,21 +170,58 @@ function getStatusIcon(status: BookingStatus) {
   }
 }
 
+function getStatusIconClasses(
+  status: BookingStatus,
+) {
+  switch (status) {
+    case "declined":
+    case "cancelled":
+      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+
+    case "pending":
+      return "bg-[var(--warning-soft)] text-[var(--warning)]";
+
+    case "confirmed":
+      return "bg-blue-50 text-blue-600";
+
+    case "upcoming":
+    case "completed":
+      return "bg-[var(--success-soft)] text-[var(--success)]";
+
+    case "missed":
+      return "bg-slate-100 text-slate-600";
+
+    default:
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+  }
+}
+
 export default function AppointmentConfirmationPage() {
   const { bookingId } =
-    useParams<{ bookingId: string }>();
+    useParams<{
+      bookingId: string;
+    }>();
 
-  const [booking, setBooking] =
-    useState<
-      Booking | null | undefined
-    >(undefined);
+  const [
+    booking,
+    setBooking,
+  ] = useState<
+    Booking | null | undefined
+  >(undefined);
+
+  const [
+    isCancelling,
+    setIsCancelling,
+  ] = useState(false);
 
   useEffect(() => {
-    Promise.resolve().then(() =>
+    Promise.resolve().then(() => {
       setBooking(
-        getBookingById(bookingId) ?? null,
-      ),
-    );
+        getBookingById(
+          bookingId,
+        ) ?? null,
+      );
+    });
   }, [bookingId]);
 
   if (booking === undefined) {
@@ -151,12 +236,14 @@ export default function AppointmentConfirmationPage() {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
-          We couldn&apos;t find that appointment
+          We couldn&apos;t find that
+          appointment
         </h1>
 
         <p className="mt-2 text-sm text-[var(--muted)]">
-          It may have been booked in a different
-          browser, or the link is incorrect.
+          It may have been booked in a
+          different browser, or the link
+          is incorrect.
         </p>
 
         <Link
@@ -171,28 +258,84 @@ export default function AppointmentConfirmationPage() {
     );
   }
 
-  const doctor = getDoctorById(
-    booking.doctorId,
-  );
+  /*
+   * From this point onward, TypeScript
+   * knows that booking is a real Booking.
+   */
+  const currentBooking =
+    booking;
+
+  const doctor =
+    getDoctorById(
+      currentBooking.doctorId,
+    );
 
   const isTerminal =
-    booking.status === "completed" ||
-    booking.status === "cancelled" ||
-    booking.status === "missed";
+    currentBooking.status ===
+      "completed" ||
+    currentBooking.status ===
+      "cancelled" ||
+    currentBooking.status ===
+      "missed";
+
+  const isDeclined =
+    currentBooking.status ===
+    "declined";
+
+  function handleCancelDeclined(
+    bookingToCancel: Booking,
+  ) {
+    if (
+      bookingToCancel.status !==
+        "declined" ||
+      isCancelling
+    ) {
+      return;
+    }
+
+    setIsCancelling(true);
+
+    releaseSlot(
+      bookingToCancel.doctorId,
+      bookingToCancel.slotId,
+    );
+
+    updateBookingStatus(
+      bookingToCancel.id,
+      "cancelled",
+    );
+
+    setBooking({
+      ...bookingToCancel,
+      status: "cancelled",
+    });
+
+    setIsCancelling(false);
+  }
 
   return (
     <div className="mx-auto max-w-lg px-4 py-12 sm:px-0">
       <div className="text-center">
-        <span className="mx-auto grid size-14 place-items-center rounded-full bg-[var(--success-soft)] text-2xl">
-          {getStatusIcon(booking.status)}
+        <span
+          className={`mx-auto grid size-14 place-items-center rounded-full text-2xl ${getStatusIconClasses(
+            currentBooking.status,
+          )}`}
+        >
+          {getStatusIcon(
+            currentBooking.status,
+          )}
         </span>
 
         <h1 className="mt-3 text-2xl font-semibold text-[var(--ink)]">
-          {getPageHeading(booking.status)}
+          {getPageHeading(
+            currentBooking.status,
+          )}
         </h1>
 
-        <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">
-          {getStatusMessage(booking.status)}
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
+          {getStatusMessage(
+            currentBooking.status,
+          )}
         </p>
       </div>
 
@@ -224,7 +367,7 @@ export default function AppointmentConfirmationPage() {
 
             <dd className="font-medium text-[var(--ink)]">
               #
-              {booking.id
+              {currentBooking.id
                 .slice(-6)
                 .toUpperCase()}
             </dd>
@@ -237,11 +380,11 @@ export default function AppointmentConfirmationPage() {
 
             <dd
               className={`font-medium ${getStatusClasses(
-                booking.status,
+                currentBooking.status,
               )}`}
             >
               {getStatusLabel(
-                booking.status,
+                currentBooking.status,
               )}
             </dd>
           </div>
@@ -253,7 +396,7 @@ export default function AppointmentConfirmationPage() {
 
             <dd className="font-medium text-[var(--ink)]">
               {formatLongDate(
-                booking.date,
+                currentBooking.date,
               )}
             </dd>
           </div>
@@ -264,7 +407,7 @@ export default function AppointmentConfirmationPage() {
             </dt>
 
             <dd className="font-medium text-[var(--ink)]">
-              {booking.time}
+              {currentBooking.time}
             </dd>
           </div>
 
@@ -274,44 +417,103 @@ export default function AppointmentConfirmationPage() {
             </dt>
 
             <dd className="font-medium text-[var(--ink)]">
-              {booking.patientName}
+              {currentBooking.patientName}
             </dd>
           </div>
         </dl>
 
+        {isDeclined && (
+          <div className="mt-5 rounded-xl border border-[var(--urgent)]/15 bg-[var(--urgent-soft)] px-4 py-3">
+            <p className="text-sm font-medium text-[var(--urgent-deep)]">
+              This appointment request was
+              declined by the doctor.
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--urgent-deep)]/80">
+              You can book another available
+              slot with this doctor or cancel
+              this appointment request.
+            </p>
+          </div>
+        )}
+
         {isTerminal && (
           <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm text-[var(--muted)]">
-            This appointment is closed and no
-            further appointment actions are
-            available.
+            This appointment is closed and
+            no further appointment actions
+            are available.
           </div>
         )}
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <Link
-          href="/appointments"
-          className="flex-1"
-        >
-          <Button className="w-full">
-            View my appointments
-          </Button>
-        </Link>
+      {isDeclined ? (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href={`/doctors/${currentBooking.doctorId}`}
+            className="flex-1"
+          >
+            <Button className="w-full">
+              Book again
+            </Button>
+          </Link>
 
-        <Link
-          href="/doctors"
-          className="flex-1"
-        >
           <Button
             variant="outline"
-            className="w-full"
+            className="flex-1"
+            disabled={isCancelling}
+            onClick={() =>
+              handleCancelDeclined(
+                currentBooking,
+              )
+            }
           >
-            {isTerminal
-              ? "Book another"
-              : "Find another doctor"}
+            {isCancelling
+              ? "Cancelling..."
+              : "Cancel appointment"}
           </Button>
-        </Link>
-      </div>
+        </div>
+      ) : (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/appointments"
+            className="flex-1"
+          >
+            <Button className="w-full">
+              View my appointments
+            </Button>
+          </Link>
+
+          <Link
+            href="/doctors"
+            className="flex-1"
+          >
+            <Button
+              variant="outline"
+              className="w-full"
+            >
+              {isTerminal
+                ? "Book another"
+                : "Find another doctor"}
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {isDeclined && (
+        <div className="mt-3">
+          <Link
+            href="/appointments"
+            className="block"
+          >
+            <Button
+              variant="outline"
+              className="w-full"
+            >
+              Back to my appointments
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

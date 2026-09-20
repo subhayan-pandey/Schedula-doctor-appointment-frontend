@@ -85,16 +85,14 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
+      <body className="flex min-h-full flex-col">
         <Script
           id="schedula-theme-initializer"
           strategy="beforeInteractive"
         >
           {themeInitializationScript}
         </Script>
-      </head>
 
-      <body className="flex min-h-full flex-col">
         <ThemeProvider>
           <Navbar />
 

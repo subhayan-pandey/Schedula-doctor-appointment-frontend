@@ -73,6 +73,10 @@ const FILTERS: {
     label: "Missed",
     status: "missed",
   },
+  {
+    label: "Declined",
+    status: "declined",
+  },
 ];
 
 function getStatusBadgeClass(
@@ -96,6 +100,9 @@ function getStatusBadgeClass(
 
     case "missed":
       return "bg-[var(--canvas)] text-[var(--muted)]";
+
+    case "declined":
+      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
   }
 }
 
@@ -120,6 +127,9 @@ function getStatusLabel(
 
     case "missed":
       return "Missed";
+
+    case "declined":
+      return "Declined";
   }
 }
 
@@ -162,7 +172,12 @@ function ClockIcon() {
       className="size-4"
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="8.5" />
+      <circle
+        cx="12"
+        cy="12"
+        r="8.5"
+      />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -182,7 +197,12 @@ function UserIcon() {
       className="size-4"
       aria-hidden="true"
     >
-      <circle cx="12" cy="8" r="3" />
+      <circle
+        cx="12"
+        cy="8"
+        r="3"
+      />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -231,14 +251,20 @@ function XIcon() {
 }
 
 export default function DoctorAppointments() {
-  const [pageStatus, setPageStatus] =
-    useState<PageStatus>("loading");
+  const [
+    pageStatus,
+    setPageStatus,
+  ] = useState<PageStatus>("loading");
 
-  const [doctorId, setDoctorId] =
-    useState<string | null>(null);
+  const [
+    doctorId,
+    setDoctorId,
+  ] = useState<string | null>(null);
 
-  const [bookings, setBookings] =
-    useState<Booking[]>([]);
+  const [
+    bookings,
+    setBookings,
+  ] = useState<Booking[]>([]);
 
   const [
     activeFilter,
@@ -354,10 +380,12 @@ export default function DoctorAppointments() {
   ) {
     /*
       Older bookings created before
-      Phase 15 may not have patientId.
+      patientId was introduced may not
+      contain a patientId.
 
-      Preserve compatibility while
-      ensuring new bookings receive
+      Preserve compatibility with
+      those bookings while ensuring
+      current bookings receive
       notifications correctly.
     */
     if (!booking.patientId) {
@@ -382,9 +410,17 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
+    /*
+      Confirmation now immediately
+      makes the appointment upcoming.
+
+      There is intentionally no
+      intermediate "confirmed"
+      state in the doctor workflow.
+    */
     updateBookingStatus(
       booking.id,
-      "confirmed",
+      "upcoming",
     );
 
     notifyPatient(
@@ -392,8 +428,53 @@ export default function DoctorAppointments() {
       "Appointment confirmed",
       `Your appointment on ${formatLongDate(
         booking.date,
-      )} at ${booking.time} has been confirmed.`,
+      )} at ${booking.time} has been confirmed and is now scheduled.`,
       "confirmation",
+    );
+
+    refreshBookings();
+
+    setProcessingBookingId(null);
+  }
+
+  function handleDecline(
+    booking: Booking,
+  ) {
+    if (!doctorId) {
+      return;
+    }
+
+    setProcessingBookingId(
+      booking.id,
+    );
+
+    /*
+      Declining is intentionally
+      different from cancelling.
+
+      The doctor declines the request,
+      the appointment enters the
+      Declined state, and the slot is
+      released so it can be booked
+      again.
+    */
+    releaseSlot(
+      doctorId,
+      booking.slotId,
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "declined",
+    );
+
+    notifyPatient(
+      booking,
+      "Appointment declined",
+      `Your appointment request for ${formatLongDate(
+        booking.date,
+      )} at ${booking.time} was declined by the doctor. You can book another available slot or cancel this appointment.`,
+      "cancellation",
     );
 
     refreshBookings();
@@ -797,14 +878,14 @@ export default function DoctorAppointments() {
                                   isProcessing
                                 }
                                 onClick={() =>
-                                  handleCancel(
+                                  handleDecline(
                                     booking,
                                   )
                                 }
                               >
                                 <span className="inline-flex items-center gap-1.5">
                                   <XIcon />
-                                  Cancel
+                                  Decline
                                 </span>
                               </Button>
                             </div>
@@ -890,6 +971,28 @@ export default function DoctorAppointments() {
                               >
                                 Cancel
                               </Button>
+                            </div>
+                          )}
+
+                          {booking.status ===
+                            "declined" && (
+                            <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                              <p className="text-xs leading-5 text-[var(--muted)]">
+                                This appointment request was declined. You can reschedule it from the calendar or leave it declined.
+                              </p>
+
+                              <Link
+                                href="/doctor/calendar"
+                                className="shrink-0"
+                              >
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                >
+                                  Reschedule
+                                </Button>
+                              </Link>
                             </div>
                           )}
                         </div>
