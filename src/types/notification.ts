@@ -1,3 +1,7 @@
+export type NotificationRecipientRole =
+  | "patient"
+  | "doctor";
+
 export type NotificationType =
   | "appointment"
   | "confirmation"
@@ -8,6 +12,7 @@ export type NotificationType =
 export interface AppNotification {
   id: string;
   userId: string;
+  recipientRole: NotificationRecipientRole;
   title: string;
   message: string;
   type: NotificationType;

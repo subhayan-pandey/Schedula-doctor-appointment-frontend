@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import {
-  getNotificationsByUserId,
+  getNotificationsByUserAndRole,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "@/lib/notifications-store";
@@ -21,6 +21,7 @@ import {
 
 import type {
   AppNotification,
+  NotificationRecipientRole,
 } from "@/types/notification";
 
 function formatNotificationTime(
@@ -195,16 +196,32 @@ function getNotificationIconClasses(
   }
 }
 
-export default function NotificationBell() {
-  const [
-    isOpen,
-    setIsOpen,
-  ] = useState(false);
+function getNotificationHref(
+  notification: AppNotification,
+  role: NotificationRecipientRole,
+): string | null {
+  if (!notification.appointmentId) {
+    return null;
+  }
 
-  const [
-    userId,
-    setUserId,
-  ] = useState<string | null>(null);
+  if (role === "doctor") {
+    return "/doctor/appointments";
+  }
+
+  return `/appointments/${notification.appointmentId}`;
+}
+
+export default function NotificationBell() {
+  const [isOpen, setIsOpen] =
+    useState(false);
+
+  const [userId, setUserId] =
+    useState<string | null>(null);
+
+  const [role, setRole] =
+    useState<NotificationRecipientRole | null>(
+      null,
+    );
 
   const [
     notifications,
@@ -216,22 +233,26 @@ export default function NotificationBell() {
   const containerRef =
     useRef<HTMLDivElement>(null);
 
-  /*
-   * Refresh notifications for an explicit
-   * user ID rather than reading userId from
-   * the callback closure.
-   */
   const refreshNotifications =
     useCallback(
-      (currentUserId: string | null) => {
-        if (!currentUserId) {
+      (
+        currentUserId: string | null,
+        currentRole:
+          | NotificationRecipientRole
+          | null,
+      ) => {
+        if (
+          !currentUserId ||
+          !currentRole
+        ) {
           setNotifications([]);
           return;
         }
 
         setNotifications(
-          getNotificationsByUserId(
+          getNotificationsByUserAndRole(
             currentUserId,
+            currentRole,
           ),
         );
       },
@@ -241,14 +262,6 @@ export default function NotificationBell() {
   useEffect(() => {
     let cancelled = false;
 
-    /*
-     * Defer the initial state synchronization.
-     *
-     * This keeps the effect focused on synchronizing
-     * with the external session/notification stores
-     * while avoiding React's synchronous-setState-
-     * inside-effect lint rule.
-     */
     Promise.resolve().then(() => {
       if (cancelled) {
         return;
@@ -259,34 +272,47 @@ export default function NotificationBell() {
 
       if (!session) {
         setUserId(null);
+        setRole(null);
         setNotifications([]);
         return;
       }
 
+      const sessionRole =
+        session.role === "doctor"
+          ? "doctor"
+          : "patient";
+
       setUserId(session.id);
+      setRole(sessionRole);
 
       refreshNotifications(
         session.id,
+        sessionRole,
       );
     });
 
-    /*
-     * React to notification-store updates.
-     */
     function handleUpdate() {
       const session =
         getSession();
 
       if (!session) {
         setUserId(null);
+        setRole(null);
         setNotifications([]);
         return;
       }
 
+      const sessionRole =
+        session.role === "doctor"
+          ? "doctor"
+          : "patient";
+
       setUserId(session.id);
+      setRole(sessionRole);
 
       refreshNotifications(
         session.id,
+        sessionRole,
       );
     }
 
@@ -367,26 +393,29 @@ export default function NotificationBell() {
 
     refreshNotifications(
       userId,
+      role,
     );
 
     setIsOpen(false);
   }
 
   function handleMarkAllAsRead() {
-    if (!userId) {
+    if (!userId || !role) {
       return;
     }
 
     markAllNotificationsAsRead(
       userId,
+      role,
     );
 
     refreshNotifications(
       userId,
+      role,
     );
   }
 
-  if (!userId) {
+  if (!userId || !role) {
     return null;
   }
 
@@ -528,6 +557,12 @@ export default function NotificationBell() {
             ) : (
               notifications.map(
                 (notification) => {
+                  const href =
+                    getNotificationHref(
+                      notification,
+                      role,
+                    );
+
                   const content = (
                     <div
                       className={`flex gap-3 border-b border-[var(--line)] px-4 py-4 transition-colors sm:px-5 ${
@@ -581,7 +616,7 @@ export default function NotificationBell() {
                             )}
                           </span>
 
-                          {notification.appointmentId && (
+                          {href && (
                             <>
                               <span
                                 className="size-1 rounded-full bg-[var(--line)]"
@@ -589,7 +624,10 @@ export default function NotificationBell() {
                               />
 
                               <span className="text-[11px] font-semibold text-[var(--brand-deep)]">
-                                View appointment
+                                {role ===
+                                "doctor"
+                                  ? "View appointments"
+                                  : "View appointment"}
                               </span>
                             </>
                           )}
@@ -598,15 +636,13 @@ export default function NotificationBell() {
                     </div>
                   );
 
-                  if (
-                    notification.appointmentId
-                  ) {
+                  if (href) {
                     return (
                       <Link
                         key={
                           notification.id
                         }
-                        href={`/appointments/${notification.appointmentId}`}
+                        href={href}
                         onClick={() =>
                           handleNotificationClick(
                             notification,

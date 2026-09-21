@@ -19,6 +19,10 @@ import {
 
 import { addBooking } from "@/lib/bookings-store";
 
+import {
+  createDoctorNotification,
+} from "@/lib/notifications-store";
+
 import { getSession } from "@/lib/storage";
 
 import { toISODate } from "@/lib/utils/date";
@@ -31,8 +35,12 @@ function getTodayISO(): string {
   return toISODate(today);
 }
 
-function formatSelectedDate(isoDate: string): string {
-  return new Date(`${isoDate}T00:00:00`).toLocaleDateString("en-IN", {
+function formatSelectedDate(
+  isoDate: string,
+): string {
+  return new Date(
+    `${isoDate}T00:00:00`,
+  ).toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -47,7 +55,10 @@ export default function BookingPanel({
 }) {
   const router = useRouter();
 
-  const today = useMemo(() => getTodayISO(), []);
+  const today = useMemo(
+    () => getTodayISO(),
+    [],
+  );
 
   const [selectedDate, setSelectedDate] =
     useState<string>(getTodayISO);
@@ -55,54 +66,84 @@ export default function BookingPanel({
   const [selectedSlotId, setSelectedSlotId] =
     useState<string | null>(null);
 
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slots, setSlots] =
+    useState<Slot[]>([]);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] =
+    useState(true);
 
-  const [isBooking, setIsBooking] = useState(false);
+  const [isBooking, setIsBooking] =
+    useState(false);
 
   const [bookingError, setBookingError] =
     useState<string | null>(null);
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      setSlots(getSlotsForDoctor(doctorId));
+      setSlots(
+        getSlotsForDoctor(
+          doctorId,
+        ),
+      );
+
       setIsLoading(false);
     });
   }, [doctorId]);
 
   useEffect(() => {
     function refreshSlots() {
-      setSlots(getSlotsForDoctor(doctorId));
+      setSlots(
+        getSlotsForDoctor(
+          doctorId,
+        ),
+      );
     }
 
-    function handleStorage(event: StorageEvent) {
-      if (event.key === `schedula:slots:${doctorId}`) {
-        refreshSlots();
-      }
-    }
-
-    function handleSlotsUpdated(event: Event) {
-      const customEvent = event as CustomEvent<{
-        doctorId?: string;
-      }>;
-
+    function handleStorage(
+      event: StorageEvent,
+    ) {
       if (
-        !customEvent.detail?.doctorId ||
-        customEvent.detail.doctorId === doctorId
+        event.key ===
+        `schedula:slots:${doctorId}`
       ) {
         refreshSlots();
       }
     }
 
-    window.addEventListener("storage", handleStorage);
+    function handleSlotsUpdated(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<{
+          doctorId?: string;
+        }>;
+
+      if (
+        !customEvent.detail
+          ?.doctorId ||
+        customEvent.detail
+          .doctorId === doctorId
+      ) {
+        refreshSlots();
+      }
+    }
+
+    window.addEventListener(
+      "storage",
+      handleStorage,
+    );
+
     window.addEventListener(
       "schedula:slots-updated",
       handleSlotsUpdated,
     );
 
     return () => {
-      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(
+        "storage",
+        handleStorage,
+      );
+
       window.removeEventListener(
         "schedula:slots-updated",
         handleSlotsUpdated,
@@ -113,23 +154,30 @@ export default function BookingPanel({
   const slotsForDate = useMemo(
     () =>
       slots.filter(
-        (slot) => slot.date === selectedDate,
+        (slot) =>
+          slot.date ===
+          selectedDate,
       ),
     [slots, selectedDate],
   );
 
-  const availableSlotsForDate = useMemo(
-    () =>
-      slotsForDate.filter(
-        (slot) => slot.status === "available",
-      ),
-    [slotsForDate],
-  );
+  const availableSlotsForDate =
+    useMemo(
+      () =>
+        slotsForDate.filter(
+          (slot) =>
+            slot.status ===
+            "available",
+        ),
+      [slotsForDate],
+    );
 
   const morningSlots = useMemo(
     () =>
       availableSlotsForDate.filter(
-        (slot) => slot.period === "Morning",
+        (slot) =>
+          slot.period ===
+          "Morning",
       ),
     [availableSlotsForDate],
   );
@@ -137,13 +185,20 @@ export default function BookingPanel({
   const eveningSlots = useMemo(
     () =>
       availableSlotsForDate.filter(
-        (slot) => slot.period === "Evening",
+        (slot) =>
+          slot.period ===
+          "Evening",
       ),
     [availableSlotsForDate],
   );
 
-  function handleSelectDate(value: string) {
-    if (!value || value < today) {
+  function handleSelectDate(
+    value: string,
+  ) {
+    if (
+      !value ||
+      value < today
+    ) {
       return;
     }
 
@@ -157,19 +212,25 @@ export default function BookingPanel({
       return;
     }
 
-    const session = getSession();
+    const session =
+      getSession();
 
     if (!session) {
       setBookingError(
         "Please log in before booking an appointment.",
       );
+
       return;
     }
 
-    if (session.role !== "patient") {
+    if (
+      session.role !==
+      "patient"
+    ) {
       setBookingError(
         "Please use a patient account to book an appointment.",
       );
+
       return;
     }
 
@@ -177,26 +238,38 @@ export default function BookingPanel({
     setBookingError(null);
 
     window.setTimeout(() => {
-      const updatedSlots = bookSlot(
-        doctorId,
-        selectedSlotId,
-      );
+      const updatedSlots =
+        bookSlot(
+          doctorId,
+          selectedSlotId,
+        );
 
       if (!updatedSlots) {
         setBookingError(
           "Sorry, this slot was just booked or is no longer available. Please choose another slot.",
         );
 
-        setSlots(getSlotsForDoctor(doctorId));
-        setSelectedSlotId(null);
+        setSlots(
+          getSlotsForDoctor(
+            doctorId,
+          ),
+        );
+
+        setSelectedSlotId(
+          null,
+        );
+
         setIsBooking(false);
 
         return;
       }
 
-      const bookedSlot = updatedSlots.find(
-        (slot) => slot.id === selectedSlotId,
-      );
+      const bookedSlot =
+        updatedSlots.find(
+          (slot) =>
+            slot.id ===
+            selectedSlotId,
+        );
 
       if (!bookedSlot) {
         setBookingError(
@@ -204,27 +277,63 @@ export default function BookingPanel({
         );
 
         setIsBooking(false);
+
         return;
       }
 
-      const bookingId = `bk-${Date.now()}`;
+      const bookingId =
+        `bk-${Date.now()}`;
 
       addBooking({
         id: bookingId,
         doctorId,
-        slotId: bookedSlot.id,
-        patientId: session.id,
-        patientName: session.name ?? "Guest Patient",
-        date: bookedSlot.date,
-        time: bookedSlot.time,
+        slotId:
+          bookedSlot.id,
+        patientId:
+          session.id,
+        patientName:
+          session.name ??
+          "Guest Patient",
+        date:
+          bookedSlot.date,
+        time:
+          bookedSlot.time,
         status: "pending",
-        createdAt: new Date().toISOString(),
+        createdAt:
+          new Date().toISOString(),
       });
 
-      setSlots(updatedSlots);
+      /*
+       * Notify the doctor immediately
+       * after a successful patient booking.
+       */
+      createDoctorNotification({
+        userId: doctorId,
+        title:
+          "New appointment request",
+        message: `${
+          session.name ??
+          "A patient"
+        } requested an appointment for ${
+          bookedSlot.date
+        } at ${
+          bookedSlot.time
+        }.`,
+        type:
+          "appointment",
+        appointmentId:
+          bookingId,
+      });
+
+      setSlots(
+        updatedSlots,
+      );
+
       setIsBooking(false);
 
-      router.push(`/appointments/${bookingId}`);
+      router.push(
+        `/appointments/${bookingId}`,
+      );
     }, 500);
   }
 
@@ -248,7 +357,9 @@ export default function BookingPanel({
             </p>
 
             <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-              {formatSelectedDate(selectedDate)}
+              {formatSelectedDate(
+                selectedDate,
+              )}
             </p>
           </div>
 
@@ -266,7 +377,9 @@ export default function BookingPanel({
               min={today}
               value={selectedDate}
               onChange={(event) =>
-                handleSelectDate(event.target.value)
+                handleSelectDate(
+                  event.target.value,
+                )
               }
               className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--ink)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)] sm:w-52"
             />
@@ -279,7 +392,8 @@ export default function BookingPanel({
           <div className="rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-5 text-sm text-[var(--muted)]">
             Loading availability...
           </div>
-        ) : slotsForDate.length === 0 ? (
+        ) : slotsForDate.length ===
+          0 ? (
           <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--canvas)] px-4 py-6 text-center">
             <p className="text-sm font-semibold text-[var(--ink)]">
               No slots configured
@@ -289,7 +403,8 @@ export default function BookingPanel({
               This doctor has not added availability for this date.
             </p>
           </div>
-        ) : availableSlotsForDate.length === 0 ? (
+        ) : availableSlotsForDate.length ===
+          0 ? (
           <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--canvas)] px-4 py-6 text-center">
             <p className="text-sm font-semibold text-[var(--ink)]">
               No slots available
@@ -305,15 +420,23 @@ export default function BookingPanel({
             <SlotGrid
               title="Morning"
               slots={morningSlots}
-              selectedSlotId={selectedSlotId}
-              onSelect={setSelectedSlotId}
+              selectedSlotId={
+                selectedSlotId
+              }
+              onSelect={
+                setSelectedSlotId
+              }
             />
 
             <SlotGrid
               title="Evening"
               slots={eveningSlots}
-              selectedSlotId={selectedSlotId}
-              onSelect={setSelectedSlotId}
+              selectedSlotId={
+                selectedSlotId
+              }
+              onSelect={
+                setSelectedSlotId
+              }
             />
           </div>
         )}
@@ -331,10 +454,17 @@ export default function BookingPanel({
       <Button
         size="lg"
         className="mt-6 w-full"
-        disabled={!selectedSlotId || isBooking}
-        onClick={handleConfirmBooking}
+        disabled={
+          !selectedSlotId ||
+          isBooking
+        }
+        onClick={
+          handleConfirmBooking
+        }
       >
-        {isBooking ? "Booking..." : "Book appointment"}
+        {isBooking
+          ? "Booking..."
+          : "Book appointment"}
       </Button>
     </div>
   );
