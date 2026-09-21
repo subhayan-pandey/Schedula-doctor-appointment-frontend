@@ -1,30 +1,42 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
 import {
   getAllBookings,
-  updateBooking,
+  rescheduleBooking,
 } from "@/lib/bookings-store";
 
 import {
   bookSlot,
   getSlotsForDoctor,
   releaseSlot,
+  rescheduleSlot,
 } from "@/lib/slots-store";
 
 import {
-  createNotification,
+  createPatientNotification,
 } from "@/lib/notifications-store";
 
-import { getSession } from "@/lib/storage";
+import {
+  getSession,
+} from "@/lib/storage";
 
-import type { Booking } from "@/types/booking";
-import type { Slot } from "@/types/slot";
+import type {
+  Booking,
+} from "@/types/booking";
+
+import type {
+  Slot,
+} from "@/types/slot";
 
 type PageStatus =
   | "loading"
@@ -36,21 +48,28 @@ type CalendarView =
   | "week"
   | "month";
 
-function toISODate(date: Date): string {
-  const year = date.getFullYear();
+function toISODate(
+  date: Date,
+): string {
+  const year =
+    date.getFullYear();
 
-  const month = String(
-    date.getMonth() + 1,
-  ).padStart(2, "0");
+  const month =
+    String(
+      date.getMonth() + 1,
+    ).padStart(2, "0");
 
-  const day = String(
-    date.getDate(),
-  ).padStart(2, "0");
+  const day =
+    String(
+      date.getDate(),
+    ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
-function parseDate(value: string): Date {
+function parseDate(
+  value: string,
+): Date {
   return new Date(
     `${value}T00:00:00`,
   );
@@ -60,7 +79,8 @@ function addDays(
   date: Date,
   days: number,
 ): Date {
-  const next = new Date(date);
+  const next =
+    new Date(date);
 
   next.setDate(
     next.getDate() + days,
@@ -72,9 +92,11 @@ function addDays(
 function getWeekStart(
   date: Date,
 ): Date {
-  const next = new Date(date);
+  const next =
+    new Date(date);
 
-  const day = next.getDay();
+  const day =
+    next.getDay();
 
   const offset =
     day === 0
@@ -129,11 +151,12 @@ function formatFullDate(
 function getMonthDays(
   anchor: Date,
 ): Date[] {
-  const firstDay = new Date(
-    anchor.getFullYear(),
-    anchor.getMonth(),
-    1,
-  );
+  const firstDay =
+    new Date(
+      anchor.getFullYear(),
+      anchor.getMonth(),
+      1,
+    );
 
   const weekday =
     firstDay.getDay();
@@ -143,10 +166,11 @@ function getMonthDays(
       ? 6
       : weekday - 1;
 
-  const start = addDays(
-    firstDay,
-    -mondayOffset,
-  );
+  const start =
+    addDays(
+      firstDay,
+      -mondayOffset,
+    );
 
   return Array.from(
     {
@@ -164,13 +188,15 @@ function getBookingStyle(
   status: Booking["status"],
 ): string {
   if (
-    status === "completed"
+    status ===
+    "completed"
   ) {
     return "border-[var(--brand)]/20 bg-[var(--brand-soft)] text-[var(--brand-deep)]";
   }
 
   if (
-    status === "cancelled"
+    status ===
+    "cancelled"
   ) {
     return "border-[var(--urgent)]/20 bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
   }
@@ -270,7 +296,9 @@ function ClockIcon() {
 function ChevronIcon({
   direction,
 }: {
-  direction: "left" | "right";
+  direction:
+    | "left"
+    | "right";
 }) {
   return (
     <svg
@@ -281,7 +309,8 @@ function ChevronIcon({
       className="size-4"
       aria-hidden="true"
     >
-      {direction === "left" ? (
+      {direction ===
+      "left" ? (
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -309,9 +338,9 @@ export default function DoctorCalendar() {
   const [
     doctorId,
     setDoctorId,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     bookings,
@@ -323,7 +352,9 @@ export default function DoctorCalendar() {
   const [
     slots,
     setSlots,
-  ] = useState<Slot[]>([]);
+  ] = useState<Slot[]>(
+    [],
+  );
 
   const [
     calendarView,
@@ -336,7 +367,9 @@ export default function DoctorCalendar() {
     selectedDate,
     setSelectedDate,
   ] = useState(
-    toISODate(new Date()),
+    toISODate(
+      new Date(),
+    ),
   );
 
   const [
@@ -361,16 +394,16 @@ export default function DoctorCalendar() {
   const [
     error,
     setError,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     success,
     setSuccess,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   function refreshData(
     id: string,
@@ -378,7 +411,8 @@ export default function DoctorCalendar() {
     const doctorBookings =
       getAllBookings().filter(
         (booking) =>
-          booking.doctorId === id,
+          booking.doctorId ===
+          id,
       );
 
     setBookings(
@@ -423,10 +457,71 @@ export default function DoctorCalendar() {
     );
   }, []);
 
+  useEffect(() => {
+    if (!doctorId) {
+      return;
+    }
+
+    const currentDoctorId =
+      doctorId;
+
+    function handleBookingsUpdated() {
+      refreshData(
+        currentDoctorId,
+      );
+    }
+
+    function handleSlotsUpdated(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<{
+          doctorId?: string;
+        }>;
+
+      if (
+        customEvent.detail
+          ?.doctorId !==
+        currentDoctorId
+      ) {
+        return;
+      }
+
+      setSlots(
+        getSlotsForDoctor(
+          currentDoctorId,
+        ),
+      );
+    }
+
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    window.addEventListener(
+      "schedula:slots-updated",
+      handleSlotsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
+      );
+
+      window.removeEventListener(
+        "schedula:slots-updated",
+        handleSlotsUpdated,
+      );
+    };
+  }, [doctorId]);
+
   const visibleDays =
     useMemo(() => {
       if (
-        calendarView === "day"
+        calendarView ===
+        "day"
       ) {
         return [
           parseDate(
@@ -436,7 +531,8 @@ export default function DoctorCalendar() {
       }
 
       if (
-        calendarView === "week"
+        calendarView ===
+        "week"
       ) {
         const start =
           getWeekStart(
@@ -523,7 +619,8 @@ export default function DoctorCalendar() {
   ) {
     return bookings.filter(
       (booking) =>
-        booking.date === date,
+        booking.date ===
+        date,
     );
   }
 
@@ -623,19 +720,26 @@ export default function DoctorCalendar() {
     booking: Booking,
     newSlot: Slot,
   ) {
-    if (!booking.patientId) {
+    if (
+      !booking.patientId
+    ) {
       return;
     }
 
-    createNotification({
+    createPatientNotification({
       userId:
         booking.patientId,
+
       title:
         "Appointment rescheduled",
+
       message: `Your appointment has been rescheduled to ${formatFullDate(
         newSlot.date,
       )} at ${newSlot.time}.`,
-      type: "appointment",
+
+      type:
+        "appointment",
+
       appointmentId:
         booking.id,
     });
@@ -651,11 +755,18 @@ export default function DoctorCalendar() {
       return;
     }
 
+    const currentDoctorId =
+      doctorId;
+
+    const currentBooking =
+      selectedBooking;
+
     setError(null);
+
     setSuccess(null);
 
     const currentStatus =
-      selectedBooking.status;
+      currentBooking.status;
 
     if (
       currentStatus !==
@@ -686,117 +797,243 @@ export default function DoctorCalendar() {
       return;
     }
 
-    /*
-      Reserve the new slot first.
-
-      This prevents the existing
-      appointment from losing its
-      current slot if the new slot
-      has already been taken.
-    */
-    const newSlotResult =
-      bookSlot(
-        doctorId,
-        newSlot.id,
+    const latestSlots =
+      getSlotsForDoctor(
+        currentDoctorId,
       );
 
-    if (!newSlotResult) {
+    const latestNewSlot =
+      latestSlots.find(
+        (slot) =>
+          slot.id ===
+          newSlot.id,
+      );
+
+    if (
+      !latestNewSlot ||
+      latestNewSlot.status !==
+        "available"
+    ) {
+      setError(
+        "This slot is no longer available. Please select another slot.",
+      );
+
+      setSlots(
+        latestSlots,
+      );
+
+      return;
+    }
+
+    /*
+     * UPCOMING:
+     *
+     * Existing slot is booked.
+     *
+     * Swap:
+     *
+     * old slot -> available
+     * new slot -> booked
+     */
+    if (
+      currentStatus ===
+      "upcoming"
+    ) {
+      const previousSlotId =
+        currentBooking.slotId;
+
+      const updatedSlots =
+        rescheduleSlot(
+          currentDoctorId,
+          previousSlotId,
+          latestNewSlot.id,
+        );
+
+      if (!updatedSlots) {
+        setError(
+          "This slot is no longer available. Please select another slot.",
+        );
+
+        setSlots(
+          getSlotsForDoctor(
+            currentDoctorId,
+          ),
+        );
+
+        return;
+      }
+
+      const updatedBooking =
+        rescheduleBooking(
+          currentBooking.id,
+          {
+            slotId:
+              latestNewSlot.id,
+
+            date:
+              latestNewSlot.date,
+
+            time:
+              latestNewSlot.time,
+
+            status:
+              "upcoming",
+          },
+        );
+
+      if (!updatedBooking) {
+        const rollbackResult =
+          rescheduleSlot(
+            currentDoctorId,
+            latestNewSlot.id,
+            previousSlotId,
+          );
+
+        if (
+          rollbackResult
+        ) {
+          setSlots(
+            rollbackResult,
+          );
+        } else {
+          setSlots(
+            getSlotsForDoctor(
+              currentDoctorId,
+            ),
+          );
+        }
+
+        refreshData(
+          currentDoctorId,
+        );
+
+        setError(
+          "The appointment could not be updated. The original slot was restored.",
+        );
+
+        return;
+      }
+
+      const refreshedBookings =
+        getAllBookings().filter(
+          (booking) =>
+            booking.doctorId ===
+            currentDoctorId,
+        );
+
+      setBookings(
+        refreshedBookings,
+      );
+
+      setSlots(
+        updatedSlots,
+      );
+
+      setSelectedBooking(
+        updatedBooking,
+      );
+
+      setIsRescheduling(
+        false,
+      );
+
+      notifyPatientOfReschedule(
+        updatedBooking,
+        latestNewSlot,
+      );
+
+      setSuccess(
+        "Appointment successfully rescheduled and moved to upcoming.",
+      );
+
+      return;
+    }
+
+    /*
+     * DECLINED:
+     *
+     * The original slot was
+     * already released when the
+     * appointment was declined.
+     *
+     * Therefore only the new
+     * slot is booked.
+     */
+    const bookedSlots =
+      bookSlot(
+        currentDoctorId,
+        latestNewSlot.id,
+      );
+
+    if (!bookedSlots) {
       setError(
         "This slot is no longer available. Please select another slot.",
       );
 
       setSlots(
         getSlotsForDoctor(
-          doctorId,
+          currentDoctorId,
         ),
       );
 
       return;
     }
 
-    /*
-      A declined appointment has
-      already released its original
-      slot when it was declined.
-
-      Therefore we MUST NOT call
-      releaseSlot() for declined
-      appointments here.
-
-      For an upcoming appointment,
-      the existing slot is still
-      booked and must be released.
-    */
-    if (
-      currentStatus ===
-      "upcoming"
-    ) {
-      releaseSlot(
-        doctorId,
-        selectedBooking.slotId,
-      );
-    }
-
-    const updatedBookings =
-      updateBooking(
-        selectedBooking.id,
+    const updatedBooking =
+      rescheduleBooking(
+        currentBooking.id,
         {
           slotId:
-            newSlot.id,
+            latestNewSlot.id,
+
           date:
-            newSlot.date,
+            latestNewSlot.date,
+
           time:
-            newSlot.time,
+            latestNewSlot.time,
+
           status:
             "upcoming",
         },
       );
 
-    const updatedBooking =
-      updatedBookings.find(
-        (booking) =>
-          booking.id ===
-          selectedBooking.id,
-      ) ?? null;
-
     if (!updatedBooking) {
-      /*
-        This should not normally
-        happen, but if the booking
-        cannot be found after the
-        slot was reserved, release
-        the newly booked slot to
-        avoid leaving it locked.
-      */
       releaseSlot(
-        doctorId,
-        newSlot.id,
+        currentDoctorId,
+        latestNewSlot.id,
       );
 
       setSlots(
         getSlotsForDoctor(
-          doctorId,
+          currentDoctorId,
         ),
       );
 
+      refreshData(
+        currentDoctorId,
+      );
+
       setError(
-        "The appointment could not be updated. Please try again.",
+        "The appointment could not be updated. The new slot was released.",
       );
 
       return;
     }
 
-    setBookings(
-      updatedBookings.filter(
+    const refreshedBookings =
+      getAllBookings().filter(
         (booking) =>
           booking.doctorId ===
-          doctorId,
-      ),
+          currentDoctorId,
+      );
+
+    setBookings(
+      refreshedBookings,
     );
 
     setSlots(
       getSlotsForDoctor(
-        doctorId,
+        currentDoctorId,
       ),
     );
 
@@ -810,7 +1047,7 @@ export default function DoctorCalendar() {
 
     notifyPatientOfReschedule(
       updatedBooking,
-      newSlot,
+      latestNewSlot,
     );
 
     setSuccess(
@@ -819,7 +1056,8 @@ export default function DoctorCalendar() {
   }
 
   if (
-    pageStatus === "loading"
+    pageStatus ===
+    "loading"
   ) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
@@ -866,7 +1104,9 @@ export default function DoctorCalendar() {
   }
 
   const today =
-    toISODate(new Date());
+    toISODate(
+      new Date(),
+    );
 
   const calendarTitle =
     calendarView ===

@@ -3,7 +3,8 @@ import type {
   BookingStatus,
 } from "@/types/booking";
 
-const KEY = "schedula:bookings";
+const KEY =
+  "schedula:bookings";
 
 type StoredBooking = Omit<
   Booking,
@@ -13,7 +14,8 @@ type StoredBooking = Omit<
 };
 
 function isBrowser() {
-  return typeof window !== "undefined";
+  return typeof window !==
+    "undefined";
 }
 
 function normalizeBooking(
@@ -22,7 +24,8 @@ function normalizeBooking(
   return {
     ...booking,
     patientId:
-      booking.patientId ?? "",
+      booking.patientId ??
+      "",
   };
 }
 
@@ -33,14 +36,18 @@ function readBookings(): Booking[] {
 
   try {
     const raw =
-      window.localStorage.getItem(KEY);
+      window.localStorage.getItem(
+        KEY,
+      );
 
     if (!raw) {
       return [];
     }
 
     const bookings =
-      JSON.parse(raw) as StoredBooking[];
+      JSON.parse(
+        raw,
+      ) as StoredBooking[];
 
     return bookings.map(
       normalizeBooking,
@@ -78,7 +85,8 @@ export function getBookingById(
 ): Booking | undefined {
   return readBookings().find(
     (booking) =>
-      booking.id === bookingId,
+      booking.id ===
+      bookingId,
   );
 }
 
@@ -87,7 +95,8 @@ export function getBookingsByPatientId(
 ): Booking[] {
   return readBookings().filter(
     (booking) =>
-      booking.patientId === patientId,
+      booking.patientId ===
+      patientId,
   );
 }
 
@@ -96,7 +105,8 @@ export function getBookingsByDoctorId(
 ): Booking[] {
   return readBookings().filter(
     (booking) =>
-      booking.doctorId === doctorId,
+      booking.doctorId ===
+      doctorId,
   );
 }
 
@@ -119,7 +129,8 @@ export function updateBookingStatus(
   const updated =
     readBookings().map(
       (booking) =>
-        booking.id === bookingId
+        booking.id ===
+        bookingId
           ? {
               ...booking,
               status,
@@ -127,7 +138,9 @@ export function updateBookingStatus(
           : booking,
     );
 
-  writeBookings(updated);
+  writeBookings(
+    updated,
+  );
 
   return updated;
 }
@@ -147,7 +160,8 @@ export function updateBooking(
   const updated =
     readBookings().map(
       (booking) =>
-        booking.id === bookingId
+        booking.id ===
+        bookingId
           ? {
               ...booking,
               ...updates,
@@ -155,7 +169,84 @@ export function updateBooking(
           : booking,
     );
 
-  writeBookings(updated);
+  writeBookings(
+    updated,
+  );
 
   return updated;
+}
+
+/**
+ * Updates an existing appointment
+ * with its new slot information.
+ *
+ * All appointment fields related
+ * to the reschedule are written
+ * together:
+ *
+ * - slotId
+ * - date
+ * - time
+ * - status
+ *
+ * No second booking is created.
+ *
+ * Returns the updated booking,
+ * or null if the appointment
+ * no longer exists.
+ */
+export function rescheduleBooking(
+  bookingId: string,
+  updates: Pick<
+    Booking,
+    | "slotId"
+    | "date"
+    | "time"
+    | "status"
+  >,
+): Booking | null {
+  const bookings =
+    readBookings();
+
+  let updatedBooking:
+    | Booking
+    | null = null;
+
+  const updated =
+    bookings.map(
+      (booking) => {
+        if (
+          booking.id !==
+          bookingId
+        ) {
+          return booking;
+        }
+
+        updatedBooking = {
+          ...booking,
+          slotId:
+            updates.slotId,
+          date:
+            updates.date,
+          time:
+            updates.time,
+          status:
+            updates.status,
+        };
+
+        return updatedBooking;
+      },
+    );
+
+  if (
+    !updatedBooking
+  ) {
+    return null;
+  }
+
+  writeBookings(
+    updated,
+  );
+
+  return updatedBooking;
 }
