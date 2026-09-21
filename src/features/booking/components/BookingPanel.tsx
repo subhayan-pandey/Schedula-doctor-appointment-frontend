@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -96,42 +97,55 @@ export default function BookingPanel({
     string | null
   >(null);
 
-  function refreshSlots() {
-    const latestSlots =
-      getSlotsForDoctor(
-        doctorId,
+  const refreshSlots =
+    useCallback(() => {
+      const latestSlots =
+        getSlotsForDoctor(
+          doctorId,
+        );
+
+      setSlots(
+        latestSlots,
       );
 
-    setSlots(
-      latestSlots,
-    );
+      /*
+       * If the currently selected
+       * slot has become unavailable,
+       * clear it immediately.
+       *
+       * The functional state update
+       * lets this callback remain
+       * dependent only on doctorId.
+       */
+      setSelectedSlotId(
+        (currentSelectedSlotId) => {
+          if (
+            !currentSelectedSlotId
+          ) {
+            return null;
+          }
 
-    /*
-     * If the currently selected
-     * slot has become unavailable,
-     * clear it immediately.
-     */
-    if (
-      selectedSlotId
-    ) {
-      const selectedSlot =
-        latestSlots.find(
-          (slot) =>
-            slot.id ===
-            selectedSlotId,
-        );
+          const selectedSlot =
+            latestSlots.find(
+              (slot) =>
+                slot.id ===
+                currentSelectedSlotId,
+            );
 
-      if (
-        !selectedSlot ||
-        selectedSlot.status !==
-          "available"
-      ) {
-        setSelectedSlotId(
-          null,
-        );
-      }
-    }
-  }
+          if (
+            !selectedSlot ||
+            selectedSlot.status !==
+              "available"
+          ) {
+            return null;
+          }
+
+          return currentSelectedSlotId;
+        },
+      );
+    }, [
+      doctorId,
+    ]);
 
   useEffect(() => {
     Promise.resolve().then(
@@ -144,7 +158,7 @@ export default function BookingPanel({
       },
     );
   }, [
-    doctorId,
+    refreshSlots,
   ]);
 
   /*
@@ -186,7 +200,7 @@ export default function BookingPanel({
     };
   }, [
     doctorId,
-    selectedSlotId,
+    refreshSlots,
   ]);
 
   const slotsForDate =
