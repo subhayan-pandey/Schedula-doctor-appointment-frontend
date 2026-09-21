@@ -1,10 +1,17 @@
-import type { Slot } from "@/types/slot";
-import { buildSeedSlots } from "@/lib/mock-data/slots";
+import type {
+  Slot,
+} from "@/types/slot";
 
-const KEY_PREFIX = "schedula:slots:";
+import {
+  buildSeedSlots,
+} from "@/lib/mock-data/slots";
+
+const KEY_PREFIX =
+  "schedula:slots:";
 
 function isBrowser() {
-  return typeof window !== "undefined";
+  return typeof window !==
+    "undefined";
 }
 
 function emitSlotsUpdated(
@@ -34,7 +41,8 @@ function readSlots(
   }
 
   const key =
-    KEY_PREFIX + doctorId;
+    KEY_PREFIX +
+    doctorId;
 
   const raw =
     window.localStorage.getItem(
@@ -43,19 +51,27 @@ function readSlots(
 
   if (raw) {
     try {
-      return JSON.parse(raw) as Slot[];
+      return JSON.parse(
+        raw,
+      ) as Slot[];
     } catch {
-      // Fall through and reseed if
-      // the stored value is corrupted.
+      /*
+       * Fall through and reseed
+       * corrupted storage.
+       */
     }
   }
 
   const seeded =
-    buildSeedSlots(doctorId);
+    buildSeedSlots(
+      doctorId,
+    );
 
   window.localStorage.setItem(
     key,
-    JSON.stringify(seeded),
+    JSON.stringify(
+      seeded,
+    ),
   );
 
   return seeded;
@@ -70,8 +86,11 @@ function writeSlots(
   }
 
   window.localStorage.setItem(
-    KEY_PREFIX + doctorId,
-    JSON.stringify(slots),
+    KEY_PREFIX +
+      doctorId,
+    JSON.stringify(
+      slots,
+    ),
   );
 
   emitSlotsUpdated(
@@ -80,39 +99,40 @@ function writeSlots(
 }
 
 /**
- * Reads the doctor's current
+ * Returns the doctor's current
  * slot calendar.
- *
- * The calendar is seeded on
- * first access.
  */
 export function getSlotsForDoctor(
   doctorId: string,
 ): Slot[] {
-  return readSlots(doctorId);
+  return readSlots(
+    doctorId,
+  );
 }
 
 /**
- * Marks an available slot as
- * booked.
+ * Books an available slot.
  *
  * Returns null when:
- * - the slot does not exist
- * - the slot belongs to another
+ * - slot does not exist
+ * - slot belongs to another
  *   doctor
- * - the slot is not available
+ * - slot is not available
  */
 export function bookSlot(
   doctorId: string,
   slotId: string,
 ): Slot[] | null {
   const slots =
-    readSlots(doctorId);
+    readSlots(
+      doctorId,
+    );
 
   const target =
     slots.find(
       (slot) =>
-        slot.id === slotId,
+        slot.id ===
+        slotId,
     );
 
   if (
@@ -126,14 +146,16 @@ export function bookSlot(
   }
 
   const updated =
-    slots.map((slot) =>
-      slot.id === slotId
-        ? {
-            ...slot,
-            status:
-              "booked" as const,
-          }
-        : slot,
+    slots.map(
+      (slot) =>
+        slot.id ===
+        slotId
+          ? {
+              ...slot,
+              status:
+                "booked" as const,
+            }
+          : slot,
     );
 
   writeSlots(
@@ -145,25 +167,21 @@ export function bookSlot(
 }
 
 /**
- * Reserves a new available slot
- * and releases the currently
- * booked slot in the same
- * localStorage write.
+ * Atomically swaps an existing
+ * booked slot with a new
+ * available slot.
  *
- * This operation is intended
- * for rescheduling an existing
+ * Used for rescheduling an
  * upcoming appointment.
  *
- * Returns null when:
- * - the current slot does not
- *   exist
- * - the current slot is not
- *   booked
- * - the new slot does not exist
- * - the new slot is not available
- * - either slot belongs to
- *   another doctor
- * - both slot IDs are identical
+ * old slot:
+ *     booked → available
+ *
+ * new slot:
+ *     available → booked
+ *
+ * Both changes are persisted
+ * through one localStorage write.
  */
 export function rescheduleSlot(
   doctorId: string,
@@ -178,7 +196,9 @@ export function rescheduleSlot(
   }
 
   const slots =
-    readSlots(doctorId);
+    readSlots(
+      doctorId,
+    );
 
   const currentSlot =
     slots.find(
@@ -210,6 +230,11 @@ export function rescheduleSlot(
     return null;
   }
 
+  /*
+   * The appointment being
+   * rescheduled must still own
+   * its original booked slot.
+   */
   if (
     currentSlot.status !==
     "booked"
@@ -217,6 +242,10 @@ export function rescheduleSlot(
     return null;
   }
 
+  /*
+   * The destination must be
+   * genuinely available.
+   */
   if (
     newSlot.status !==
     "available"
@@ -225,31 +254,33 @@ export function rescheduleSlot(
   }
 
   const updated =
-    slots.map((slot) => {
-      if (
-        slot.id ===
-        currentSlotId
-      ) {
-        return {
-          ...slot,
-          status:
-            "available" as const,
-        };
-      }
+    slots.map(
+      (slot) => {
+        if (
+          slot.id ===
+          currentSlotId
+        ) {
+          return {
+            ...slot,
+            status:
+              "available" as const,
+          };
+        }
 
-      if (
-        slot.id ===
-        newSlotId
-      ) {
-        return {
-          ...slot,
-          status:
-            "booked" as const,
-        };
-      }
+        if (
+          slot.id ===
+          newSlotId
+        ) {
+          return {
+            ...slot,
+            status:
+              "booked" as const,
+          };
+        }
 
-      return slot;
-    });
+        return slot;
+      },
+    );
 
   writeSlots(
     doctorId,
@@ -260,8 +291,8 @@ export function rescheduleSlot(
 }
 
 /**
- * Adds a new available slot
- * to the doctor's calendar.
+ * Creates a new available
+ * appointment slot.
  */
 export function createSlot(
   doctorId: string,
@@ -272,15 +303,43 @@ export function createSlot(
   },
 ): Slot[] {
   const slots =
-    readSlots(doctorId);
+    readSlots(
+      doctorId,
+    );
+
+  const duplicate =
+    slots.some(
+      (existing) =>
+        existing.date ===
+          slot.date &&
+        existing.time ===
+          slot.time,
+    );
+
+  /*
+   * Do not create two identical
+   * availability slots.
+   */
+  if (duplicate) {
+    return slots;
+  }
 
   const newSlot: Slot = {
     id: `${doctorId}-${slot.date}-${slot.period.toLowerCase()}-${Date.now()}`,
+
     doctorId,
-    date: slot.date,
-    time: slot.time,
-    period: slot.period,
-    status: "available",
+
+    date:
+      slot.date,
+
+    time:
+      slot.time,
+
+    period:
+      slot.period,
+
+    status:
+      "available",
   };
 
   const updated = [
@@ -297,23 +356,25 @@ export function createSlot(
 }
 
 /**
- * Removes a slot entirely.
+ * Removes an available or
+ * unavailable slot.
  *
- * Booked slots cannot be
- * removed because they belong
- * to appointments.
+ * Booked slots are protected.
  */
 export function removeSlot(
   doctorId: string,
   slotId: string,
 ): Slot[] {
   const slots =
-    readSlots(doctorId);
+    readSlots(
+      doctorId,
+    );
 
   const target =
     slots.find(
       (slot) =>
-        slot.id === slotId,
+        slot.id ===
+        slotId,
     );
 
   if (
@@ -326,7 +387,8 @@ export function removeSlot(
   const updated =
     slots.filter(
       (slot) =>
-        slot.id !== slotId,
+        slot.id !==
+        slotId,
     );
 
   writeSlots(
@@ -338,38 +400,44 @@ export function removeSlot(
 }
 
 /**
- * Toggles an available /
- * unavailable slot.
+ * Toggles availability.
  *
- * Booked slots remain
- * untouched.
+ * Booked slots cannot be
+ * toggled because they belong
+ * to active appointment records.
  */
 export function toggleSlotAvailability(
   doctorId: string,
   slotId: string,
 ): Slot[] {
   const slots =
-    readSlots(doctorId);
+    readSlots(
+      doctorId,
+    );
 
   const updated =
-    slots.map((slot) => {
-      if (
-        slot.id !== slotId ||
-        slot.status ===
-          "booked"
-      ) {
-        return slot;
-      }
-
-      return {
-        ...slot,
-        status:
+    slots.map(
+      (slot) => {
+        if (
+          slot.id !==
+            slotId ||
           slot.status ===
-          "available"
-            ? "unavailable"
-            : "available",
-      } as Slot;
-    });
+            "booked"
+        ) {
+          return slot;
+        }
+
+        return {
+          ...slot,
+
+          status:
+            slot.status ===
+            "available"
+              ? "unavailable"
+              : "available",
+        } as Slot;
+      },
+    );
 
   writeSlots(
     doctorId,
@@ -380,30 +448,65 @@ export function toggleSlotAvailability(
 }
 
 /**
- * Releases a booked slot
- * back to available.
+ * Releases a booked slot.
  *
- * Used when an appointment
- * is cancelled or moved
- * outside the dedicated
- * rescheduling transaction.
+ * Important:
+ * only a currently booked
+ * slot is released.
+ *
+ * This prevents a stale
+ * cancelled/declined booking
+ * from accidentally changing a
+ * slot that is already available
+ * or has been reused.
  */
 export function releaseSlot(
   doctorId: string,
   slotId: string,
 ): Slot[] {
   const slots =
-    readSlots(doctorId);
+    readSlots(
+      doctorId,
+    );
+
+  const target =
+    slots.find(
+      (slot) =>
+        slot.id ===
+        slotId,
+    );
+
+  if (
+    !target ||
+    target.doctorId !==
+      doctorId
+  ) {
+    return slots;
+  }
+
+  /*
+   * Already available or
+   * unavailable means there is
+   * nothing to release.
+   */
+  if (
+    target.status !==
+    "booked"
+  ) {
+    return slots;
+  }
 
   const updated =
-    slots.map((slot) =>
-      slot.id === slotId
-        ? {
-            ...slot,
-            status:
-              "available" as const,
-          }
-        : slot,
+    slots.map(
+      (slot) =>
+        slot.id ===
+        slotId
+          ? {
+              ...slot,
+              status:
+                "available" as const,
+            }
+          : slot,
     );
 
   writeSlots(

@@ -82,32 +82,71 @@ export default function DoctorDashboard() {
   const [
     status,
     setStatus,
-  ] = useState<Status>("loading");
+  ] = useState<Status>(
+    "loading",
+  );
 
   const [
     account,
     setAccount,
-  ] = useState<DoctorAccount | null>(null);
+  ] = useState<DoctorAccount | null>(
+    null,
+  );
 
   const [
     bookings,
     setBookings,
-  ] = useState<Booking[]>([]);
+  ] = useState<Booking[]>(
+    [],
+  );
 
   const [
     availableSlotCount,
     setAvailableSlotCount,
   ] = useState(0);
 
+  function refreshDashboard(
+    currentDoctorId: string,
+  ) {
+    const doctorBookings =
+      getAllBookings().filter(
+        (booking) =>
+          booking.doctorId ===
+          currentDoctorId,
+      );
+
+    setBookings(
+      doctorBookings,
+    );
+
+    const slots =
+      getSlotsForDoctor(
+        currentDoctorId,
+      );
+
+    setAvailableSlotCount(
+      slots.filter(
+        (slot) =>
+          slot.status ===
+          "available",
+      ).length,
+    );
+  }
+
   useEffect(() => {
     Promise.resolve().then(() => {
-      const session = getSession();
+      const session =
+        getSession();
 
       if (
         !session ||
-        session.role !== "doctor"
+        session.role !==
+          "doctor"
       ) {
-        setStatus("unauthorized");
+        setStatus(
+          "unauthorized",
+        );
+
         return;
       }
 
@@ -115,36 +154,88 @@ export default function DoctorDashboard() {
         getDoctorAccount(),
       );
 
-      const doctorBookings =
-        getAllBookings().filter(
-          (booking) =>
-            booking.doctorId ===
-            session.id,
-        );
-
-      setBookings(
-        doctorBookings,
-      );
-
-      const slots =
-        getSlotsForDoctor(
-          session.id,
-        );
-
-      setAvailableSlotCount(
-        slots.filter(
-          (slot) =>
-            slot.status ===
-            "available",
-        ).length,
+      refreshDashboard(
+        session.id,
       );
 
       setStatus("ready");
     });
   }, []);
 
+  /*
+   * Keep dashboard statistics
+   * synchronized with booking and
+   * slot changes made elsewhere.
+   */
+  useEffect(() => {
+    const session =
+      getSession();
+
+    if (
+      !session ||
+      session.role !==
+        "doctor"
+    ) {
+      return;
+    }
+
+    const currentDoctorId =
+      session.id;
+
+    function handleBookingsUpdated() {
+      refreshDashboard(
+        currentDoctorId,
+      );
+    }
+
+    function handleSlotsUpdated(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<{
+          doctorId?: string;
+        }>;
+
+      if (
+        customEvent.detail
+          ?.doctorId !==
+        currentDoctorId
+      ) {
+        return;
+      }
+
+      refreshDashboard(
+        currentDoctorId,
+      );
+    }
+
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    window.addEventListener(
+      "schedula:slots-updated",
+      handleSlotsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
+      );
+
+      window.removeEventListener(
+        "schedula:slots-updated",
+        handleSlotsUpdated,
+      );
+    };
+  }, []);
+
   const today =
-    toISODate(new Date());
+    toISODate(
+      new Date(),
+    );
 
   const todayBookings =
     useMemo(
@@ -224,14 +315,21 @@ export default function DoctorDashboard() {
       return {
         total:
           bookings.length,
+
         upcoming:
           upcomingCount,
+
         completed:
           completedCount,
+
         pending,
+
         confirmed,
+
         cancelled,
+
         missed,
+
         patientCount,
       };
     }, [
@@ -241,7 +339,8 @@ export default function DoctorDashboard() {
     ]);
 
   if (
-    status === "loading"
+    status ===
+    "loading"
   ) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">
@@ -301,30 +400,37 @@ export default function DoctorDashboard() {
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Upcoming"
-          value={upcomingCount}
+          value={
+            upcomingCount
+          }
           description="Appointments scheduled"
         />
 
         <StatCard
           label="Completed"
-          value={completedCount}
+          value={
+            completedCount
+          }
           description="Visits completed"
         />
 
         <StatCard
           label="Available slots"
-          value={availableSlotCount}
+          value={
+            availableSlotCount
+          }
           description="Open for booking"
         />
 
         <StatCard
           label="Today"
-          value={todayBookings.length}
+          value={
+            todayBookings.length
+          }
           description="Appointments today"
         />
       </div>
 
-      {/* Analytics Snapshot */}
       <section className="mt-8">
         <div className="flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -363,7 +469,9 @@ export default function DoctorDashboard() {
               </p>
 
               <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {analyticsSnapshot.total}
+                {
+                  analyticsSnapshot.total
+                }
               </p>
             </div>
 
@@ -373,7 +481,9 @@ export default function DoctorDashboard() {
               </p>
 
               <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {analyticsSnapshot.completed}
+                {
+                  analyticsSnapshot.completed
+                }
               </p>
             </div>
 
@@ -383,7 +493,9 @@ export default function DoctorDashboard() {
               </p>
 
               <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {analyticsSnapshot.upcoming}
+                {
+                  analyticsSnapshot.upcoming
+                }
               </p>
             </div>
 
@@ -393,7 +505,9 @@ export default function DoctorDashboard() {
               </p>
 
               <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {analyticsSnapshot.patientCount}
+                {
+                  analyticsSnapshot.patientCount
+                }
               </p>
             </div>
           </div>
@@ -405,7 +519,10 @@ export default function DoctorDashboard() {
               </p>
 
               <p className="text-xs text-[var(--muted)]">
-                {analyticsSnapshot.total} total
+                {
+                  analyticsSnapshot.total
+                }{" "}
+                total
               </p>
             </div>
 
@@ -417,7 +534,9 @@ export default function DoctorDashboard() {
                   </span>
 
                   <span className="text-sm font-semibold text-[var(--ink)]">
-                    {analyticsSnapshot.pending}
+                    {
+                      analyticsSnapshot.pending
+                    }
                   </span>
                 </div>
               </div>
@@ -429,7 +548,9 @@ export default function DoctorDashboard() {
                   </span>
 
                   <span className="text-sm font-semibold text-[var(--ink)]">
-                    {analyticsSnapshot.confirmed}
+                    {
+                      analyticsSnapshot.confirmed
+                    }
                   </span>
                 </div>
               </div>
@@ -441,7 +562,9 @@ export default function DoctorDashboard() {
                   </span>
 
                   <span className="text-sm font-semibold text-[var(--ink)]">
-                    {analyticsSnapshot.completed}
+                    {
+                      analyticsSnapshot.completed
+                    }
                   </span>
                 </div>
               </div>
@@ -453,7 +576,9 @@ export default function DoctorDashboard() {
                   </span>
 
                   <span className="text-sm font-semibold text-[var(--ink)]">
-                    {analyticsSnapshot.cancelled}
+                    {
+                      analyticsSnapshot.cancelled
+                    }
                   </span>
                 </div>
               </div>
@@ -465,7 +590,9 @@ export default function DoctorDashboard() {
                   </span>
 
                   <span className="text-sm font-semibold text-[var(--ink)]">
-                    {analyticsSnapshot.missed}
+                    {
+                      analyticsSnapshot.missed
+                    }
                   </span>
                 </div>
               </div>
@@ -474,7 +601,6 @@ export default function DoctorDashboard() {
         </div>
       </section>
 
-      {/* Quick Actions */}
       <section className="mt-8">
         <div>
           <h2 className="text-lg font-semibold text-[var(--ink)]">
@@ -491,18 +617,26 @@ export default function DoctorDashboard() {
           {QUICK_LINKS.map(
             (link) => (
               <Link
-                key={link.href}
-                href={link.href}
+                key={
+                  link.href
+                }
+                href={
+                  link.href
+                }
                 className="group rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 transition hover:border-[var(--brand)] hover:shadow-sm"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-semibold text-[var(--ink)]">
-                      {link.title}
+                      {
+                        link.title
+                      }
                     </h3>
 
                     <p className="mt-1 text-sm text-[var(--muted)]">
-                      {link.description}
+                      {
+                        link.description
+                      }
                     </p>
                   </div>
 
@@ -516,7 +650,6 @@ export default function DoctorDashboard() {
         </div>
       </section>
 
-      {/* Today's Appointments */}
       <section className="mt-8">
         <div className="flex items-center justify-between">
           <div>
@@ -550,7 +683,9 @@ export default function DoctorDashboard() {
               {todayBookings.map(
                 (booking) => (
                   <div
-                    key={booking.id}
+                    key={
+                      booking.id
+                    }
                     className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>

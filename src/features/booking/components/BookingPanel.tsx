@@ -50,7 +50,8 @@ export default function BookingPanel({
     useRouter();
 
   const days = useMemo(
-    () => getNextDays(6),
+    () =>
+      getNextDays(6),
     [],
   );
 
@@ -74,7 +75,9 @@ export default function BookingPanel({
   const [
     slots,
     setSlots,
-  ] = useState<Slot[]>([]);
+  ] = useState<Slot[]>(
+    [],
+  );
 
   const [
     isLoading,
@@ -93,21 +96,98 @@ export default function BookingPanel({
     string | null
   >(null);
 
+  function refreshSlots() {
+    const latestSlots =
+      getSlotsForDoctor(
+        doctorId,
+      );
+
+    setSlots(
+      latestSlots,
+    );
+
+    /*
+     * If the currently selected
+     * slot has become unavailable,
+     * clear it immediately.
+     */
+    if (
+      selectedSlotId
+    ) {
+      const selectedSlot =
+        latestSlots.find(
+          (slot) =>
+            slot.id ===
+            selectedSlotId,
+        );
+
+      if (
+        !selectedSlot ||
+        selectedSlot.status !==
+          "available"
+      ) {
+        setSelectedSlotId(
+          null,
+        );
+      }
+    }
+  }
+
   useEffect(() => {
     Promise.resolve().then(
       () => {
-        setSlots(
-          getSlotsForDoctor(
-            doctorId,
-          ),
-        );
+        refreshSlots();
 
         setIsLoading(
           false,
         );
       },
     );
-  }, [doctorId]);
+  }, [
+    doctorId,
+  ]);
+
+  /*
+   * Keep patient booking
+   * availability synchronized
+   * with doctor slot/calendar
+   * changes.
+   */
+  useEffect(() => {
+    function handleSlotsUpdated(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<{
+          doctorId?: string;
+        }>;
+
+      if (
+        customEvent.detail
+          ?.doctorId !==
+        doctorId
+      ) {
+        return;
+      }
+
+      refreshSlots();
+    }
+
+    window.addEventListener(
+      "schedula:slots-updated",
+      handleSlotsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:slots-updated",
+        handleSlotsUpdated,
+      );
+    };
+  }, [
+    doctorId,
+    selectedSlotId,
+  ]);
 
   const slotsForDate =
     slots.filter(
@@ -147,7 +227,9 @@ export default function BookingPanel({
   }
 
   function handleConfirmBooking() {
-    if (!selectedSlotId) {
+    if (
+      !selectedSlotId
+    ) {
       return;
     }
 
@@ -183,6 +265,14 @@ export default function BookingPanel({
 
     window.setTimeout(
       () => {
+        /*
+         * bookSlot performs the
+         * final availability check
+         * against localStorage.
+         *
+         * This protects against
+         * stale UI state.
+         */
         const updatedSlots =
           bookSlot(
             doctorId,
@@ -218,7 +308,9 @@ export default function BookingPanel({
               selectedSlotId,
           );
 
-        if (!bookedSlot) {
+        if (
+          !bookedSlot
+        ) {
           setBookingError(
             "Unable to complete the booking. Please try again.",
           );
@@ -238,7 +330,8 @@ export default function BookingPanel({
           "Guest Patient";
 
         addBooking({
-          id: bookingId,
+          id:
+            bookingId,
 
           doctorId,
 
@@ -263,14 +356,6 @@ export default function BookingPanel({
             new Date().toISOString(),
         });
 
-        /*
-         * The newly created booking
-         * belongs to the doctor and
-         * starts as pending.
-         *
-         * Therefore this notification
-         * must be a doctor notification.
-         */
         createDoctorNotification({
           userId:
             doctorId,
@@ -289,6 +374,10 @@ export default function BookingPanel({
 
         setSlots(
           updatedSlots,
+        );
+
+        setSelectedSlotId(
+          null,
         );
 
         setIsBooking(

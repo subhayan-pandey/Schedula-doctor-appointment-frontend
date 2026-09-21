@@ -76,10 +76,17 @@ function writeBookings(
   );
 }
 
+/**
+ * Returns every booking stored
+ * in the application.
+ */
 export function getAllBookings(): Booking[] {
   return readBookings();
 }
 
+/**
+ * Returns a single booking.
+ */
 export function getBookingById(
   bookingId: string,
 ): Booking | undefined {
@@ -90,6 +97,10 @@ export function getBookingById(
   );
 }
 
+/**
+ * Returns all bookings belonging
+ * to a patient.
+ */
 export function getBookingsByPatientId(
   patientId: string,
 ): Booking[] {
@@ -100,6 +111,10 @@ export function getBookingsByPatientId(
   );
 }
 
+/**
+ * Returns all bookings belonging
+ * to a doctor.
+ */
 export function getBookingsByDoctorId(
   doctorId: string,
 ): Booking[] {
@@ -110,11 +125,31 @@ export function getBookingsByDoctorId(
   );
 }
 
+/**
+ * Adds a new booking.
+ */
 export function addBooking(
   booking: Booking,
 ): void {
   const bookings =
     readBookings();
+
+  /*
+   * Prevent accidental duplicate
+   * booking IDs.
+   */
+  const alreadyExists =
+    bookings.some(
+      (existing) =>
+        existing.id ===
+        booking.id,
+    );
+
+  if (
+    alreadyExists
+  ) {
+    return;
+  }
 
   writeBookings([
     ...bookings,
@@ -122,12 +157,24 @@ export function addBooking(
   ]);
 }
 
+/**
+ * Updates only the status of
+ * an existing booking.
+ *
+ * Returns the complete updated
+ * booking collection so callers
+ * can immediately refresh their
+ * local state.
+ */
 export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
 ): Booking[] {
+  const bookings =
+    readBookings();
+
   const updated =
-    readBookings().map(
+    bookings.map(
       (booking) =>
         booking.id ===
         bookingId
@@ -145,6 +192,14 @@ export function updateBookingStatus(
   return updated;
 }
 
+/**
+ * Updates appointment fields.
+ *
+ * Intended for ordinary booking
+ * updates where the caller does
+ * not need a dedicated reschedule
+ * transaction.
+ */
 export function updateBooking(
   bookingId: string,
   updates: Partial<
@@ -157,8 +212,11 @@ export function updateBooking(
     >
   >,
 ): Booking[] {
+  const bookings =
+    readBookings();
+
   const updated =
-    readBookings().map(
+    bookings.map(
       (booking) =>
         booking.id ===
         bookingId
@@ -177,12 +235,11 @@ export function updateBooking(
 }
 
 /**
- * Updates an existing appointment
- * with its new slot information.
+ * Reschedules an existing
+ * appointment.
  *
- * All appointment fields related
- * to the reschedule are written
- * together:
+ * The appointment's related
+ * fields are updated together:
  *
  * - slotId
  * - date
@@ -191,9 +248,10 @@ export function updateBooking(
  *
  * No second booking is created.
  *
- * Returns the updated booking,
- * or null if the appointment
- * no longer exists.
+ * Returns:
+ * - updated Booking when found
+ * - null when the booking no
+ *   longer exists
  */
 export function rescheduleBooking(
   bookingId: string,
@@ -224,12 +282,16 @@ export function rescheduleBooking(
 
         updatedBooking = {
           ...booking,
+
           slotId:
             updates.slotId,
+
           date:
             updates.date,
+
           time:
             updates.time,
+
           status:
             updates.status,
         };

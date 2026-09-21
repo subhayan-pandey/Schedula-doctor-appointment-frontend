@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -290,6 +294,7 @@ function ClockIcon() {
         cy="12"
         r="8.5"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -314,6 +319,7 @@ function LocationIcon() {
         strokeLinejoin="round"
         d="M19 10.25c0 4.5-7 10.25-7 10.25S5 14.75 5 10.25a7 7 0 1 1 14 0Z"
       />
+
       <circle
         cx="12"
         cy="10.25"
@@ -646,12 +652,6 @@ function downloadPrescription(
   prescription: Prescription,
   booking: Booking,
 ) {
-  /*
-   * Keep the existing browser-only download
-   * behavior. The actual PDF-generation
-   * requirement is handled separately; this
-   * part does not alter that existing flow.
-   */
   const doctor =
     getDoctorById(
       booking.doctorId,
@@ -755,25 +755,53 @@ export default function MyAppointments() {
     null,
   );
 
+  function refreshBookings() {
+    const session =
+      getSession();
+
+    if (
+      !session ||
+      session.role !== "patient"
+    ) {
+      setBookings([]);
+      return;
+    }
+
+    setBookings(
+      getBookingsByPatientId(
+        session.id,
+      ),
+    );
+  }
+
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session =
-        getSession();
+    Promise.resolve().then(
+      refreshBookings,
+    );
 
-      if (
-        !session ||
-        session.role !== "patient"
-      ) {
-        setBookings([]);
-        return;
-      }
+    /*
+     * Doctor actions and calendar
+     * actions update the shared
+     * booking store. Listen for
+     * that event so the patient
+     * portal reflects the new
+     * status immediately.
+     */
+    function handleBookingsUpdated() {
+      refreshBookings();
+    }
 
-      setBookings(
-        getBookingsByPatientId(
-          session.id,
-        ),
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
       );
-    });
+    };
   }, []);
 
   const visibleBookings =
@@ -820,24 +848,6 @@ export default function MyAppointments() {
       );
     }, [bookings]);
 
-  function refreshBookings() {
-    const session =
-      getSession();
-
-    if (
-      !session ||
-      session.role !== "patient"
-    ) {
-      return;
-    }
-
-    setBookings(
-      getBookingsByPatientId(
-        session.id,
-      ),
-    );
-  }
-
   function handleCancelDeclined(
     booking: Booking,
   ) {
@@ -852,14 +862,6 @@ export default function MyAppointments() {
       booking.id,
     );
 
-    /*
-     * The declined appointment's
-     * original slot is available again.
-     * Releasing it here is idempotent
-     * with the slot-store behavior and
-     * keeps the local appointment state
-     * consistent.
-     */
     releaseSlot(
       booking.doctorId,
       booking.slotId,
@@ -872,7 +874,9 @@ export default function MyAppointments() {
 
     refreshBookings();
 
-    setProcessingBookingId(null);
+    setProcessingBookingId(
+      null,
+    );
   }
 
   if (!getSession()) {
@@ -973,7 +977,8 @@ export default function MyAppointments() {
         </div>
 
         <div className="mt-5">
-          {visibleBookings.length === 0 ? (
+          {visibleBookings.length ===
+          0 ? (
             <EmptyState
               title={
                 emptyState.title
@@ -982,7 +987,8 @@ export default function MyAppointments() {
                 emptyState.description
               }
               action={
-                bookings.length === 0 ? (
+                bookings.length ===
+                0 ? (
                   <Link href="/doctors">
                     <Button>
                       Book appointment

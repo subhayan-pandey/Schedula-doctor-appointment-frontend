@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useEffect,
   useMemo,
@@ -24,7 +25,7 @@ import {
 } from "@/lib/doctors-store";
 
 import {
-  createNotification,
+  createPatientNotification,
 } from "@/lib/notifications-store";
 
 import {
@@ -51,7 +52,9 @@ type PageStatus =
 
 const FILTERS: {
   label: string;
-  status: BookingStatus | "all";
+  status:
+    | BookingStatus
+    | "all";
 }[] = [
   {
     label: "All",
@@ -150,18 +153,23 @@ function getStatusLabel(
 function getInitials(
   name: string,
 ) {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(
-      (part) =>
-        part.charAt(0).toUpperCase(),
-    )
-    .join("");
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(
+        (part) =>
+          part
+            .charAt(0)
+            .toUpperCase(),
+      )
+      .join("");
 
-  return initials || "PT";
+  return (
+    initials || "PT"
+  );
 }
 
 function CalendarIcon() {
@@ -198,6 +206,7 @@ function ClockIcon() {
         cy="12"
         r="8.5"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -222,6 +231,7 @@ function UserIcon() {
         cy="8"
         r="3"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -298,14 +308,16 @@ export default function DoctorAppointments() {
   const [
     doctorId,
     setDoctorId,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   const [
     bookings,
     setBookings,
-  ] = useState<Booking[]>([]);
+  ] = useState<Booking[]>(
+    [],
+  );
 
   const [
     activeFilter,
@@ -329,39 +341,79 @@ export default function DoctorAppointments() {
   const [
     processingBookingId,
     setProcessingBookingId,
-  ] = useState<string | null>(
-    null,
-  );
+  ] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session =
-        getSession();
+    Promise.resolve().then(
+      () => {
+        const session =
+          getSession();
 
-      if (
-        !session ||
-        session.role !== "doctor"
-      ) {
-        setPageStatus(
-          "unauthorized",
+        if (
+          !session ||
+          session.role !==
+            "doctor"
+        ) {
+          setPageStatus(
+            "unauthorized",
+          );
+
+          return;
+        }
+
+        setDoctorId(
+          session.id,
         );
 
-        return;
-      }
+        setBookings(
+          getBookingsByDoctorId(
+            session.id,
+          ),
+        );
 
-      setDoctorId(
-        session.id,
-      );
+        setPageStatus(
+          "ready",
+        );
+      },
+    );
+  }, []);
 
+  /*
+   * Keep the appointment page
+   * synchronized with changes made
+   * by the calendar, booking flow,
+   * or another appointment view.
+   */
+  useEffect(() => {
+    if (!doctorId) {
+      return;
+    }
+
+    const currentDoctorId =
+      doctorId;
+
+    function handleBookingsUpdated() {
       setBookings(
         getBookingsByDoctorId(
-          session.id,
+          currentDoctorId,
         ),
       );
+    }
 
-      setPageStatus("ready");
-    });
-  }, []);
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
+      );
+    };
+  }, [doctorId]);
 
   function refreshBookings() {
     if (!doctorId) {
@@ -381,13 +433,21 @@ export default function DoctorAppointments() {
         BookingStatus | "all",
         number
       > = {
-        all: bookings.length,
+        all:
+          bookings.length,
+
         pending: 0,
+
         confirmed: 0,
+
         upcoming: 0,
+
         declined: 0,
+
         completed: 0,
+
         cancelled: 0,
+
         missed: 0,
       };
 
@@ -442,7 +502,9 @@ export default function DoctorAppointments() {
               search &&
               !getSearchableBookingText(
                 booking,
-              ).includes(search)
+              ).includes(
+                search,
+              )
             ) {
               return false;
             }
@@ -451,8 +513,13 @@ export default function DoctorAppointments() {
           },
         );
 
-      return [...filtered].sort(
-        (first, second) => {
+      return [
+        ...filtered,
+      ].sort(
+        (
+          first,
+          second,
+        ) => {
           const firstValue =
             `${first.date} ${first.time}`;
 
@@ -473,9 +540,12 @@ export default function DoctorAppointments() {
   const hasActiveFilters =
     filters.search.trim()
       .length > 0 ||
-    filters.date.length > 0 ||
-    filters.status !== "all" ||
-    activeFilter !== "all";
+    filters.date.length >
+      0 ||
+    filters.status !==
+      "all" ||
+    activeFilter !==
+      "all";
 
   function notifyPatient(
     booking: Booking,
@@ -486,24 +556,45 @@ export default function DoctorAppointments() {
       | "confirmation"
       | "cancellation",
   ) {
-    if (!booking.patientId) {
+    if (
+      !booking.patientId
+    ) {
       return;
     }
 
-    createNotification({
-      userId:
-        booking.patientId,
-      title,
-      message,
-      type,
-      appointmentId:
-        booking.id,
-    });
+    createPatientNotification(
+      {
+        userId:
+          booking.patientId,
+
+        title,
+
+        message,
+
+        type,
+
+        appointmentId:
+          booking.id,
+      },
+    );
   }
 
+  /**
+   * Pending → Upcoming
+   *
+   * New appointments skip the
+   * old confirmed state.
+   */
   function handleConfirm(
     booking: Booking,
   ) {
+    if (
+      booking.status !==
+      "pending"
+    ) {
+      return;
+    }
+
     setProcessingBookingId(
       booking.id,
     );
@@ -531,10 +622,22 @@ export default function DoctorAppointments() {
     );
   }
 
+  /**
+   * Pending → Declined
+   *
+   * The pending booking owns
+   * a booked slot, so the slot
+   * is released when the doctor
+   * declines the request.
+   */
   function handleDecline(
     booking: Booking,
   ) {
-    if (!doctorId) {
+    if (
+      !doctorId ||
+      booking.status !==
+        "pending"
+    ) {
       return;
     }
 
@@ -542,14 +645,14 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "declined",
-    );
-
     releaseSlot(
       doctorId,
       booking.slotId,
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "declined",
     );
 
     notifyPatient(
@@ -570,9 +673,25 @@ export default function DoctorAppointments() {
     );
   }
 
+  /**
+   * Legacy support for old
+   * localStorage records that
+   * were created with
+   * status="confirmed".
+   *
+   * New confirmations do not
+   * use this state.
+   */
   function handleMarkUpcoming(
     booking: Booking,
   ) {
+    if (
+      booking.status !==
+      "confirmed"
+    ) {
+      return;
+    }
+
     setProcessingBookingId(
       booking.id,
     );
@@ -600,9 +719,19 @@ export default function DoctorAppointments() {
     );
   }
 
+  /**
+   * Upcoming → Completed
+   */
   function handleComplete(
     booking: Booking,
   ) {
+    if (
+      booking.status !==
+      "upcoming"
+    ) {
+      return;
+    }
+
     setProcessingBookingId(
       booking.id,
     );
@@ -626,9 +755,19 @@ export default function DoctorAppointments() {
     );
   }
 
+  /**
+   * Upcoming → Missed
+   */
   function handleMissed(
     booking: Booking,
   ) {
+    if (
+      booking.status !==
+      "upcoming"
+    ) {
+      return;
+    }
+
     setProcessingBookingId(
       booking.id,
     );
@@ -656,10 +795,25 @@ export default function DoctorAppointments() {
     );
   }
 
+  /**
+   * Pending/Upcoming →
+   * Cancelled
+   *
+   * Only release a slot when
+   * it is actually still booked.
+   */
   function handleCancel(
     booking: Booking,
   ) {
-    if (!doctorId) {
+    if (
+      !doctorId ||
+      booking.status ===
+        "completed" ||
+      booking.status ===
+        "missed" ||
+      booking.status ===
+        "cancelled"
+    ) {
       return;
     }
 
@@ -667,6 +821,13 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
+    /*
+     * For declined bookings
+     * the slot has already been
+     * released. releaseSlot()
+     * safely ignores an already
+     * available slot.
+     */
     releaseSlot(
       doctorId,
       booking.slotId,
@@ -684,7 +845,7 @@ export default function DoctorAppointments() {
         booking.date,
       )} at ${
         booking.time
-      } has been cancelled. The appointment slot is available again.`,
+      } has been cancelled.`,
       "cancellation",
     );
 
@@ -713,7 +874,9 @@ export default function DoctorAppointments() {
   }
 
   function handleStatusTabChange(
-    status: BookingStatus | "all",
+    status:
+      | BookingStatus
+      | "all",
   ) {
     setActiveFilter(
       status,
@@ -746,13 +909,17 @@ export default function DoctorAppointments() {
       processingBookingId ===
       booking.id;
 
-    switch (booking.status) {
+    switch (
+      booking.status
+    ) {
       case "pending":
         return (
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
             <Button
               size="sm"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleConfirm(
                   booking,
@@ -768,7 +935,9 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleDecline(
                   booking,
@@ -788,7 +957,9 @@ export default function DoctorAppointments() {
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
             <Button
               size="sm"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleMarkUpcoming(
                   booking,
@@ -801,7 +972,9 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleCancel(
                   booking,
@@ -818,7 +991,9 @@ export default function DoctorAppointments() {
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
             <Button
               size="sm"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleComplete(
                   booking,
@@ -831,7 +1006,9 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleMissed(
                   booking,
@@ -844,7 +1021,9 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={isProcessing}
+              disabled={
+                isProcessing
+              }
               onClick={() =>
                 handleCancel(
                   booking,
