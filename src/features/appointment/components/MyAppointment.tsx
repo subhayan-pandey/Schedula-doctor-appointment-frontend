@@ -648,6 +648,181 @@ function ReviewModal({
   );
 }
 
+function escapePdfText(
+  value: string,
+): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/[^\x20-\x7E]/g, "");
+}
+
+function wrapPdfText(
+  value: string,
+  maxLength = 78,
+): string[] {
+  const words =
+    value.trim().split(/\s+/);
+
+  if (
+    words.length === 0 ||
+    !value.trim()
+  ) {
+    return [""];
+  }
+
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    if (
+      current.length === 0
+    ) {
+      current = word;
+      continue;
+    }
+
+    const candidate =
+      `${current} ${word}`;
+
+    if (
+      candidate.length <=
+      maxLength
+    ) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
+}
+
+function buildPdfDocument(
+  lines: string[],
+): Blob {
+  const safeLines =
+    lines.flatMap((line) =>
+      line === ""
+        ? [""]
+        : wrapPdfText(line),
+    );
+
+  const contentLines: string[] =
+    [
+      "BT",
+      "/F1 10 Tf",
+      "50 760 Td",
+      "14 TL",
+    ];
+
+  safeLines.forEach(
+    (line, index) => {
+      if (index > 0) {
+        contentLines.push(
+          "0 -14 Td",
+        );
+      }
+
+      contentLines.push(
+        `(${escapePdfText(
+          line,
+        )}) Tj`,
+      );
+    },
+  );
+
+  contentLines.push(
+    "ET",
+  );
+
+  const stream =
+    contentLines.join(
+      "\n",
+    );
+
+  const objects: string[] = [];
+
+  objects.push(
+    "<< /Type /Catalog /Pages 2 0 R >>",
+  );
+
+  objects.push(
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+  );
+
+  objects.push(
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+  );
+
+  objects.push(
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+  );
+
+  objects.push(
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+  );
+
+  let pdf =
+    "%PDF-1.4\n";
+
+  const offsets: number[] =
+    [0];
+
+  objects.forEach(
+    (object, index) => {
+      offsets[index + 1] =
+        pdf.length;
+
+      pdf +=
+        `${index + 1} 0 obj\n${object}\nendobj\n`;
+    },
+  );
+
+  const xrefOffset =
+    pdf.length;
+
+  pdf +=
+    `xref\n0 ${objects.length + 1}\n`;
+
+  pdf +=
+    "0000000000 65535 f \n";
+
+  for (
+    let index = 1;
+    index <= objects.length;
+    index += 1
+  ) {
+    pdf += `${String(
+      offsets[index],
+    ).padStart(
+      10,
+      "0",
+    )} 00000 n \n`;
+  }
+
+  pdf +=
+    `trailer\n<< /Size ${
+      objects.length + 1
+    } /Root 1 0 R >>\n`;
+
+  pdf +=
+    `startxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob(
+    [pdf],
+    {
+      type: "application/pdf",
+    },
+  );
+}
+
 function downloadPrescription(
   prescription: Prescription,
   booking: Booking,
@@ -663,6 +838,7 @@ function downloadPrescription(
     `Doctor: ${
       doctor?.name ?? "Doctor"
     }`,
+    `Patient: ${booking.patientName}`,
     `Date: ${formatLongDate(
       booking.date,
     )}`,
@@ -673,31 +849,91 @@ function downloadPrescription(
     }`,
     "",
     "Medicines:",
-    ...prescription.medicines.flatMap(
-      (medicine) => [
-        `- ${medicine.name}`,
-        `  Dosage: ${medicine.dosage}`,
-        `  Duration: ${medicine.duration}`,
-        medicine.instructions
-          ? `  Instructions: ${medicine.instructions}`
-          : "",
-        "",
-      ],
-    ),
-    prescription.instructions
-      ? `General Instructions: ${prescription.instructions}`
-      : "",
   ];
 
-  const blob = new Blob(
-    [lines.join("\n")],
-    {
-      type: "text/plain;charset=utf-8",
+  prescription.medicines.forEach(
+    (medicine, index) => {
+      lines.push(
+        `${index + 1}. ${
+          medicine.name
+        }`,
+      );
+
+      lines.push(
+        `   Dosage: ${
+          medicine.dosage
+        }`,
+      );
+
+      lines.push(
+        `   Duration: ${
+          medicine.duration
+        }`,
+      );
+
+      if (
+        medicine.instructions
+      ) {
+        lines.push(
+          `   Instructions: ${
+            medicine.instructions
+          }`,
+        );
+      }
+
+      lines.push("");
     },
   );
 
+  if (
+    prescription.instructions
+  ) {
+    lines.push(
+      "General Instructions:",
+    );
+
+    lines.push(
+      prescription.instructions,
+    );
+
+    lines.push("");
+  }
+
+  lines.push(
+    `Created: ${new Date(
+      prescription.createdAt,
+    ).toLocaleDateString(
+      "en-IN",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      },
+    )}`,
+  );
+
+  lines.push(
+    `Updated: ${new Date(
+      prescription.updatedAt,
+    ).toLocaleDateString(
+      "en-IN",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      },
+    )}`,
+  );
+
+  const blob =
+    buildPdfDocument(
+      lines,
+    );
+
   const url =
-    URL.createObjectURL(blob);
+    URL.createObjectURL(
+      blob,
+    );
 
   const anchor =
     document.createElement(
@@ -707,7 +943,7 @@ function downloadPrescription(
   anchor.href = url;
 
   anchor.download =
-    `schedula-prescription-${booking.id}.txt`;
+    `schedula-prescription-${booking.id}.pdf`;
 
   document.body.appendChild(
     anchor,
@@ -717,17 +953,23 @@ function downloadPrescription(
 
   anchor.remove();
 
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => {
+    URL.revokeObjectURL(
+      url,
+    );
+  }, 1000);
 }
 
 export default function MyAppointments() {
   const [bookings, setBookings] =
     useState<Booking[]>([]);
 
-  const [activeStatus, setActiveStatus] =
-    useState<BookingStatus>(
-      "pending",
-    );
+  const [
+    activeStatus,
+    setActiveStatus,
+  ] = useState<BookingStatus>(
+    "pending",
+  );
 
   const [
     selectedPrescription,
@@ -746,6 +988,11 @@ export default function MyAppointments() {
   const [
     reviewRefreshKey,
     setReviewRefreshKey,
+  ] = useState(0);
+
+  const [
+    prescriptionRefreshKey,
+    setPrescriptionRefreshKey,
   ] = useState(0);
 
   const [
@@ -779,16 +1026,15 @@ export default function MyAppointments() {
       refreshBookings,
     );
 
-    /*
-     * Doctor actions and calendar
-     * actions update the shared
-     * booking store. Listen for
-     * that event so the patient
-     * portal reflects the new
-     * status immediately.
-     */
     function handleBookingsUpdated() {
       refreshBookings();
+    }
+
+    function handlePrescriptionsUpdated() {
+      setPrescriptionRefreshKey(
+        (value) =>
+          value + 1,
+      );
     }
 
     window.addEventListener(
@@ -796,10 +1042,20 @@ export default function MyAppointments() {
       handleBookingsUpdated,
     );
 
+    window.addEventListener(
+      "schedula:prescriptions-updated",
+      handlePrescriptionsUpdated,
+    );
+
     return () => {
       window.removeEventListener(
         "schedula:bookings-updated",
         handleBookingsUpdated,
+      );
+
+      window.removeEventListener(
+        "schedula:prescriptions-updated",
+        handlePrescriptionsUpdated,
       );
     };
   }, []);
@@ -1006,6 +1262,18 @@ export default function MyAppointments() {
                       booking.doctorId,
                     );
 
+                  /*
+                   * This intentionally reads
+                   * the prescription from
+                   * localStorage during render.
+                   * prescriptionRefreshKey
+                   * forces this component to
+                   * render again when the doctor
+                   * creates or edits one.
+                   */
+                  void prescriptionRefreshKey;
+                  void reviewRefreshKey;
+
                   const prescription =
                     booking.status ===
                     "completed"
@@ -1021,8 +1289,6 @@ export default function MyAppointments() {
                           booking.id,
                         )
                       : undefined;
-
-                  void reviewRefreshKey;
 
                   return (
                     <li
@@ -1225,7 +1491,7 @@ export default function MyAppointments() {
                                       )
                                     }
                                   >
-                                    Download prescription
+                                    Download PDF
                                   </Button>
                                 </>
                               )}

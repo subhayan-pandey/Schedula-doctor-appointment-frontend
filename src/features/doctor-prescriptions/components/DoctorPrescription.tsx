@@ -57,7 +57,9 @@ function createMedicine(): MedicineDraft {
 }
 
 function formatDate(value: string): string {
-  return new Date(`${value}T00:00:00`).toLocaleDateString(
+  return new Date(
+    `${value}T00:00:00`,
+  ).toLocaleDateString(
     "en-IN",
     {
       day: "numeric",
@@ -67,7 +69,9 @@ function formatDate(value: string): string {
   );
 }
 
-function formatTime(value: string): string {
+function formatTime(
+  value: string,
+): string {
   return value;
 }
 
@@ -75,7 +79,9 @@ export default function DoctorPrescriptions() {
   const [
     status,
     setStatus,
-  ] = useState<PageStatus>("loading");
+  ] = useState<PageStatus>(
+    "loading",
+  );
 
   const [
     doctorId,
@@ -90,17 +96,30 @@ export default function DoctorPrescriptions() {
   const [
     prescriptions,
     setPrescriptions,
-  ] = useState<Prescription[]>([]);
+  ] = useState<Prescription[]>(
+    [],
+  );
 
   const [
     selectedAppointment,
     setSelectedAppointment,
-  ] = useState<Booking | null>(null);
+  ] = useState<Booking | null>(
+    null,
+  );
 
   const [
     editingPrescription,
     setEditingPrescription,
-  ] = useState<Prescription | null>(null);
+  ] = useState<Prescription | null>(
+    null,
+  );
+
+  const [
+    viewingPrescription,
+    setViewingPrescription,
+  ] = useState<Prescription | null>(
+    null,
+  );
 
   const [
     diagnosis,
@@ -122,22 +141,30 @@ export default function DoctorPrescriptions() {
   const [
     error,
     setError,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
   const [
     success,
     setSuccess,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     Promise.resolve().then(() => {
-      const session = getSession();
+      const session =
+        getSession();
 
       if (
         !session ||
         session.role !== "doctor"
       ) {
-        setStatus("unauthorized");
+        setStatus(
+          "unauthorized",
+        );
+
         return;
       }
 
@@ -155,7 +182,9 @@ export default function DoctorPrescriptions() {
             session.id,
         );
 
-      setDoctorId(session.id);
+      setDoctorId(
+        session.id,
+      );
 
       setAppointments(
         doctorBookings.filter(
@@ -183,16 +212,31 @@ export default function DoctorPrescriptions() {
           ],
         ),
       );
-    }, [prescriptions]);
+    }, [
+      prescriptions,
+    ]);
 
   function resetForm() {
-    setSelectedAppointment(null);
-    setEditingPrescription(null);
+    setSelectedAppointment(
+      null,
+    );
+
+    setEditingPrescription(
+      null,
+    );
+
+    setViewingPrescription(
+      null,
+    );
+
     setDiagnosis("");
+
     setMedicines([
       createMedicine(),
     ]);
+
     setInstructions("");
+
     setError(null);
   }
 
@@ -203,7 +247,14 @@ export default function DoctorPrescriptions() {
       appointment,
     );
 
-    setEditingPrescription(null);
+    setEditingPrescription(
+      null,
+    );
+
+    setViewingPrescription(
+      null,
+    );
+
     setDiagnosis("");
 
     setMedicines([
@@ -211,6 +262,37 @@ export default function DoctorPrescriptions() {
     ]);
 
     setInstructions("");
+
+    setError(null);
+    setSuccess(null);
+  }
+
+  function openView(
+    prescription: Prescription,
+  ) {
+    const appointment =
+      appointments.find(
+        (item) =>
+          item.id ===
+          prescription.appointmentId,
+      );
+
+    if (!appointment) {
+      return;
+    }
+
+    setSelectedAppointment(
+      appointment,
+    );
+
+    setViewingPrescription(
+      prescription,
+    );
+
+    setEditingPrescription(
+      null,
+    );
+
     setError(null);
     setSuccess(null);
   }
@@ -231,6 +313,10 @@ export default function DoctorPrescriptions() {
 
     setSelectedAppointment(
       appointment,
+    );
+
+    setViewingPrescription(
+      null,
     );
 
     setEditingPrescription(
@@ -261,6 +347,16 @@ export default function DoctorPrescriptions() {
 
     setError(null);
     setSuccess(null);
+  }
+
+  function startEditingFromView() {
+    if (
+      viewingPrescription
+    ) {
+      openEdit(
+        viewingPrescription,
+      );
+    }
   }
 
   function updateMedicine(
@@ -331,7 +427,9 @@ export default function DoctorPrescriptions() {
   }
 
   function handleSave() {
-    if (!selectedAppointment) {
+    if (
+      !selectedAppointment
+    ) {
       return;
     }
 
@@ -339,7 +437,8 @@ export default function DoctorPrescriptions() {
     setSuccess(null);
 
     if (
-      diagnosis.trim().length === 0
+      diagnosis.trim().length ===
+      0
     ) {
       setError(
         "Please enter a diagnosis.",
@@ -357,7 +456,8 @@ export default function DoctorPrescriptions() {
       );
 
     if (
-      validMedicines.length === 0
+      validMedicines.length ===
+      0
     ) {
       setError(
         "Add at least one complete medicine.",
@@ -380,51 +480,56 @@ export default function DoctorPrescriptions() {
     const now =
       new Date().toISOString();
 
-    const prescription: Prescription = {
-      id:
-        editingPrescription?.id ??
-        `rx-${Date.now()}`,
+    const prescription: Prescription =
+      {
+        id:
+          editingPrescription?.id ??
+          `rx-${Date.now()}`,
 
-      appointmentId:
-        selectedAppointment.id,
+        appointmentId:
+          selectedAppointment.id,
 
-      doctorId,
+        doctorId,
 
-      patientId:
-        selectedAppointment.patientId,
+        patientId:
+          selectedAppointment.patientId,
 
-      patientName:
-        selectedAppointment.patientName,
+        patientName:
+          selectedAppointment.patientName,
 
-      diagnosis:
-        diagnosis.trim(),
+        diagnosis:
+          diagnosis.trim(),
 
-      medicines:
-        validMedicines.map(
-          (
-            medicine,
-          ): PrescriptionMedicine => ({
-            id: medicine.id,
-            name:
-              medicine.name.trim(),
-            dosage:
-              medicine.dosage.trim(),
-            duration:
-              medicine.duration.trim(),
-            instructions:
-              medicine.instructions.trim(),
-          }),
-        ),
+        medicines:
+          validMedicines.map(
+            (
+              medicine,
+            ): PrescriptionMedicine => ({
+              id: medicine.id,
 
-      instructions:
-        instructions.trim(),
+              name:
+                medicine.name.trim(),
 
-      createdAt:
-        editingPrescription?.createdAt ??
-        now,
+              dosage:
+                medicine.dosage.trim(),
 
-      updatedAt: now,
-    };
+              duration:
+                medicine.duration.trim(),
+
+              instructions:
+                medicine.instructions.trim(),
+            }),
+          ),
+
+        instructions:
+          instructions.trim(),
+
+        createdAt:
+          editingPrescription?.createdAt ??
+          now,
+
+        updatedAt: now,
+      };
 
     savePrescription(
       prescription,
@@ -441,7 +546,9 @@ export default function DoctorPrescriptions() {
     resetForm();
   }
 
-  if (status === "loading") {
+  if (
+    status === "loading"
+  ) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 sm:px-8">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-10 text-center">
@@ -459,7 +566,10 @@ export default function DoctorPrescriptions() {
     );
   }
 
-  if (status === "unauthorized") {
+  if (
+    status ===
+    "unauthorized"
+  ) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7 shadow-sm">
@@ -539,7 +649,7 @@ export default function DoctorPrescriptions() {
                     </h2>
 
                     <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                      Select an appointment to create or edit its prescription.
+                      Select an appointment to create or view its prescription.
                     </p>
                   </div>
 
@@ -550,7 +660,8 @@ export default function DoctorPrescriptions() {
               </div>
 
               <div className="divide-y divide-[var(--line)]">
-                {appointments.length === 0 ? (
+                {appointments.length ===
+                0 ? (
                   <div className="px-5 py-12 text-center sm:px-6">
                     <div className="mx-auto grid size-11 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-bold text-[var(--brand-deep)]">
                       RX
@@ -627,10 +738,14 @@ export default function DoctorPrescriptions() {
                               {prescription && (
                                 <p className="mt-2 text-xs text-[var(--muted)]">
                                   {
-                                    prescription.medicines.length
+                                    prescription
+                                      .medicines
+                                      .length
                                   }{" "}
                                   medicine
-                                  {prescription.medicines.length !==
+                                  {prescription
+                                    .medicines
+                                    .length !==
                                   1
                                     ? "s"
                                     : ""}{" "}
@@ -639,27 +754,45 @@ export default function DoctorPrescriptions() {
                               )}
                             </div>
 
-                            <Button
-                              size="sm"
-                              variant={
-                                prescription
-                                  ? "outline"
-                                  : "primary"
-                              }
-                              onClick={() =>
-                                prescription
-                                  ? openEdit(
+                            {prescription ? (
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    openView(
                                       prescription,
                                     )
-                                  : openCreate(
-                                      appointment,
+                                  }
+                                >
+                                  View
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    openEdit(
+                                      prescription,
                                     )
-                              }
-                            >
-                              {prescription
-                                ? "Edit prescription"
-                                : "Create prescription"}
-                            </Button>
+                                  }
+                                >
+                                  Edit
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() =>
+                                  openCreate(
+                                    appointment,
+                                  )
+                                }
+                              >
+                                Create prescription
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );
@@ -682,7 +815,8 @@ export default function DoctorPrescriptions() {
                 </div>
               </div>
 
-              {prescriptions.length === 0 ? (
+              {prescriptions.length ===
+              0 ? (
                 <div className="px-5 py-10 text-center sm:px-6">
                   <p className="text-sm font-semibold text-[var(--ink)]">
                     No prescriptions yet
@@ -718,27 +852,45 @@ export default function DoctorPrescriptions() {
 
                             <p className="mt-1 text-xs text-[var(--muted)]">
                               {
-                                prescription.medicines.length
+                                prescription
+                                  .medicines
+                                  .length
                               }{" "}
                               medicine
-                              {prescription.medicines.length !==
+                              {prescription
+                                .medicines
+                                .length !==
                               1
                                 ? "s"
                                 : ""}
                             </p>
                           </div>
 
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              openEdit(
-                                prescription,
-                              )
-                            }
-                          >
-                            Edit
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                openView(
+                                  prescription,
+                                )
+                              }
+                            >
+                              View
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                openEdit(
+                                  prescription,
+                                )
+                              }
+                            >
+                              Edit
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ),
@@ -761,7 +913,7 @@ export default function DoctorPrescriptions() {
 
                 <p className="mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">
                   Choose a patient from the completed appointments list to
-                  create a new prescription or update an existing one.
+                  create, view, or update a prescription.
                 </p>
 
                 <div className="mt-6 rounded-xl bg-[var(--canvas)] px-4 py-3 text-xs leading-5 text-[var(--muted)]">
@@ -769,6 +921,21 @@ export default function DoctorPrescriptions() {
                   completed appointment.
                 </div>
               </div>
+            ) : viewingPrescription ? (
+              <PrescriptionView
+                prescription={
+                  viewingPrescription
+                }
+                appointment={
+                  selectedAppointment
+                }
+                onClose={
+                  resetForm
+                }
+                onEdit={
+                  startEditingFromView
+                }
+              />
             ) : (
               <>
                 <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-5">
@@ -841,7 +1008,9 @@ export default function DoctorPrescriptions() {
                       id="prescription-diagnosis"
                       rows={3}
                       value={diagnosis}
-                      onChange={(event) =>
+                      onChange={(
+                        event,
+                      ) =>
                         setDiagnosis(
                           event.target.value,
                         )
@@ -868,7 +1037,9 @@ export default function DoctorPrescriptions() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={addMedicine}
+                      onClick={
+                        addMedicine
+                      }
                     >
                       Add medicine
                     </Button>
@@ -893,11 +1064,13 @@ export default function DoctorPrescriptions() {
                               </span>
 
                               <p className="text-sm font-semibold text-[var(--ink)]">
-                                Medicine {index + 1}
+                                Medicine{" "}
+                                {index + 1}
                               </p>
                             </div>
 
-                            {medicines.length > 1 && (
+                            {medicines.length >
+                              1 && (
                               <button
                                 type="button"
                                 onClick={() =>
@@ -1003,8 +1176,12 @@ export default function DoctorPrescriptions() {
                     <textarea
                       id="prescription-instructions"
                       rows={4}
-                      value={instructions}
-                      onChange={(event) =>
+                      value={
+                        instructions
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         setInstructions(
                           event.target.value,
                         )
@@ -1019,14 +1196,18 @@ export default function DoctorPrescriptions() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={resetForm}
+                    onClick={
+                      resetForm
+                    }
                   >
                     Cancel
                   </Button>
 
                   <Button
                     type="button"
-                    onClick={handleSave}
+                    onClick={
+                      handleSave
+                    }
                   >
                     {editingPrescription
                       ? "Save changes"
@@ -1038,6 +1219,227 @@ export default function DoctorPrescriptions() {
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PrescriptionView({
+  prescription,
+  appointment,
+  onClose,
+  onEdit,
+}: {
+  prescription: Prescription;
+  appointment: Booking;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-4 border-b border-[var(--line)] pb-5">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-deep)]">
+            Prescription
+          </p>
+
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--ink)]">
+            {appointment.patientName}
+          </h2>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
+            <span>
+              {formatDate(
+                appointment.date,
+              )}
+            </span>
+
+            <span
+              aria-hidden="true"
+            >
+              •
+            </span>
+
+            <span>
+              {formatTime(
+                appointment.time,
+              )}
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="mt-6 space-y-6">
+        <section>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+            Diagnosis
+          </p>
+
+          <div className="mt-2 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
+            <p className="text-sm font-medium leading-6 text-[var(--ink)]">
+              {prescription.diagnosis}
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                Medicines
+              </p>
+
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {prescription.medicines.length}{" "}
+                medicine
+                {prescription.medicines.length !==
+                1
+                  ? "s"
+                  : ""}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            {prescription.medicines.map(
+              (
+                medicine,
+                index,
+              ) => (
+                <div
+                  key={
+                    medicine.id
+                  }
+                  className="rounded-2xl border border-[var(--line)] bg-[var(--canvas)] p-4 sm:p-5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid size-7 place-items-center rounded-lg bg-[var(--surface)] text-xs font-semibold text-[var(--brand-deep)]">
+                      {index + 1}
+                    </span>
+
+                    <p className="text-sm font-semibold text-[var(--ink)]">
+                      {medicine.name}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <PrescriptionDetail
+                      label="Dosage"
+                      value={
+                        medicine.dosage
+                      }
+                    />
+
+                    <PrescriptionDetail
+                      label="Duration"
+                      value={
+                        medicine.duration
+                      }
+                    />
+
+                    <PrescriptionDetail
+                      label="Instructions"
+                      value={
+                        medicine.instructions ||
+                        "No specific instructions"
+                      }
+                    />
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+        </section>
+
+        <section>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+            Additional instructions
+          </p>
+
+          <div className="mt-2 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
+            <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">
+              {prescription.instructions ||
+                "No additional instructions."}
+            </p>
+          </div>
+        </section>
+
+        <section className="rounded-xl bg-[var(--canvas)] px-4 py-3">
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--muted)]">
+            <span>
+              Created{" "}
+              {new Date(
+                prescription.createdAt,
+              ).toLocaleDateString(
+                "en-IN",
+                {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                },
+              )}
+            </span>
+
+            <span>
+              Updated{" "}
+              {new Date(
+                prescription.updatedAt,
+              ).toLocaleDateString(
+                "en-IN",
+                {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                },
+              )}
+            </span>
+          </div>
+        </section>
+      </div>
+
+      <div className="mt-7 flex flex-col-reverse gap-2.5 border-t border-[var(--line)] pt-5 sm:flex-row sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+        >
+          Close
+        </Button>
+
+        <Button
+          type="button"
+          onClick={onEdit}
+        >
+          Edit prescription
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function PrescriptionDetail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
+        {label}
+      </p>
+
+      <p className="mt-1 text-sm leading-5 text-[var(--ink)]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -1064,7 +1466,9 @@ function InputField({
       <input
         type="text"
         value={value}
-        placeholder={placeholder}
+        placeholder={
+          placeholder
+        }
         onChange={(event) =>
           onChange(
             event.target.value,

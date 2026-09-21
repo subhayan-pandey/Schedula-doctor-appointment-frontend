@@ -53,7 +53,9 @@ function Field({
         type={type}
         value={value}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value,
+          )
         }
         placeholder={placeholder}
         className="mt-1.5 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--ink)] outline-none transition-colors placeholder:text-[var(--muted)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10"
@@ -80,7 +82,9 @@ function TextAreaField({
       <textarea
         value={value}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value,
+          )
         }
         placeholder={placeholder}
         rows={rows}
@@ -150,6 +154,105 @@ function StatCard({
   );
 }
 
+type ProfileStats = {
+  prescriptions: number;
+  completedAppointments: number;
+  testReports: number;
+};
+
+function getProfileStats(
+  patientId: string,
+): ProfileStats {
+  const bookings =
+    getBookingsByPatientId(
+      patientId,
+    );
+
+  const prescriptions =
+    getAllPrescriptions();
+
+  const completedAppointments =
+    bookings.filter(
+      (booking) =>
+        booking.status ===
+        "completed",
+    ).length;
+
+  const userPrescriptions =
+    prescriptions.filter(
+      (prescription) =>
+        prescription.patientId ===
+          patientId ||
+        bookings.some(
+          (booking) =>
+            booking.id ===
+            prescription.appointmentId,
+        ),
+    );
+
+  /*
+   * There is currently no test-report
+   * store or test-report data model in
+   * the application. Keep this value at
+   * zero rather than displaying fabricated
+   * report data.
+   */
+  const testReports = 0;
+
+  return {
+    prescriptions:
+      userPrescriptions.length,
+
+    completedAppointments,
+
+    testReports,
+  };
+}
+
+function validateProfile(
+  profile: UserProfile,
+): string | null {
+  if (
+    profile.phone.trim() &&
+    !/^[0-9+\-\s()]{7,20}$/.test(
+      profile.phone.trim(),
+    )
+  ) {
+    return "Please enter a valid phone number.";
+  }
+
+  if (
+    profile.emergencyContactPhone.trim() &&
+    !/^[0-9+\-\s()]{7,20}$/.test(
+      profile.emergencyContactPhone.trim(),
+    )
+  ) {
+    return "Please enter a valid emergency contact number.";
+  }
+
+  if (
+    profile.dateOfBirth &&
+    Number.isNaN(
+      Date.parse(
+        profile.dateOfBirth,
+      ),
+    )
+  ) {
+    return "Please enter a valid date of birth.";
+  }
+
+  if (
+    profile.dateOfBirth &&
+    new Date(
+      `${profile.dateOfBirth}T00:00:00`,
+    ) > new Date()
+  ) {
+    return "Date of birth cannot be in the future.";
+  }
+
+  return null;
+}
+
 export default function UserProfileManager() {
   const [
     profile,
@@ -181,17 +284,43 @@ export default function UserProfileManager() {
   );
 
   const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
     stats,
     setStats,
-  ] = useState({
+  ] = useState<ProfileStats>({
     prescriptions: 0,
     completedAppointments: 0,
     testReports: 0,
   });
 
+  function refreshStats() {
+    const session =
+      getSession();
+
+    if (
+      !session ||
+      session.role !== "patient"
+    ) {
+      return;
+    }
+
+    setStats(
+      getProfileStats(
+        session.id,
+      ),
+    );
+  }
+
   useEffect(() => {
     Promise.resolve().then(() => {
-      const session = getSession();
+      const session =
+        getSession();
 
       if (
         !session ||
@@ -202,33 +331,8 @@ export default function UserProfileManager() {
       }
 
       const loadedProfile =
-        getUserProfile(session.id);
-
-      const bookings =
-        getBookingsByPatientId(
+        getUserProfile(
           session.id,
-        );
-
-      const prescriptions =
-        getAllPrescriptions();
-
-      const completedAppointments =
-        bookings.filter(
-          (booking) =>
-            booking.status ===
-            "completed",
-        ).length;
-
-      const userPrescriptions =
-        prescriptions.filter(
-          (prescription) =>
-            prescription.patientId ===
-              session.id ||
-            bookings.some(
-              (booking) =>
-                booking.id ===
-                prescription.appointmentId,
-            ),
         );
 
       setProfile(
@@ -239,17 +343,44 @@ export default function UserProfileManager() {
         session.name ?? "",
       );
 
-      setStats({
-        prescriptions:
-          userPrescriptions.length,
-
-        completedAppointments,
-
-        testReports: 0,
-      });
+      setStats(
+        getProfileStats(
+          session.id,
+        ),
+      );
 
       setIsLoading(false);
     });
+
+    function handleBookingsUpdated() {
+      refreshStats();
+    }
+
+    function handlePrescriptionsUpdated() {
+      refreshStats();
+    }
+
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    window.addEventListener(
+      "schedula:prescriptions-updated",
+      handlePrescriptionsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
+      );
+
+      window.removeEventListener(
+        "schedula:prescriptions-updated",
+        handlePrescriptionsUpdated,
+      );
+    };
   }, []);
 
   function updateField<
@@ -270,6 +401,7 @@ export default function UserProfileManager() {
     });
 
     setMessage(null);
+    setError(null);
   }
 
   function handleSave() {
@@ -277,12 +409,32 @@ export default function UserProfileManager() {
       return;
     }
 
+    setError(null);
+    setMessage(null);
+
+    const validationError =
+      validateProfile(
+        profile,
+      );
+
+    if (validationError) {
+      setError(
+        validationError,
+      );
+
+      return;
+    }
+
     setIsSaving(true);
 
     const savedProfile =
-      saveUserProfile(profile);
+      saveUserProfile(
+        profile,
+      );
 
-    setProfile(savedProfile);
+    setProfile(
+      savedProfile,
+    );
 
     setMessage(
       "Profile saved successfully.",
@@ -323,7 +475,6 @@ export default function UserProfileManager() {
   return (
     <main className="bg-[var(--canvas)]">
       <div className="mx-auto max-w-5xl px-4 py-7 sm:px-8 sm:py-9">
-        {/* Page header */}
         <header className="border-b border-[var(--line)] pb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-center gap-3.5">
@@ -337,7 +488,8 @@ export default function UserProfileManager() {
                   )
                   .join("")
                   .slice(0, 2)
-                  .toUpperCase() || "U"}
+                  .toUpperCase() ||
+                  "U"}
               </div>
 
               <div>
@@ -346,7 +498,8 @@ export default function UserProfileManager() {
                 </p>
 
                 <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                  {userName || "My Profile"}
+                  {userName ||
+                    "My Profile"}
                 </h1>
 
                 <p className="mt-1 text-sm text-[var(--muted)]">
@@ -357,18 +510,31 @@ export default function UserProfileManager() {
             </div>
 
             {message && (
-              <div className="rounded-lg border border-[var(--success)]/20 bg-[var(--success-soft)] px-3 py-2 text-sm font-medium text-[var(--success)]">
+              <div
+                className="rounded-lg border border-[var(--success)]/20 bg-[var(--success-soft)] px-3 py-2 text-sm font-medium text-[var(--success)]"
+                role="status"
+              >
                 {message}
               </div>
             )}
           </div>
+
+          {error && (
+            <div
+              className="mt-4 rounded-lg border border-[var(--urgent)]/20 bg-[var(--urgent-soft)] px-3 py-2.5 text-sm font-medium text-[var(--urgent-deep)]"
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
         </header>
 
-        {/* Summary */}
         <section className="mt-6 grid gap-3 sm:grid-cols-3">
           <StatCard
             label="Prescriptions"
-            value={stats.prescriptions}
+            value={
+              stats.prescriptions
+            }
             description="Available prescriptions"
           />
 
@@ -382,12 +548,13 @@ export default function UserProfileManager() {
 
           <StatCard
             label="Test reports"
-            value={stats.testReports}
+            value={
+              stats.testReports
+            }
             description="Reports available"
           />
         </section>
 
-        {/* Form */}
         <div className="mt-6 space-y-4">
           <Section
             eyebrow="Personal"
@@ -645,7 +812,6 @@ export default function UserProfileManager() {
           </Section>
         </div>
 
-        {/* Save bar */}
         <div className="sticky bottom-0 z-10 mt-5 border-t border-[var(--line)] bg-[var(--canvas)]/95 py-4 backdrop-blur-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-[var(--muted)]">
@@ -654,8 +820,12 @@ export default function UserProfileManager() {
             </p>
 
             <Button
-              onClick={handleSave}
-              disabled={isSaving}
+              onClick={
+                handleSave
+              }
+              disabled={
+                isSaving
+              }
               className="w-full sm:w-auto"
             >
               {isSaving
