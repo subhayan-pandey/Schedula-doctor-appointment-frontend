@@ -121,11 +121,6 @@ function writeBookings(
     ),
   );
 
-  /*
-   * localStorage does not emit a
-   * storage event in the same tab,
-   * therefore emit a custom event too.
-   */
   window.dispatchEvent(
     new Event(
       "schedula:bookings-updated",
@@ -173,12 +168,6 @@ export function addBooking(
   const bookings =
     readBookings();
 
-  /*
-   * Booking IDs are unique.
-   * Never create a duplicate record
-   * when the same booking is submitted
-   * again.
-   */
   const existing =
     bookings.find(
       (item) =>
@@ -324,17 +313,6 @@ export function updateBooking(
   return updatedBooking;
 }
 
-/*
- * Updates the existing booking
- * instead of creating another booking.
- *
- * The slot ownership transition is
- * intentionally handled separately by
- * slots-store.
- *
- * A successful reschedule always
- * becomes upcoming.
- */
 export function rescheduleBooking(
   bookingId: string,
   updates: Pick<
@@ -358,10 +336,6 @@ export function rescheduleBooking(
     return null;
   }
 
-  /*
-   * Prevent a meaningless reschedule
-   * from incrementing the counter.
-   */
   if (
     existing.slotId ===
       updates.slotId &&
@@ -416,10 +390,6 @@ export function rescheduleBooking(
   return updatedBooking;
 }
 
-/*
- * Doctor confirmation moves a pending
- * appointment to upcoming.
- */
 export function confirmBooking(
   bookingId: string,
 ): Booking | null {
@@ -463,15 +433,6 @@ export function canCancelBooking(
   );
 }
 
-/*
- * Confirmed and upcoming
- * appointments can be rescheduled
- * through the normal booking flow.
- *
- * Declined appointments are handled
- * separately because their original
- * slot has already been released.
- */
 export function canRescheduleBooking(
   booking:
     | Booking

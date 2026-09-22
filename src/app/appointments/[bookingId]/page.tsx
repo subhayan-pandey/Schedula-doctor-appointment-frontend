@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 import { useParams } from "next/navigation";
 
 import Button from "@/components/ui/Button";
@@ -11,17 +14,26 @@ import {
   updateBookingStatus,
 } from "@/lib/bookings-store";
 
-import { getDoctorById } from "@/lib/doctors-store";
+import {
+  getDoctorById,
+} from "@/lib/doctors-store";
 
 import {
   createDoctorNotification,
 } from "@/lib/notifications-store";
 
-import { releaseSlot } from "@/lib/slots-store";
+import {
+  getSlotsForDoctor,
+  releaseSlot,
+} from "@/lib/slots-store";
 
-import { getSession } from "@/lib/storage";
+import {
+  getSession,
+} from "@/lib/storage";
 
-import { formatLongDate } from "@/lib/utils/date";
+import {
+  formatLongDate,
+} from "@/lib/utils/date";
 
 import type {
   Booking,
@@ -243,6 +255,35 @@ export default function AppointmentConfirmationPage() {
     });
   }, [bookingId]);
 
+  useEffect(() => {
+    function handleBookingsUpdated() {
+      const latestBooking =
+        getBookingById(
+          bookingId,
+        );
+
+      if (!latestBooking) {
+        return;
+      }
+
+      setBooking(
+        latestBooking,
+      );
+    }
+
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
+      );
+    };
+  }, [bookingId]);
+
   if (booking === undefined) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
@@ -354,10 +395,50 @@ export default function AppointmentConfirmationPage() {
 
     setIsCancelling(true);
 
-    releaseSlot(
-      currentBooking.doctorId,
-      currentBooking.slotId,
-    );
+    const currentSlots =
+      getSlotsForDoctor(
+        currentBooking.doctorId,
+      );
+
+    const currentSlot =
+      currentSlots.find(
+        (slot) =>
+          slot.id ===
+          currentBooking.slotId,
+      );
+
+    if (
+      !currentSlot ||
+      currentSlot.status !==
+        "booked"
+    ) {
+      setIsCancelling(false);
+
+      return;
+    }
+
+    const releasedSlots =
+      releaseSlot(
+        currentBooking.doctorId,
+        currentBooking.slotId,
+      );
+
+    const releasedSlot =
+      releasedSlots.find(
+        (slot) =>
+          slot.id ===
+          currentBooking.slotId,
+      );
+
+    if (
+      !releasedSlot ||
+      releasedSlot.status !==
+        "available"
+    ) {
+      setIsCancelling(false);
+
+      return;
+    }
 
     const updatedBooking =
       updateBookingStatus(
@@ -366,29 +447,93 @@ export default function AppointmentConfirmationPage() {
         "Appointment cancelled by patient",
       );
 
-    if (updatedBooking) {
-      createDoctorNotification({
-        userId:
+    if (!updatedBooking) {
+      /*
+       * Restore the slot when the
+       * booking mutation fails.
+       */
+      const restoredSlots =
+        getSlotsForDoctor(
           currentBooking.doctorId,
+        );
 
-        title:
-          "Appointment cancelled",
+      const restoredSlot =
+        restoredSlots.find(
+          (slot) =>
+            slot.id ===
+            currentBooking.slotId,
+        );
 
-        message: `${currentBooking.patientName} cancelled the appointment scheduled for ${formatLongDate(
-          currentBooking.date,
-        )} at ${currentBooking.time}.`,
+      if (
+        restoredSlot &&
+        restoredSlot.status ===
+          "available"
+      ) {
+        /*
+         * Re-booking through the
+         * existing store restores
+         * ownership without changing
+         * the booking record.
+         */
+        const restored =
+          restoredSlots.map(
+            (slot) =>
+              slot.id ===
+              currentBooking.slotId
+                ? {
+                    ...slot,
+                    status:
+                      "booked",
+                  }
+                : slot,
+          );
 
-        type:
-          "cancellation",
+        window.localStorage.setItem(
+          `schedula:slots:${currentBooking.doctorId}`,
+          JSON.stringify(
+            restored,
+          ),
+        );
 
-        appointmentId:
-          currentBooking.id,
-      });
+        window.dispatchEvent(
+          new CustomEvent(
+            "schedula:slots-updated",
+            {
+              detail: {
+                doctorId:
+                  currentBooking.doctorId,
+              },
+            },
+          ),
+        );
+      }
 
-      setBooking(
-        updatedBooking,
-      );
+      setIsCancelling(false);
+
+      return;
     }
+
+    createDoctorNotification({
+      userId:
+        currentBooking.doctorId,
+
+      title:
+        "Appointment cancelled",
+
+      message: `${currentBooking.patientName} cancelled the appointment scheduled for ${formatLongDate(
+        currentBooking.date,
+      )} at ${currentBooking.time}.`,
+
+      type:
+        "cancellation",
+
+      appointmentId:
+        currentBooking.id,
+    });
+
+    setBooking(
+      updatedBooking,
+    );
 
     setIsCancelling(false);
   }

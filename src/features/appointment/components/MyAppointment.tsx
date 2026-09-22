@@ -29,10 +29,6 @@ import {
 } from "@/lib/doctors-store";
 
 import {
-  releaseSlot,
-} from "@/lib/slots-store";
-
-import {
   getSession,
 } from "@/lib/storage";
 
@@ -1127,11 +1123,6 @@ export default function MyAppointments() {
 
     setProcessingBookingId(
       booking.id,
-    );
-
-    releaseSlot(
-      booking.doctorId,
-      booking.slotId,
     );
 
     updateBookingStatus(

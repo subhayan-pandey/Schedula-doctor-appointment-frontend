@@ -96,13 +96,6 @@ export default function RescheduleAppointmentPage() {
   >(null);
 
   const [
-    patientId,
-    setPatientId,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
     slots,
     setSlots,
   ] = useState<Slot[]>(
@@ -181,13 +174,6 @@ export default function RescheduleAppointmentPage() {
         return;
       }
 
-      /*
-       * Patient rescheduling is allowed
-       * for confirmed/upcoming bookings
-       * and for cancelled bookings whose
-       * original slot has already been
-       * released.
-       */
       const canReschedule =
         canRescheduleBooking(
           currentBooking,
@@ -195,15 +181,11 @@ export default function RescheduleAppointmentPage() {
         currentBooking.status ===
           "cancelled";
 
+      setBooking(
+        currentBooking,
+      );
+
       if (!canReschedule) {
-        setBooking(
-          currentBooking,
-        );
-
-        setPatientId(
-          session.id,
-        );
-
         setPageStatus(
           "ready",
         );
@@ -214,14 +196,6 @@ export default function RescheduleAppointmentPage() {
 
         return;
       }
-
-      setBooking(
-        currentBooking,
-      );
-
-      setPatientId(
-        session.id,
-      );
 
       const currentSlots =
         getSlotsForDoctor(
@@ -244,16 +218,6 @@ export default function RescheduleAppointmentPage() {
             currentBooking.date,
         );
 
-      /*
-       * For an active booking, keep the
-       * current appointment date selected
-       * when it is part of the available
-       * date range.
-       *
-       * For a cancelled booking whose
-       * original date is in the past or
-       * outside the range, start from today.
-       */
       if (
         bookingDateExists &&
         currentBooking.date >=
@@ -549,13 +513,6 @@ export default function RescheduleAppointmentPage() {
       return;
     }
 
-    /*
-     * Read the session immediately before
-     * the mutation and narrow it locally.
-     *
-     * This prevents the "'session' is
-     * possibly null" TypeScript error.
-     */
     const currentSession =
       getSession();
 
@@ -595,14 +552,14 @@ export default function RescheduleAppointmentPage() {
       return;
     }
 
-    if (
-      booking.status !==
-        "confirmed" &&
-      booking.status !==
-        "upcoming" &&
-      booking.status !==
-        "cancelled"
-    ) {
+    const canReschedule =
+      canRescheduleBooking(
+        booking,
+      ) ||
+      booking.status ===
+        "cancelled";
+
+    if (!canReschedule) {
       setError(
         "This appointment cannot be rescheduled in its current status.",
       );
@@ -610,10 +567,6 @@ export default function RescheduleAppointmentPage() {
       return;
     }
 
-    /*
-     * Selecting the same slot is not
-     * a real reschedule.
-     */
     if (
       booking.slotId ===
         selectedSlot.id &&
@@ -641,14 +594,6 @@ export default function RescheduleAppointmentPage() {
       null,
     );
 
-    /*
-     * The original slot is still booked
-     * for confirmed/upcoming bookings.
-     *
-     * Cancelled bookings already released
-     * their original slot, so only the new
-     * slot needs to be booked.
-     */
     const isCancelled =
       booking.status ===
       "cancelled";
@@ -700,10 +645,6 @@ export default function RescheduleAppointmentPage() {
       return;
     }
 
-    /*
-     * Update the SAME booking record.
-     * No second appointment is created.
-     */
     const updatedBooking =
       rescheduleBooking(
         booking.id,
@@ -720,11 +661,6 @@ export default function RescheduleAppointmentPage() {
       );
 
     if (!updatedBooking) {
-      /*
-       * Roll back the slot mutation if
-       * the booking record could not be
-       * updated.
-       */
       if (isCancelled) {
         releaseSlot(
           booking.doctorId,
@@ -898,10 +834,9 @@ export default function RescheduleAppointmentPage() {
   }
 
   const canReschedule =
-    booking.status ===
-      "confirmed" ||
-    booking.status ===
-      "upcoming" ||
+    canRescheduleBooking(
+      booking,
+    ) ||
     booking.status ===
       "cancelled";
 

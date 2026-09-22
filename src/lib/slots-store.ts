@@ -104,10 +104,16 @@ function readSlots(
     KEY_PREFIX +
     doctorId;
 
-  const raw =
-    window.localStorage.getItem(
-      key,
-    );
+  let raw: string | null = null;
+
+  try {
+    raw =
+      window.localStorage.getItem(
+        key,
+      );
+  } catch {
+    return [];
+  }
 
   if (raw) {
     try {
@@ -121,29 +127,25 @@ function readSlots(
           parsed,
         )
       ) {
-        const normalized: Slot[] =
-          parsed
-            .map(
-              (slot) =>
-                normalizeSlot(
-                  slot as Partial<Slot>,
-                  doctorId,
-                ),
-            )
-            .filter(
-              (
-                slot,
-              ): slot is Slot =>
-                slot !== null,
-            );
-
-        return normalized;
+        return parsed
+          .map(
+            (slot) =>
+              normalizeSlot(
+                slot as Partial<Slot>,
+                doctorId,
+              ),
+          )
+          .filter(
+            (
+              slot,
+            ): slot is Slot =>
+              slot !== null,
+          );
       }
     } catch {
       /*
-       * If localStorage contains
-       * invalid JSON, fall through
-       * and rebuild the seed data.
+       * Invalid stored data falls
+       * through to the seed data.
        */
     }
   }
@@ -153,7 +155,7 @@ function readSlots(
       doctorId,
     );
 
-  const normalizedSeeded: Slot[] =
+  const normalizedSeeded =
     seeded
       .map(
         (slot) =>
@@ -169,12 +171,19 @@ function readSlots(
           slot !== null,
       );
 
-  window.localStorage.setItem(
-    key,
-    JSON.stringify(
-      normalizedSeeded,
-    ),
-  );
+  try {
+    window.localStorage.setItem(
+      key,
+      JSON.stringify(
+        normalizedSeeded,
+      ),
+    );
+  } catch {
+    /*
+     * Keep the in-memory seed result
+     * usable even if storage fails.
+     */
+  }
 
   return normalizedSeeded;
 }
@@ -182,22 +191,28 @@ function readSlots(
 function writeSlots(
   doctorId: string,
   slots: Slot[],
-): void {
+): boolean {
   if (!isBrowser()) {
-    return;
+    return false;
   }
 
-  window.localStorage.setItem(
-    KEY_PREFIX +
-      doctorId,
-    JSON.stringify(
-      slots,
-    ),
-  );
+  try {
+    window.localStorage.setItem(
+      KEY_PREFIX +
+        doctorId,
+      JSON.stringify(
+        slots,
+      ),
+    );
+  } catch {
+    return false;
+  }
 
   emitSlotsUpdated(
     doctorId,
   );
+
+  return true;
 }
 
 export function getSlotsForDoctor(
@@ -257,16 +272,21 @@ export function bookSlot(
           : slot,
     );
 
-  writeSlots(
-    doctorId,
-    updated,
-  );
+  if (
+    !writeSlots(
+      doctorId,
+      updated,
+    )
+  ) {
+    return null;
+  }
 
   return updated;
 }
 
 /**
- * Atomically changes:
+ * Changes slot ownership in one
+ * persisted update:
  *
  * current slot:
  *   booked -> available
@@ -274,9 +294,8 @@ export function bookSlot(
  * new slot:
  *   available -> booked
  *
- * The current slot must still be
- * booked and the destination slot
- * must still be available.
+ * Both slots must belong to the
+ * same doctor.
  */
 export function rescheduleSlot(
   doctorId: string,
@@ -286,14 +305,9 @@ export function rescheduleSlot(
   if (
     !doctorId ||
     !currentSlotId ||
-    !newSlotId
-  ) {
-    return null;
-  }
-
-  if (
+    !newSlotId ||
     currentSlotId ===
-    newSlotId
+      newSlotId
   ) {
     return null;
   }
@@ -376,10 +390,14 @@ export function rescheduleSlot(
       },
     );
 
-  writeSlots(
-    doctorId,
-    updated,
-  );
+  if (
+    !writeSlots(
+      doctorId,
+      updated,
+    )
+  ) {
+    return null;
+  }
 
   return updated;
 }
@@ -424,18 +442,13 @@ export function createSlot(
     id: `${doctorId}-${slot.date}-${slot.period.toLowerCase()}-${Date.now()}-${Math.random()
       .toString(36)
       .slice(2, 7)}`,
-
     doctorId,
-
     date:
       slot.date,
-
     time:
       slot.time,
-
     period:
       slot.period,
-
     status:
       "available",
   };
@@ -445,10 +458,14 @@ export function createSlot(
     newSlot,
   ];
 
-  writeSlots(
-    doctorId,
-    updated,
-  );
+  if (
+    !writeSlots(
+      doctorId,
+      updated,
+    )
+  ) {
+    return slots;
+  }
 
   return updated;
 }
@@ -477,10 +494,6 @@ export function removeSlot(
     return slots;
   }
 
-  /*
-   * Never remove a slot that
-   * currently belongs to a booking.
-   */
   if (
     target.status ===
     "booked"
@@ -495,10 +508,14 @@ export function removeSlot(
         slotId,
     );
 
-  writeSlots(
-    doctorId,
-    updated,
-  );
+  if (
+    !writeSlots(
+      doctorId,
+      updated,
+    )
+  ) {
+    return slots;
+  }
 
   return updated;
 }
@@ -547,10 +564,14 @@ export function toggleSlotAvailability(
           : slot,
     );
 
-  writeSlots(
-    doctorId,
-    updated,
-  );
+  if (
+    !writeSlots(
+      doctorId,
+      updated,
+    )
+  ) {
+    return slots;
+  }
 
   return updated;
 }
@@ -558,13 +579,12 @@ export function toggleSlotAvailability(
 /**
  * Releases a booked slot.
  *
- * This is used when:
+ * Used when:
  * - a patient cancels
  * - a doctor cancels
- * - a doctor declines a pending
- *   appointment
+ * - a doctor declines an appointment
  * - a reschedule operation needs
- *   to restore a previous slot
+ *   to restore the previous slot
  */
 export function releaseSlot(
   doctorId: string,
@@ -590,10 +610,6 @@ export function releaseSlot(
     return slots;
   }
 
-  /*
-   * Only release an actually
-   * booked slot.
-   */
   if (
     target.status !==
     "booked"
@@ -613,10 +629,14 @@ export function releaseSlot(
           : slot,
     );
 
-  writeSlots(
-    doctorId,
-    updated,
-  );
+  if (
+    !writeSlots(
+      doctorId,
+      updated,
+    )
+  ) {
+    return slots;
+  }
 
   return updated;
 }
