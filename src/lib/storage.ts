@@ -6,22 +6,58 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
+function emitSessionUpdated(): void {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.dispatchEvent(
+    new Event("schedula:session-updated"),
+  );
+}
+
 export function getSession(): User | null {
-  if (!isBrowser()) return null;
+  if (!isBrowser()) {
+    return null;
+  }
+
   try {
-    const raw = window.localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as User) : null;
+    const raw =
+      window.localStorage.getItem(
+        SESSION_KEY,
+      );
+
+    return raw
+      ? (JSON.parse(raw) as User)
+      : null;
   } catch {
     return null;
   }
 }
 
-export function setSession(user: User): void {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+export function setSession(
+  user: User,
+): void {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify(user),
+  );
+
+  emitSessionUpdated();
 }
 
 export function clearSession(): void {
-  if (!isBrowser()) return;
-  window.localStorage.removeItem(SESSION_KEY);
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.removeItem(
+    SESSION_KEY,
+  );
+
+  emitSessionUpdated();
 }

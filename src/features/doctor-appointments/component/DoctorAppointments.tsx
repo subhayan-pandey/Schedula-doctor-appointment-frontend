@@ -380,12 +380,6 @@ export default function DoctorAppointments() {
     );
   }, []);
 
-  /*
-   * Keep the appointment page
-   * synchronized with changes made
-   * by the calendar, booking flow,
-   * or another appointment view.
-   */
   useEffect(() => {
     if (!doctorId) {
       return;
@@ -579,12 +573,6 @@ export default function DoctorAppointments() {
     );
   }
 
-  /**
-   * Pending → Upcoming
-   *
-   * New appointments skip the
-   * old confirmed state.
-   */
   function handleConfirm(
     booking: Booking,
   ) {
@@ -622,14 +610,6 @@ export default function DoctorAppointments() {
     );
   }
 
-  /**
-   * Pending → Declined
-   *
-   * The pending booking owns
-   * a booked slot, so the slot
-   * is released when the doctor
-   * declines the request.
-   */
   function handleDecline(
     booking: Booking,
   ) {
@@ -673,15 +653,6 @@ export default function DoctorAppointments() {
     );
   }
 
-  /**
-   * Legacy support for old
-   * localStorage records that
-   * were created with
-   * status="confirmed".
-   *
-   * New confirmations do not
-   * use this state.
-   */
   function handleMarkUpcoming(
     booking: Booking,
   ) {
@@ -719,9 +690,6 @@ export default function DoctorAppointments() {
     );
   }
 
-  /**
-   * Upcoming → Completed
-   */
   function handleComplete(
     booking: Booking,
   ) {
@@ -755,9 +723,6 @@ export default function DoctorAppointments() {
     );
   }
 
-  /**
-   * Upcoming → Missed
-   */
   function handleMissed(
     booking: Booking,
   ) {
@@ -784,7 +749,7 @@ export default function DoctorAppointments() {
         booking.date,
       )} at ${
         booking.time
-      } was marked as missed.`,
+      } was marked as missed. You can book another appointment.`,
       "appointment",
     );
 
@@ -795,13 +760,6 @@ export default function DoctorAppointments() {
     );
   }
 
-  /**
-   * Pending/Upcoming →
-   * Cancelled
-   *
-   * Only release a slot when
-   * it is actually still booked.
-   */
   function handleCancel(
     booking: Booking,
   ) {
@@ -812,7 +770,9 @@ export default function DoctorAppointments() {
       booking.status ===
         "missed" ||
       booking.status ===
-        "cancelled"
+        "cancelled" ||
+      booking.status ===
+        "declined"
     ) {
       return;
     }
@@ -821,13 +781,6 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    /*
-     * For declined bookings
-     * the slot has already been
-     * released. releaseSlot()
-     * safely ignores an already
-     * available slot.
-     */
     releaseSlot(
       doctorId,
       booking.slotId,
@@ -845,7 +798,7 @@ export default function DoctorAppointments() {
         booking.date,
       )} at ${
         booking.time
-      } has been cancelled.`,
+      } has been cancelled. You can reschedule or book another appointment.`,
       "cancellation",
     );
 
@@ -969,6 +922,22 @@ export default function DoctorAppointments() {
               Mark as upcoming
             </Button>
 
+            <Link
+              href={`/doctor/calendar?appointmentId=${encodeURIComponent(
+                booking.id,
+              )}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  isProcessing
+                }
+              >
+                Reschedule
+              </Button>
+            </Link>
+
             <Button
               size="sm"
               variant="outline"
@@ -1002,6 +971,22 @@ export default function DoctorAppointments() {
             >
               Mark completed
             </Button>
+
+            <Link
+              href={`/doctor/calendar?appointmentId=${encodeURIComponent(
+                booking.id,
+              )}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={
+                  isProcessing
+                }
+              >
+                Reschedule
+              </Button>
+            </Link>
 
             <Button
               size="sm"
@@ -1037,27 +1022,98 @@ export default function DoctorAppointments() {
 
       case "declined":
         return (
-          <div className="mt-5 border-t border-[var(--line)] pt-4">
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+            <Link
+              href={`/doctors/${booking.doctorId}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                View availability
+              </Button>
+            </Link>
+
             <p className="text-xs leading-5 text-[var(--muted)]">
               This request was
-              declined. The patient
-              can book another
-              available slot or
-              cancel the declined
-              appointment.
+              declined. The
+              patient can book
+              another available
+              slot.
             </p>
           </div>
         );
 
       case "completed":
+        return (
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            <Link
+              href={`/doctor/prescriptions?appointmentId=${encodeURIComponent(
+                booking.id,
+              )}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                Add / edit prescription
+              </Button>
+            </Link>
+
+            <p className="self-center text-xs leading-5 text-[var(--muted)]">
+              Prescription and
+              patient-history
+              management can be
+              opened from the
+              appointment details.
+            </p>
+          </div>
+        );
+
       case "cancelled":
+        return (
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+            <Link
+              href={`/doctors/${booking.doctorId}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                View availability
+              </Button>
+            </Link>
+
+            <p className="text-xs leading-5 text-[var(--muted)]">
+              This appointment
+              was cancelled. The
+              patient can choose
+              another available
+              slot.
+            </p>
+          </div>
+        );
+
       case "missed":
         return (
-          <div className="mt-5 border-t border-[var(--line)] pt-4">
+          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+            <Link
+              href={`/doctors/${booking.doctorId}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                Book again
+              </Button>
+            </Link>
+
             <p className="text-xs leading-5 text-[var(--muted)]">
               This appointment is
-              read-only in the
-              current status.
+              marked as missed.
+              A new appointment
+              can be booked from
+              the available slots.
             </p>
           </div>
         );

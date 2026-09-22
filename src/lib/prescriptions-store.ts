@@ -21,19 +21,9 @@ type StoredPrescription =
     patientId?: string;
   };
 
-function isBrowser() {
+function isBrowser(): boolean {
   return typeof window !==
     "undefined";
-}
-
-function normalizePrescription(
-  prescription: StoredPrescription,
-): Prescription {
-  return {
-    ...prescription,
-    patientId:
-      prescription.patientId ?? "",
-  };
 }
 
 function readPrescriptions(): Prescription[] {
@@ -51,13 +41,18 @@ function readPrescriptions(): Prescription[] {
       return [];
     }
 
-    const prescriptions =
+    const stored =
       JSON.parse(
         raw,
       ) as StoredPrescription[];
 
-    return prescriptions.map(
-      normalizePrescription,
+    return stored.map(
+      (prescription) => ({
+        ...prescription,
+        patientId:
+          prescription.patientId ??
+          "",
+      }),
     );
   } catch {
     return [];
@@ -73,7 +68,9 @@ function writePrescriptions(
 
   window.localStorage.setItem(
     KEY,
-    JSON.stringify(prescriptions),
+    JSON.stringify(
+      prescriptions,
+    ),
   );
 
   window.dispatchEvent(
@@ -120,7 +117,7 @@ export function savePrescription(
     booking?.patientId ||
     "";
 
-  const normalizedPrescription: Prescription =
+  const normalized: Prescription =
     {
       ...prescription,
 
@@ -132,29 +129,34 @@ export function savePrescription(
 
   let updated: Prescription[];
 
-  if (existingIndex >= 0) {
-    updated = prescriptions.map(
-      (item) =>
-        item.appointmentId ===
-        normalizedPrescription.appointmentId
-          ? normalizedPrescription
-          : item,
-    );
+  if (
+    existingIndex >= 0
+  ) {
+    updated =
+      prescriptions.map(
+        (item) =>
+          item.appointmentId ===
+          normalized.appointmentId
+            ? normalized
+            : item,
+      );
   } else {
     updated = [
       ...prescriptions,
-      normalizedPrescription,
+      normalized,
     ];
   }
 
-  writePrescriptions(updated);
+  writePrescriptions(
+    updated,
+  );
 
   /*
-   * Notify only when the prescription
-   * is created for the first time.
+   * Only the first creation generates
+   * a prescription notification.
    *
-   * Editing an existing prescription
-   * does not generate duplicate alerts.
+   * Editing the prescription does not
+   * spam the patient with duplicate alerts.
    */
   if (
     existingIndex === -1 &&
@@ -169,10 +171,11 @@ export function savePrescription(
       message:
         "Your doctor has added a prescription for your completed appointment.",
 
-      type: "prescription",
+      type:
+        "prescription",
 
       appointmentId:
-        normalizedPrescription.appointmentId,
+        normalized.appointmentId,
     });
   }
 
@@ -189,7 +192,9 @@ export function deletePrescription(
         appointmentId,
     );
 
-  writePrescriptions(updated);
+  writePrescriptions(
+    updated,
+  );
 
   return updated;
 }

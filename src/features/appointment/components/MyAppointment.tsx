@@ -1262,15 +1262,6 @@ export default function MyAppointments() {
                       booking.doctorId,
                     );
 
-                  /*
-                   * This intentionally reads
-                   * the prescription from
-                   * localStorage during render.
-                   * prescriptionRefreshKey
-                   * forces this component to
-                   * render again when the doctor
-                   * creates or edits one.
-                   */
                   void prescriptionRefreshKey;
                   void reviewRefreshKey;
 
@@ -1384,6 +1375,39 @@ export default function MyAppointments() {
                               )}
 
                               {booking.status ===
+                                "cancelled" && (
+                                <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-3.5 py-3">
+                                  <p className="text-sm font-medium text-[var(--ink)]">
+                                    This appointment has
+                                    been cancelled.
+                                  </p>
+
+                                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                                    You can choose a new
+                                    date and time with
+                                    the same doctor from
+                                    the appointment details.
+                                  </p>
+                                </div>
+                              )}
+
+                              {booking.status ===
+                                "missed" && (
+                                <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-3.5 py-3">
+                                  <p className="text-sm font-medium text-[var(--ink)]">
+                                    This appointment was
+                                    marked as missed.
+                                  </p>
+
+                                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                                    You can book another
+                                    appointment with the
+                                    same doctor.
+                                  </p>
+                                </div>
+                              )}
+
+                              {booking.status ===
                                 "completed" && (
                                 <div className="mt-4">
                                   <span
@@ -1460,6 +1484,57 @@ export default function MyAppointments() {
                                   ? "Cancelling..."
                                   : "Cancel"}
                               </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {booking.status ===
+                          "cancelled" && (
+                          <div className="mt-5 border-t border-[var(--line)] pt-4">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                              <Link
+                                href={`/appointments/${booking.id}`}
+                                className="sm:w-auto"
+                              >
+                                <Button
+                                  size="sm"
+                                  className="w-full sm:w-auto"
+                                >
+                                  Reschedule
+                                </Button>
+                              </Link>
+
+                              <Link
+                                href={`/doctors/${booking.doctorId}`}
+                                className="sm:w-auto"
+                              >
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full sm:w-auto"
+                                >
+                                  Book new appointment
+                                </Button>
+                              </Link>
+                            </div>
+                          </div>
+                        )}
+
+                        {booking.status ===
+                          "missed" && (
+                          <div className="mt-5 border-t border-[var(--line)] pt-4">
+                            <div className="flex justify-end">
+                              <Link
+                                href={`/doctors/${booking.doctorId}`}
+                                className="w-full sm:w-auto"
+                              >
+                                <Button
+                                  size="sm"
+                                  className="w-full sm:w-auto"
+                                >
+                                  Book again
+                                </Button>
+                              </Link>
                             </div>
                           </div>
                         )}

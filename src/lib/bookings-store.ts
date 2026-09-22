@@ -3,29 +3,46 @@ import type {
   BookingStatus,
 } from "@/types/booking";
 
-const KEY =
-  "schedula:bookings";
+const KEY = "schedula:bookings";
 
 type StoredBooking = Omit<
   Booking,
-  "patientId"
+  | "patientId"
+  | "updatedAt"
+  | "rescheduleCount"
+  | "actionReason"
 > & {
   patientId?: string;
+  updatedAt?: string;
+  rescheduleCount?: number;
+  actionReason?: string;
 };
 
-function isBrowser() {
-  return typeof window !==
-    "undefined";
+function isBrowser(): boolean {
+  return typeof window !== "undefined";
 }
 
 function normalizeBooking(
   booking: StoredBooking,
 ): Booking {
+  const createdAt =
+    booking.createdAt ||
+    new Date().toISOString();
+
   return {
     ...booking,
+
     patientId:
-      booking.patientId ??
-      "",
+      booking.patientId ?? "",
+
+    createdAt,
+
+    updatedAt:
+      booking.updatedAt ??
+      createdAt,
+
+    rescheduleCount:
+      booking.rescheduleCount ?? 0,
   };
 }
 
@@ -44,12 +61,16 @@ function readBookings(): Booking[] {
       return [];
     }
 
-    const bookings =
+    const parsed =
       JSON.parse(
         raw,
       ) as StoredBooking[];
 
-    return bookings.map(
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.map(
       normalizeBooking,
     );
   } catch {
@@ -69,6 +90,9 @@ function writeBookings(
     JSON.stringify(bookings),
   );
 
+  /*
+   * Same-tab synchronization.
+   */
   window.dispatchEvent(
     new Event(
       "schedula:bookings-updated",
@@ -76,31 +100,19 @@ function writeBookings(
   );
 }
 
-/**
- * Returns every booking stored
- * in the application.
- */
 export function getAllBookings(): Booking[] {
   return readBookings();
 }
 
-/**
- * Returns a single booking.
- */
 export function getBookingById(
   bookingId: string,
 ): Booking | undefined {
   return readBookings().find(
     (booking) =>
-      booking.id ===
-      bookingId,
+      booking.id === bookingId,
   );
 }
 
-/**
- * Returns all bookings belonging
- * to a patient.
- */
 export function getBookingsByPatientId(
   patientId: string,
 ): Booking[] {
@@ -111,10 +123,6 @@ export function getBookingsByPatientId(
   );
 }
 
-/**
- * Returns all bookings belonging
- * to a doctor.
- */
 export function getBookingsByDoctorId(
   doctorId: string,
 ): Booking[] {
@@ -125,81 +133,102 @@ export function getBookingsByDoctorId(
   );
 }
 
-/**
- * Adds a new booking.
- */
 export function addBooking(
   booking: Booking,
-): void {
+): Booking {
   const bookings =
     readBookings();
 
-  /*
-   * Prevent accidental duplicate
-   * booking IDs.
-   */
-  const alreadyExists =
-    bookings.some(
-      (existing) =>
-        existing.id ===
-        booking.id,
+  const existing =
+    bookings.find(
+      (item) =>
+        item.id === booking.id,
     );
 
-  if (
-    alreadyExists
-  ) {
-    return;
+  if (existing) {
+    return existing;
   }
+
+  const now =
+    new Date().toISOString();
+
+  const normalized: Booking = {
+    ...booking,
+
+    createdAt:
+      booking.createdAt || now,
+
+    updatedAt:
+      booking.updatedAt ||
+      booking.createdAt ||
+      now,
+
+    rescheduleCount:
+      booking.rescheduleCount ??
+      0,
+  };
 
   writeBookings([
     ...bookings,
-    booking,
+    normalized,
   ]);
+
+  return normalized;
 }
 
-/**
- * Updates only the status of
- * an existing booking.
- *
- * Returns the complete updated
- * booking collection so callers
- * can immediately refresh their
- * local state.
- */
 export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
-): Booking[] {
+  actionReason?: string,
+): Booking | null {
   const bookings =
     readBookings();
 
+  const now =
+    new Date().toISOString();
+
+  let updatedBooking:
+    | Booking
+    | null = null;
+
   const updated =
     bookings.map(
-      (booking) =>
-        booking.id ===
-        bookingId
-          ? {
-              ...booking,
-              status,
-            }
-          : booking,
+      (booking) => {
+        if (
+          booking.id !==
+          bookingId
+        ) {
+          return booking;
+        }
+
+        updatedBooking = {
+          ...booking,
+
+          status,
+
+          updatedAt:
+            now,
+
+          actionReason:
+            actionReason ??
+            booking.actionReason,
+        };
+
+        return updatedBooking;
+      },
     );
+
+  if (!updatedBooking) {
+    return null;
+  }
 
   writeBookings(
     updated,
   );
 
-  return updated;
+  return updatedBooking;
 }
 
-/**
- * Updates appointment fields.
- *
- * Intended for ordinary booking
- * updates where the caller does
- * not need a dedicated reschedule
- * transaction.
- */
 export function updateBooking(
   bookingId: string,
   updates: Partial<
@@ -209,49 +238,59 @@ export function updateBooking(
       | "date"
       | "time"
       | "status"
+      | "actionReason"
     >
   >,
-): Booking[] {
+): Booking | null {
   const bookings =
     readBookings();
 
+  const now =
+    new Date().toISOString();
+
+  let updatedBooking:
+    | Booking
+    | null = null;
+
   const updated =
     bookings.map(
-      (booking) =>
-        booking.id ===
-        bookingId
-          ? {
-              ...booking,
-              ...updates,
-            }
-          : booking,
+      (booking) => {
+        if (
+          booking.id !==
+          bookingId
+        ) {
+          return booking;
+        }
+
+        updatedBooking = {
+          ...booking,
+
+          ...updates,
+
+          updatedAt:
+            now,
+        };
+
+        return updatedBooking;
+      },
     );
+
+  if (!updatedBooking) {
+    return null;
+  }
 
   writeBookings(
     updated,
   );
 
-  return updated;
+  return updatedBooking;
 }
 
 /**
- * Reschedules an existing
- * appointment.
+ * Increments the reschedule counter
+ * and records the new appointment data.
  *
- * The appointment's related
- * fields are updated together:
- *
- * - slotId
- * - date
- * - time
- * - status
- *
- * No second booking is created.
- *
- * Returns:
- * - updated Booking when found
- * - null when the booking no
- *   longer exists
+ * Slot ownership is handled by slots-store.
  */
 export function rescheduleBooking(
   bookingId: string,
@@ -260,11 +299,13 @@ export function rescheduleBooking(
     | "slotId"
     | "date"
     | "time"
-    | "status"
   >,
 ): Booking | null {
   const bookings =
     readBookings();
+
+  const now =
+    new Date().toISOString();
 
   let updatedBooking:
     | Booking
@@ -292,17 +333,29 @@ export function rescheduleBooking(
           time:
             updates.time,
 
+          /*
+           * A successfully rescheduled
+           * appointment remains upcoming.
+           */
           status:
-            updates.status,
+            "upcoming",
+
+          updatedAt:
+            now,
+
+          rescheduleCount:
+            (booking.rescheduleCount ??
+              0) + 1,
+
+          actionReason:
+            "Appointment rescheduled",
         };
 
         return updatedBooking;
       },
     );
 
-  if (
-    !updatedBooking
-  ) {
+  if (!updatedBooking) {
     return null;
   }
 
@@ -311,4 +364,90 @@ export function rescheduleBooking(
   );
 
   return updatedBooking;
+}
+
+/**
+ * Doctor confirmation moves the
+ * appointment directly to upcoming.
+ *
+ * The appointment therefore appears
+ * in the upcoming section for both
+ * doctor and patient.
+ */
+export function confirmBooking(
+  bookingId: string,
+): Booking | null {
+  return updateBookingStatus(
+    bookingId,
+    "upcoming",
+    "Appointment confirmed by doctor",
+  );
+}
+
+export function canCancelBooking(
+  booking:
+    | Booking
+    | null
+    | undefined,
+): boolean {
+  if (!booking) {
+    return false;
+  }
+
+  return [
+    "pending",
+    "confirmed",
+    "upcoming",
+  ].includes(
+    booking.status,
+  );
+}
+
+export function canRescheduleBooking(
+  booking:
+    | Booking
+    | null
+    | undefined,
+): boolean {
+  if (!booking) {
+    return false;
+  }
+
+  return [
+    "confirmed",
+    "upcoming",
+  ].includes(
+    booking.status,
+  );
+}
+
+export function canCompleteBooking(
+  booking:
+    | Booking
+    | null
+    | undefined,
+): boolean {
+  return (
+    booking?.status ===
+    "upcoming"
+  );
+}
+
+export function canMarkMissed(
+  booking:
+    | Booking
+    | null
+    | undefined,
+): boolean {
+  if (!booking) {
+    return false;
+  }
+
+  return [
+    "pending",
+    "confirmed",
+    "upcoming",
+  ].includes(
+    booking.status,
+  );
 }

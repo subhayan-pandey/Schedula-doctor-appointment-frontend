@@ -78,6 +78,50 @@ type Status =
   | "unauthorized"
   | "ready";
 
+function CalendarIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-5"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 3v3m10-3v3M4.5 9.5h15M6.5 5.5h11A2.5 2.5 0 0 1 20 8v10.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5V8a2.5 2.5 0 0 1 2.5-2.5Z"
+      />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-5"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="8"
+        r="3"
+      />
+
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M5.5 19.5a6.5 6.5 0 0 1 13 0"
+      />
+    </svg>
+  );
+}
+
 export default function DoctorDashboard() {
   const [
     status,
@@ -162,11 +206,6 @@ export default function DoctorDashboard() {
     });
   }, []);
 
-  /*
-   * Keep dashboard statistics
-   * synchronized with booking and
-   * slot changes made elsewhere.
-   */
   useEffect(() => {
     const session =
       getSession();
@@ -274,69 +313,12 @@ export default function DoctorDashboard() {
         "completed",
     ).length;
 
-  const analyticsSnapshot =
-    useMemo(() => {
-      const pending =
-        bookings.filter(
-          (booking) =>
-            booking.status ===
-            "pending",
-        ).length;
-
-      const confirmed =
-        bookings.filter(
-          (booking) =>
-            booking.status ===
-            "confirmed",
-        ).length;
-
-      const cancelled =
-        bookings.filter(
-          (booking) =>
-            booking.status ===
-            "cancelled",
-        ).length;
-
-      const missed =
-        bookings.filter(
-          (booking) =>
-            booking.status ===
-            "missed",
-        ).length;
-
-      const patientCount =
-        new Set(
-          bookings.map(
-            (booking) =>
-              booking.patientName,
-          ),
-        ).size;
-
-      return {
-        total:
-          bookings.length,
-
-        upcoming:
-          upcomingCount,
-
-        completed:
-          completedCount,
-
-        pending,
-
-        confirmed,
-
-        cancelled,
-
-        missed,
-
-        patientCount,
-      };
-    }, [
-      bookings,
-      upcomingCount,
-      completedCount,
-    ]);
+  const pendingCount =
+    bookings.filter(
+      (booking) =>
+        booking.status ===
+        "pending",
+    ).length;
 
   if (
     status ===
@@ -432,171 +414,53 @@ export default function DoctorDashboard() {
       </div>
 
       <section className="mt-8">
-        <div className="flex flex-col gap-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
-                Practice overview
+                Appointment requests
               </p>
 
               <h2 className="mt-1 text-lg font-semibold text-[var(--ink)]">
-                Analytics
+                Pending appointments
               </h2>
 
               <p className="mt-1 max-w-xl text-sm leading-6 text-[var(--muted)]">
-                A quick view of your appointment
-                activity and patient volume.
+                New appointment requests
+                are available in your
+                appointment management
+                page.
               </p>
             </div>
 
             <Link
-              href="/doctor/analytics"
+              href="/doctor/appointments"
               className="shrink-0"
             >
               <Button
-                variant="outline"
                 size="sm"
+                variant="outline"
               >
-                View full analytics
+                View appointments
               </Button>
             </Link>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl bg-[var(--canvas)] p-4">
-              <p className="text-xs font-medium text-[var(--muted)]">
-                Total appointments
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {
-                  analyticsSnapshot.total
-                }
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-[var(--canvas)] p-4">
-              <p className="text-xs font-medium text-[var(--muted)]">
-                Completed
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {
-                  analyticsSnapshot.completed
-                }
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-[var(--canvas)] p-4">
-              <p className="text-xs font-medium text-[var(--muted)]">
-                Upcoming
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {
-                  analyticsSnapshot.upcoming
-                }
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-[var(--canvas)] p-4">
-              <p className="text-xs font-medium text-[var(--muted)]">
-                Patients
-              </p>
-
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {
-                  analyticsSnapshot.patientCount
-                }
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-2 flex items-center justify-between">
+          <div className="mt-5 flex items-center justify-between rounded-xl bg-[var(--canvas)] p-4">
+            <div>
               <p className="text-sm font-semibold text-[var(--ink)]">
-                Appointment status
+                Pending requests
               </p>
 
-              <p className="text-xs text-[var(--muted)]">
-                {
-                  analyticsSnapshot.total
-                }{" "}
-                total
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Requests waiting for
+                confirmation or decline.
               </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <div className="rounded-lg border border-[var(--line)] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-[var(--muted)]">
-                    Pending
-                  </span>
-
-                  <span className="text-sm font-semibold text-[var(--ink)]">
-                    {
-                      analyticsSnapshot.pending
-                    }
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-[var(--line)] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-[var(--muted)]">
-                    Confirmed
-                  </span>
-
-                  <span className="text-sm font-semibold text-[var(--ink)]">
-                    {
-                      analyticsSnapshot.confirmed
-                    }
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-[var(--line)] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-[var(--muted)]">
-                    Completed
-                  </span>
-
-                  <span className="text-sm font-semibold text-[var(--ink)]">
-                    {
-                      analyticsSnapshot.completed
-                    }
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-[var(--line)] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-[var(--muted)]">
-                    Cancelled
-                  </span>
-
-                  <span className="text-sm font-semibold text-[var(--ink)]">
-                    {
-                      analyticsSnapshot.cancelled
-                    }
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-[var(--line)] px-3 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-[var(--muted)]">
-                    Missed
-                  </span>
-
-                  <span className="text-sm font-semibold text-[var(--ink)]">
-                    {
-                      analyticsSnapshot.missed
-                    }
-                  </span>
-                </div>
-              </div>
-            </div>
+            <span className="rounded-full bg-[var(--warning-soft)] px-3 py-1.5 text-sm font-semibold text-[var(--warning)]">
+              {pendingCount}
+            </span>
           </div>
         </div>
       </section>
@@ -651,7 +515,7 @@ export default function DoctorDashboard() {
       </section>
 
       <section className="mt-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-[var(--ink)]">
               Today&apos;s appointments
@@ -663,12 +527,30 @@ export default function DoctorDashboard() {
             </p>
           </div>
 
-          <Link
-            href="/doctor/appointments"
-            className="text-sm font-semibold text-[var(--brand-deep)] hover:underline"
-          >
-            View all
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/doctor/calendar"
+            >
+              <Button
+                variant="outline"
+                size="sm"
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <CalendarIcon />
+                  Calendar
+                </span>
+              </Button>
+            </Link>
+
+            <Link
+              href="/doctor/appointments"
+              className="self-center"
+            >
+              <span className="text-sm font-semibold text-[var(--brand-deep)] hover:underline">
+                View all
+              </span>
+            </Link>
+          </div>
         </div>
 
         <div className="mt-4">
@@ -676,7 +558,7 @@ export default function DoctorDashboard() {
           0 ? (
             <EmptyState
               title="No appointments today"
-              description="Your appointments for today will appear here."
+              description="Your upcoming appointments for today will appear here."
             />
           ) : (
             <div className="space-y-3">
@@ -686,25 +568,44 @@ export default function DoctorDashboard() {
                     key={
                       booking.id
                     }
-                    className="flex flex-col gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-4 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
-                      <p className="font-semibold text-[var(--ink)]">
-                        {
-                          booking.patientName
-                        }
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+                        <UserIcon />
+                      </div>
 
-                      <p className="mt-1 text-sm text-[var(--muted)]">
-                        {
-                          booking.time
-                        }
-                      </p>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-[var(--ink)]">
+                          {
+                            booking.patientName
+                          }
+                        </p>
+
+                        <p className="mt-1 text-sm text-[var(--muted)]">
+                          {
+                            booking.time
+                          }
+                        </p>
+                      </div>
                     </div>
 
-                    <span className="rounded-full bg-[var(--success-soft)] px-3 py-1 text-xs font-semibold text-[var(--success)]">
-                      Upcoming
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-[var(--success-soft)] px-3 py-1 text-xs font-semibold text-[var(--success)]">
+                        Upcoming
+                      </span>
+
+                      <Link
+                        href={`/appointments/${booking.id}`}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                        >
+                          View details
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 ),
               )}

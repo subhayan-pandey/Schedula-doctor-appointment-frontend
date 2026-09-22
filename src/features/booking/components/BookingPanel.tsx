@@ -108,17 +108,10 @@ export default function BookingPanel({
         latestSlots,
       );
 
-      /*
-       * If the currently selected
-       * slot has become unavailable,
-       * clear it immediately.
-       *
-       * The functional state update
-       * lets this callback remain
-       * dependent only on doctorId.
-       */
       setSelectedSlotId(
-        (currentSelectedSlotId) => {
+        (
+          currentSelectedSlotId,
+        ) => {
           if (
             !currentSelectedSlotId
           ) {
@@ -161,12 +154,6 @@ export default function BookingPanel({
     refreshSlots,
   ]);
 
-  /*
-   * Keep patient booking
-   * availability synchronized
-   * with doctor slot/calendar
-   * changes.
-   */
   useEffect(() => {
     function handleSlotsUpdated(
       event: Event,
@@ -242,7 +229,8 @@ export default function BookingPanel({
 
   function handleConfirmBooking() {
     if (
-      !selectedSlotId
+      !selectedSlotId ||
+      isBooking
     ) {
       return;
     }
@@ -279,14 +267,6 @@ export default function BookingPanel({
 
     window.setTimeout(
       () => {
-        /*
-         * bookSlot performs the
-         * final availability check
-         * against localStorage.
-         *
-         * This protects against
-         * stale UI state.
-         */
         const updatedSlots =
           bookSlot(
             doctorId,

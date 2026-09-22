@@ -27,15 +27,25 @@ import type {
 function formatNotificationTime(
   value: string,
 ): string {
-  const date = new Date(value);
+  const date =
+    new Date(value);
 
   const difference =
     Date.now() -
     date.getTime();
 
-  const minutes = Math.floor(
-    difference / 60000,
-  );
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "";
+  }
+
+  const minutes =
+    Math.floor(
+      difference / 60000,
+    );
 
   if (minutes < 1) {
     return "Just now";
@@ -45,9 +55,10 @@ function formatNotificationTime(
     return `${minutes}m ago`;
   }
 
-  const hours = Math.floor(
-    minutes / 60,
-  );
+  const hours =
+    Math.floor(
+      minutes / 60,
+    );
 
   if (hours < 24) {
     return `${hours}h ago`;
@@ -65,9 +76,12 @@ function formatNotificationTime(
 function getNotificationIcon(
   notification: AppNotification,
 ) {
-  const iconClass = "size-4";
+  const iconClass =
+    "size-4";
 
-  switch (notification.type) {
+  switch (
+    notification.type
+  ) {
     case "confirmation":
       return (
         <svg
@@ -87,6 +101,7 @@ function getNotificationIcon(
       );
 
     case "cancellation":
+    case "declined":
       return (
         <svg
           viewBox="0 0 24 24"
@@ -98,6 +113,63 @@ function getNotificationIcon(
         >
           <path
             d="M6 6l12 12M18 6 6 18"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+
+    case "reschedule":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className={iconClass}
+          aria-hidden="true"
+        >
+          <path
+            d="M4 7h13"
+            strokeLinecap="round"
+          />
+
+          <path
+            d="m14 4 3 3-3 3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          <path
+            d="M20 17H7"
+            strokeLinecap="round"
+          />
+
+          <path
+            d="m10 14-3 3 3 3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+
+    case "missed":
+      return (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className={iconClass}
+          aria-hidden="true"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="8.5"
+          />
+
+          <path
+            d="M8.5 8.5 15.5 15.5M15.5 8.5l-7 7"
             strokeLinecap="round"
           />
         </svg>
@@ -178,12 +250,19 @@ function getNotificationIcon(
 function getNotificationIconClasses(
   notification: AppNotification,
 ): string {
-  switch (notification.type) {
+  switch (
+    notification.type
+  ) {
     case "confirmation":
       return "bg-[var(--success-soft)] text-[var(--success)]";
 
     case "cancellation":
+    case "declined":
+    case "missed":
       return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+
+    case "reschedule":
+      return "bg-blue-50 text-blue-600";
 
     case "prescription":
       return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
@@ -200,11 +279,15 @@ function getNotificationHref(
   notification: AppNotification,
   role: NotificationRecipientRole,
 ): string | null {
-  if (!notification.appointmentId) {
+  if (
+    !notification.appointmentId
+  ) {
     return null;
   }
 
-  if (role === "doctor") {
+  if (
+    role === "doctor"
+  ) {
     return "/doctor/appointments";
   }
 
@@ -212,31 +295,43 @@ function getNotificationHref(
 }
 
 export default function NotificationBell() {
-  const [isOpen, setIsOpen] =
-    useState(false);
+  const [
+    isOpen,
+    setIsOpen,
+  ] = useState(false);
 
-  const [userId, setUserId] =
-    useState<string | null>(null);
+  const [
+    userId,
+    setUserId,
+  ] = useState<
+    string | null
+  >(null);
 
-  const [role, setRole] =
-    useState<NotificationRecipientRole | null>(
-      null,
-    );
+  const [
+    role,
+    setRole,
+  ] = useState<
+    NotificationRecipientRole | null
+  >(null);
 
   const [
     notifications,
     setNotifications,
-  ] = useState<AppNotification[]>(
-    [],
-  );
+  ] = useState<
+    AppNotification[]
+  >([]);
 
   const containerRef =
-    useRef<HTMLDivElement>(null);
+    useRef<HTMLDivElement>(
+      null,
+    );
 
   const refreshNotifications =
     useCallback(
       (
-        currentUserId: string | null,
+        currentUserId:
+          | string
+          | null,
         currentRole:
           | NotificationRecipientRole
           | null,
@@ -245,7 +340,10 @@ export default function NotificationBell() {
           !currentUserId ||
           !currentRole
         ) {
-          setNotifications([]);
+          setNotifications(
+            [],
+          );
+
           return;
         }
 
@@ -260,13 +358,7 @@ export default function NotificationBell() {
     );
 
   useEffect(() => {
-    let cancelled = false;
-
-    Promise.resolve().then(() => {
-      if (cancelled) {
-        return;
-      }
-
+    function loadSession() {
       const session =
         getSession();
 
@@ -274,46 +366,61 @@ export default function NotificationBell() {
         setUserId(null);
         setRole(null);
         setNotifications([]);
+
         return;
       }
 
       const sessionRole =
-        session.role === "doctor"
+        session.role ===
+        "doctor"
           ? "doctor"
           : "patient";
 
-      setUserId(session.id);
-      setRole(sessionRole);
+      setUserId(
+        session.id,
+      );
+
+      setRole(
+        sessionRole,
+      );
 
       refreshNotifications(
         session.id,
         sessionRole,
       );
-    });
+    }
+
+    /*
+     * Delaying the initial read
+     * prevents synchronous state
+     * updates directly inside the
+     * effect body.
+     */
+    const frame =
+      window.requestAnimationFrame(
+        loadSession,
+      );
 
     function handleUpdate() {
-      const session =
-        getSession();
+      loadSession();
+    }
 
-      if (!session) {
-        setUserId(null);
-        setRole(null);
-        setNotifications([]);
-        return;
+    function handleStorage(
+      event: StorageEvent,
+    ) {
+      if (
+        event.key ===
+        "schedula:notifications"
+      ) {
+        loadSession();
       }
 
-      const sessionRole =
-        session.role === "doctor"
-          ? "doctor"
-          : "patient";
-
-      setUserId(session.id);
-      setRole(sessionRole);
-
-      refreshNotifications(
-        session.id,
-        sessionRole,
-      );
+      if (
+        event.key ===
+        "schedula:session"
+      ) {
+        loadSession();
+      }
     }
 
     function handleClickOutside(
@@ -333,7 +440,8 @@ export default function NotificationBell() {
       event: KeyboardEvent,
     ) {
       if (
-        event.key === "Escape"
+        event.key ===
+        "Escape"
       ) {
         setIsOpen(false);
       }
@@ -342,6 +450,11 @@ export default function NotificationBell() {
     window.addEventListener(
       "schedula:notifications-updated",
       handleUpdate,
+    );
+
+    window.addEventListener(
+      "storage",
+      handleStorage,
     );
 
     document.addEventListener(
@@ -355,11 +468,18 @@ export default function NotificationBell() {
     );
 
     return () => {
-      cancelled = true;
+      window.cancelAnimationFrame(
+        frame,
+      );
 
       window.removeEventListener(
         "schedula:notifications-updated",
         handleUpdate,
+      );
+
+      window.removeEventListener(
+        "storage",
+        handleStorage,
       );
 
       document.removeEventListener(
@@ -385,7 +505,9 @@ export default function NotificationBell() {
   function handleNotificationClick(
     notification: AppNotification,
   ) {
-    if (!notification.isRead) {
+    if (
+      !notification.isRead
+    ) {
       markNotificationAsRead(
         notification.id,
       );
@@ -400,7 +522,10 @@ export default function NotificationBell() {
   }
 
   function handleMarkAllAsRead() {
-    if (!userId || !role) {
+    if (
+      !userId ||
+      !role
+    ) {
       return;
     }
 
@@ -415,7 +540,10 @@ export default function NotificationBell() {
     );
   }
 
-  if (!userId || !role) {
+  if (
+    !userId ||
+    !role
+  ) {
     return null;
   }
 
@@ -428,7 +556,8 @@ export default function NotificationBell() {
         type="button"
         onClick={() =>
           setIsOpen(
-            (value) => !value,
+            (value) =>
+              !value,
           )
         }
         aria-label={
@@ -436,7 +565,9 @@ export default function NotificationBell() {
             ? `Notifications, ${unreadCount} unread`
             : "Notifications"
         }
-        aria-expanded={isOpen}
+        aria-expanded={
+          isOpen
+        }
         aria-haspopup="dialog"
         className={`relative grid size-10 place-items-center rounded-xl border transition-colors ${
           isOpen
@@ -464,12 +595,14 @@ export default function NotificationBell() {
           />
         </svg>
 
-        {unreadCount > 0 && (
+        {unreadCount >
+          0 && (
           <span
             aria-hidden="true"
             className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full border-2 border-[var(--surface)] bg-[var(--urgent)] px-1 py-0.5 text-[10px] font-bold leading-none text-white"
           >
-            {unreadCount > 9
+            {unreadCount >
+            9
               ? "9+"
               : unreadCount}
           </span>
@@ -480,45 +613,37 @@ export default function NotificationBell() {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-12 z-50 w-[min(390px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-[0_18px_50px_rgba(18,36,43,0.14)]"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-xl"
         >
-          <div className="border-b border-[var(--line)] px-4 py-4 sm:px-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-[var(--ink)]">
-                    Notifications
-                  </h2>
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] px-4 py-3.5 sm:px-5">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--ink)]">
+                Notifications
+              </h2>
 
-                  {unreadCount > 0 && (
-                    <span className="rounded-full bg-[var(--urgent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--urgent-deep)]">
-                      {unreadCount} new
-                    </span>
-                  )}
-                </div>
-
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  {unreadCount > 0
-                    ? "Review your latest updates."
-                    : "You're all caught up."}
-                </p>
-              </div>
-
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  onClick={
-                    handleMarkAllAsRead
-                  }
-                  className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-[var(--brand-deep)] transition-colors hover:bg-[var(--brand-soft)]"
-                >
-                  Mark all read
-                </button>
-              )}
+              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                {unreadCount >
+                0
+                  ? `${unreadCount} unread`
+                  : "All caught up"}
+              </p>
             </div>
+
+            {unreadCount >
+              0 && (
+              <button
+                type="button"
+                onClick={
+                  handleMarkAllAsRead
+                }
+                className="text-xs font-semibold text-[var(--brand-deep)] hover:underline"
+              >
+                Mark all as read
+              </button>
+            )}
           </div>
 
-          <div className="max-h-[430px] overflow-y-auto">
+          <div className="max-h-[min(70vh,520px)] overflow-y-auto">
             {notifications.length ===
             0 ? (
               <div className="px-5 py-12 text-center">
@@ -549,14 +674,19 @@ export default function NotificationBell() {
                 </p>
 
                 <p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-[var(--muted)]">
-                  Appointment confirmations,
-                  cancellations, and prescription
-                  updates will appear here.
+                  Appointment updates,
+                  confirmations,
+                  cancellations,
+                  and prescription
+                  updates will appear
+                  here.
                 </p>
               </div>
             ) : (
               notifications.map(
-                (notification) => {
+                (
+                  notification,
+                ) => {
                   const href =
                     getNotificationHref(
                       notification,
@@ -642,7 +772,9 @@ export default function NotificationBell() {
                         key={
                           notification.id
                         }
-                        href={href}
+                        href={
+                          href
+                        }
                         onClick={() =>
                           handleNotificationClick(
                             notification,
@@ -650,7 +782,9 @@ export default function NotificationBell() {
                         }
                         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]"
                       >
-                        {content}
+                        {
+                          content
+                        }
                       </Link>
                     );
                   }
@@ -668,7 +802,9 @@ export default function NotificationBell() {
                         )
                       }
                     >
-                      {content}
+                      {
+                        content
+                      }
                     </button>
                   );
                 },

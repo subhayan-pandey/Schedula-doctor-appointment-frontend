@@ -1,5 +1,6 @@
 import type {
   AppNotification,
+  NotificationRecipientRole,
   NotificationType,
 } from "@/types/notification";
 
@@ -10,13 +11,26 @@ import {
 const KEY =
   "schedula:notifications";
 
-export type NotificationRecipientRole =
-  | "patient"
-  | "doctor";
+function isBrowser(): boolean {
+  return (
+    typeof window !==
+    "undefined"
+  );
+}
 
-function isBrowser() {
-  return typeof window !==
-    "undefined";
+function isNotificationType(
+  value: unknown,
+): value is NotificationType {
+  return (
+    value === "appointment" ||
+    value === "confirmation" ||
+    value === "cancellation" ||
+    value === "reschedule" ||
+    value === "declined" ||
+    value === "missed" ||
+    value === "prescription" ||
+    value === "system"
+  );
 }
 
 function readNotifications(): AppNotification[] {
@@ -35,26 +49,87 @@ function readNotifications(): AppNotification[] {
     }
 
     const parsed =
-      JSON.parse(raw) as Array<
+      JSON.parse(
+        raw,
+      ) as Array<
         Partial<AppNotification>
       >;
 
-    /*
-     * Backward compatibility:
-     *
-     * Notifications created before
-     * recipientRole was introduced
-     * are treated as patient
-     * notifications.
-     */
-    return parsed.map(
-      (notification) => ({
-        ...notification,
-        recipientRole:
-          notification.recipientRole ??
-          "patient",
-      }) as AppNotification,
-    );
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter(
+        (item) =>
+          item &&
+          typeof item ===
+            "object",
+      )
+      .map(
+        (item) => ({
+          id:
+            typeof item.id ===
+            "string"
+              ? item.id
+              : `notification-${Date.now()}-${Math.random()
+                  .toString(36)
+                  .slice(2, 8)}`,
+
+          userId:
+            typeof item.userId ===
+            "string"
+              ? item.userId
+              : "",
+
+          /*
+           * Old notifications that do
+           * not contain recipientRole
+           * remain patient notifications.
+           */
+          recipientRole:
+            item.recipientRole ===
+            "doctor"
+              ? "doctor"
+              : "patient",
+
+          title:
+            typeof item.title ===
+            "string"
+              ? item.title
+              : "Notification",
+
+          message:
+            typeof item.message ===
+            "string"
+              ? item.message
+              : "",
+
+          type:
+            isNotificationType(
+              item.type,
+            )
+              ? item.type
+              : "system",
+
+          appointmentId:
+            typeof item.appointmentId ===
+            "string"
+              ? item.appointmentId
+              : undefined,
+
+          isRead:
+            Boolean(
+              item.isRead,
+            ),
+
+          createdAt:
+            typeof item.createdAt ===
+            "string"
+              ? item.createdAt
+              : new Date().toISOString(),
+        }),
+      );
   } catch {
     return [];
   }
@@ -85,15 +160,6 @@ export function getAllNotifications(): AppNotification[] {
   return readNotifications();
 }
 
-/**
- * Returns notifications for a
- * specific user and role.
- *
- * Role filtering is important
- * because doctor IDs and patient
- * IDs can overlap in the local
- * demo data.
- */
 export function getNotificationsByUserAndRole(
   userId: string,
   recipientRole: NotificationRecipientRole,
@@ -118,8 +184,7 @@ export function getNotificationsByUserAndRole(
 }
 
 /**
- * Backward-compatible patient
- * notification lookup.
+ * Existing patient-only API.
  */
 export function getNotificationsByUserId(
   userId: string,
@@ -131,19 +196,22 @@ export function getNotificationsByUserId(
 }
 
 /**
- * Creates a notification with
- * an explicit recipient role.
+ * Central notification creator.
+ *
+ * recipientRole defaults to patient
+ * for backward compatibility with
+ * existing callers.
  */
 export function createNotification({
   userId,
-  recipientRole,
+  recipientRole = "patient",
   title,
   message,
   type,
   appointmentId,
 }: {
   userId: string;
-  recipientRole: NotificationRecipientRole;
+  recipientRole?: NotificationRecipientRole;
   title: string;
   message: string;
   type: NotificationType;
@@ -173,22 +241,14 @@ export function createNotification({
         new Date().toISOString(),
     };
 
-  const notifications = [
+  writeNotifications([
     notification,
     ...readNotifications(),
-  ];
-
-  writeNotifications(
-    notifications,
-  );
+  ]);
 
   return notification;
 }
 
-/**
- * Convenience helper for patient
- * notifications.
- */
 export function createPatientNotification({
   userId,
   title,
@@ -204,19 +264,20 @@ export function createPatientNotification({
 }): AppNotification {
   return createNotification({
     userId,
+
     recipientRole:
       "patient",
+
     title,
+
     message,
+
     type,
+
     appointmentId,
   });
 }
 
-/**
- * Convenience helper for doctor
- * notifications.
- */
 export function createDoctorNotification({
   userId,
   title,
@@ -232,44 +293,42 @@ export function createDoctorNotification({
 }): AppNotification {
   return createNotification({
     userId,
+
     recipientRole:
       "doctor",
+
     title,
+
     message,
+
     type,
+
     appointmentId,
   });
 }
 
 /**
- * Creates a notification only if
- * an equivalent notification does
- * not already exist.
- *
- * Useful for reminders and other
- * lifecycle notifications that may
- * be checked repeatedly.
+ * Creates a notification only when
+ * the same lifecycle notification
+ * does not already exist.
  */
 export function createNotificationOnce({
   userId,
-  recipientRole,
+  recipientRole = "patient",
   title,
   message,
   type,
   appointmentId,
 }: {
   userId: string;
-  recipientRole: NotificationRecipientRole;
+  recipientRole?: NotificationRecipientRole;
   title: string;
   message: string;
   type: NotificationType;
   appointmentId?: string;
 }): AppNotification | null {
-  const notifications =
-    readNotifications();
-
-  const alreadyExists =
-    notifications.some(
+  const exists =
+    readNotifications().some(
       (notification) =>
         notification.userId ===
           userId &&
@@ -283,28 +342,32 @@ export function createNotificationOnce({
           title,
     );
 
-  if (alreadyExists) {
+  if (exists) {
     return null;
   }
 
   return createNotification({
     userId,
+
     recipientRole,
+
     title,
+
     message,
+
     type,
+
     appointmentId,
   });
 }
 
 /**
- * Patient reminder generation.
+ * Converts the first part of a slot
+ * such as:
  *
- * The project uses localStorage
- * rather than a backend scheduler,
- * so the reminder is generated
- * when the patient's notifications
- * are requested.
+ * 09:30 AM - 09:45 AM
+ *
+ * into a Date.
  */
 function getAppointmentStart(
   date: string,
@@ -319,15 +382,6 @@ function getAppointmentStart(
     return null;
   }
 
-  /*
-   * Supports values such as:
-   *
-   * 09:30 AM
-   * 10:00 PM
-   *
-   * The booking slot's first time
-   * represents the appointment start.
-   */
   const match =
     firstTime.match(
       /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i,
@@ -369,7 +423,7 @@ function getAppointmentStart(
     hours += 12;
   }
 
-  const appointment =
+  const result =
     new Date(
       `${date}T${String(
         hours,
@@ -386,15 +440,20 @@ function getAppointmentStart(
 
   if (
     Number.isNaN(
-      appointment.getTime(),
+      result.getTime(),
     )
   ) {
     return null;
   }
 
-  return appointment;
+  return result;
 }
 
+/**
+ * Generates a patient reminder
+ * for an upcoming appointment
+ * occurring within 24 hours.
+ */
 function ensureAppointmentReminder(
   patientId: string,
 ): void {
@@ -402,44 +461,39 @@ function ensureAppointmentReminder(
     return;
   }
 
-  const bookings =
-    getBookingsByPatientId(
-      patientId,
-    );
-
   const now =
-    new Date();
+    Date.now();
 
   const twentyFourHours =
     24 * 60 * 60 * 1000;
 
-  const upcomingBooking =
-    bookings
+  const candidate =
+    getBookingsByPatientId(
+      patientId,
+    )
       .filter(
         (booking) =>
           booking.status ===
           "upcoming",
       )
-      .map((booking) => {
-        const start =
-          getAppointmentStart(
-            booking.date,
-            booking.time,
-          );
-
-        return {
+      .map(
+        (booking) => ({
           booking,
-          start,
-        };
-      })
+
+          start:
+            getAppointmentStart(
+              booking.date,
+              booking.time,
+            ),
+        }),
+      )
       .filter(
         (item) =>
-          item.start !==
-            null &&
+          item.start !== null &&
           item.start.getTime() >
-            now.getTime() &&
+            now &&
           item.start.getTime() -
-            now.getTime() <=
+            now <=
             twentyFourHours,
       )
       .sort(
@@ -448,30 +502,23 @@ function ensureAppointmentReminder(
           b.start!.getTime(),
       )[0];
 
-  if (
-    !upcomingBooking
-  ) {
+  if (!candidate) {
     return;
   }
-
-  const booking =
-    upcomingBooking.booking;
-
-  const start =
-    upcomingBooking.start!;
 
   const hoursRemaining =
     Math.max(
       1,
       Math.ceil(
-        (start.getTime() -
-          now.getTime()) /
+        (candidate.start!.getTime() -
+          now) /
           (60 * 60 * 1000),
       ),
     );
 
   createNotificationOnce({
-    userId: patientId,
+    userId:
+      patientId,
 
     recipientRole:
       "patient",
@@ -479,27 +526,20 @@ function ensureAppointmentReminder(
     title:
       "Appointment reminder",
 
-    message: `Your appointment is scheduled for ${booking.date} at ${booking.time}. It starts in approximately ${hoursRemaining} hour${
+    message: `Your appointment is scheduled for ${candidate.booking.date} at ${candidate.booking.time}. It starts in approximately ${hoursRemaining} hour${
       hoursRemaining === 1
         ? ""
         : "s"
     }.`,
 
-
     type:
       "appointment",
 
     appointmentId:
-      booking.id,
+      candidate.booking.id,
   });
 }
 
-/**
- * Returns patient notifications.
- *
- * Also checks whether a reminder
- * should be generated.
- */
 export function getPatientNotifications(
   patientId: string,
 ): AppNotification[] {
@@ -513,9 +553,6 @@ export function getPatientNotifications(
   );
 }
 
-/**
- * Returns doctor notifications.
- */
 export function getDoctorNotifications(
   doctorId: string,
 ): AppNotification[] {
@@ -527,8 +564,8 @@ export function getDoctorNotifications(
 
 export function markNotificationAsRead(
   notificationId: string,
-) {
-  const updated =
+): void {
+  writeNotifications(
     readNotifications().map(
       (notification) =>
         notification.id ===
@@ -538,32 +575,30 @@ export function markNotificationAsRead(
               isRead: true,
             }
           : notification,
-    );
-
-  writeNotifications(
-    updated,
+    ),
   );
 }
 
 export function markAllNotificationsAsRead(
   userId: string,
   recipientRole?: NotificationRecipientRole,
-) {
-  const updated =
+): void {
+  writeNotifications(
     readNotifications().map(
       (notification) => {
-        const matchesUser =
+        const sameUser =
           notification.userId ===
           userId;
 
-        const matchesRole =
-          !recipientRole ||
-          notification.recipientRole ===
-            recipientRole;
+        const sameRole =
+          recipientRole
+            ? notification.recipientRole ===
+              recipientRole
+            : true;
 
         if (
-          matchesUser &&
-          matchesRole
+          sameUser &&
+          sameRole
         ) {
           return {
             ...notification,
@@ -573,25 +608,19 @@ export function markAllNotificationsAsRead(
 
         return notification;
       },
-    );
-
-  writeNotifications(
-    updated,
+    ),
   );
 }
 
 export function deleteNotification(
   notificationId: string,
-) {
-  const updated =
+): void {
+  writeNotifications(
     readNotifications().filter(
       (notification) =>
         notification.id !==
         notificationId,
-    );
-
-  writeNotifications(
-    updated,
+    ),
   );
 }
 
@@ -610,18 +639,19 @@ export function getUnreadNotificationCount(
 
   return readNotifications().filter(
     (notification) => {
-      const matchesUser =
+      const sameUser =
         notification.userId ===
         userId;
 
-      const matchesRole =
-        !recipientRole ||
-        notification.recipientRole ===
-          recipientRole;
+      const sameRole =
+        recipientRole
+          ? notification.recipientRole ===
+            recipientRole
+          : true;
 
       return (
-        matchesUser &&
-        matchesRole &&
+        sameUser &&
+        sameRole &&
         !notification.isRead
       );
     },

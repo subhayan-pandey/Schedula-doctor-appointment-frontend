@@ -4,8 +4,8 @@ export type BookingStatus =
   | "upcoming"
   | "completed"
   | "cancelled"
-  | "missed"
-  | "declined";
+  | "declined"
+  | "missed";
 
 export type Booking = {
   id: string;
@@ -25,4 +25,22 @@ export type Booking = {
   status: BookingStatus;
 
   createdAt: string;
+
+  /**
+   * Updated whenever the appointment
+   * changes state or is rescheduled.
+   */
+  updatedAt?: string;
+
+  /**
+   * Number of times the appointment
+   * has been rescheduled.
+   */
+  rescheduleCount?: number;
+
+  /**
+   * Optional human-readable reason
+   * for the most recent lifecycle action.
+   */
+  actionReason?: string;
 };
