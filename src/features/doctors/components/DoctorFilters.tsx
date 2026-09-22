@@ -46,7 +46,7 @@ export default function DoctorFilters({
             htmlFor="doctor-filter-search"
             className="mb-1.5 block text-xs font-semibold text-[var(--ink)]"
           >
-            Search doctors
+            Smart doctor search
           </label>
 
           <div className="flex min-h-11 items-center rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 transition-colors focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand-soft)]">
@@ -74,13 +74,13 @@ export default function DoctorFilters({
               htmlFor="doctor-filter-search"
               className="sr-only"
             >
-              Search by doctor name, specialty, or condition
+              Search by doctor name, specialty, clinic, location, qualification, timing, or profile information
             </label>
 
             <input
               id="doctor-filter-search"
               type="text"
-              placeholder="Search by doctor name, specialty, or condition"
+              placeholder="Search by doctor, specialty, location, clinic, or qualification"
               value={value.query}
               onChange={(
                 event,
@@ -95,6 +95,12 @@ export default function DoctorFilters({
               className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)]"
             />
           </div>
+
+          <p className="mt-1.5 text-xs text-[var(--muted)]">
+            Results are matched across the
+            doctor profile and ordered by
+            relevance.
+          </p>
         </div>
 
         <div className="w-full lg:w-56">
@@ -131,9 +137,7 @@ export default function DoctorFilters({
             {SPECIALTIES.map(
               (specialty) => (
                 <option
-                  key={
-                    specialty
-                  }
+                  key={specialty}
                   value={
                     specialty
                   }
