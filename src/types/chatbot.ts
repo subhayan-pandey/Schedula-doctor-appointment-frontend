@@ -31,6 +31,14 @@ export type ChatIntent =
   | "doctor_profile"
   | "doctor_prescriptions"
   | "how_schedula_works"
+  | "waitlist"
+  | "smart_doctor_search"
+  | "appointment_assistant"
+  | "intake_form"
+  | "medical_documents"
+  | "appointment_timeline"
+  | "notification_preferences"
+  | "support"
   | "out_of_scope"
   | "unknown";
 

@@ -5,10 +5,19 @@ import type {
   ChatUserRole,
 } from "@/types/chatbot";
 
-type SupportedIntent = Exclude<
-  ChatIntent,
-  "out_of_scope" | "unknown"
->;
+type FeatureChatIntent =
+  | "waitlist"
+  | "smart_doctor_search"
+  | "appointment_assistant"
+  | "intake_form"
+  | "medical_documents"
+  | "appointment_timeline"
+  | "notification_preferences"
+  | "support";
+
+type ExtendedChatIntent =
+  | ChatIntent
+  | FeatureChatIntent;
 
 const DOCTOR_ONLY_INTENTS: ChatIntent[] = [
   "doctor_login",
@@ -21,7 +30,7 @@ const DOCTOR_ONLY_INTENTS: ChatIntent[] = [
 ];
 
 const RESPONSES: Record<
-  SupportedIntent,
+  string,
   ChatResponse
 > = {
   login: {
@@ -258,6 +267,58 @@ const RESPONSES: Record<
       href: "/doctors",
     },
   },
+
+  waitlist: {
+    content:
+      "The appointment waitlist feature is designed for situations where a suitable appointment slot is unavailable. You can use the waitlist flow to express interest in a future available slot.",
+  },
+
+  smart_doctor_search: {
+    content:
+      "Smart Doctor Search helps narrow doctor discovery using the information and preferences available in the Schedula experience.",
+    action: {
+      label: "Find doctors",
+      href: "/doctors",
+    },
+  },
+
+  appointment_assistant: {
+    content:
+      "The Appointment Assistant is intended to guide you through appointment-related tasks such as finding a doctor, checking availability, and managing an appointment.",
+    action: {
+      label: "My appointments",
+      href: "/appointments",
+    },
+  },
+
+  intake_form: {
+    content:
+      "The pre-consultation intake form is designed to collect relevant patient information before a consultation so the appointment workflow can use that information appropriately.",
+  },
+
+  medical_documents: {
+    content:
+      "The Medical Document Vault is intended to organize patient medical documents and make relevant documents available within the appointment experience.",
+  },
+
+  appointment_timeline: {
+    content:
+      "The Appointment Timeline provides a chronological view of important events associated with an appointment, making it easier to understand its current and previous states.",
+    action: {
+      label: "My appointments",
+      href: "/appointments",
+    },
+  },
+
+  notification_preferences: {
+    content:
+      "Notification Preferences are intended to let users control the types of Schedula notifications they receive.",
+  },
+
+  support: {
+    content:
+      "The Support feature is intended to provide a structured way to report an issue or request help with the Schedula application.",
+  },
 };
 
 const OUT_OF_SCOPE_RESPONSE: ChatResponse = {
@@ -285,7 +346,7 @@ const GUEST_ACCOUNT_ACTION = {
 };
 
 export function getResponseForIntent(
-  intent: ChatIntent,
+  intent: ExtendedChatIntent,
   role: ChatUserRole,
 ): ChatResponse {
   if (intent === "out_of_scope") {
@@ -298,7 +359,9 @@ export function getResponseForIntent(
 
   if (
     role === "patient" &&
-    DOCTOR_ONLY_INTENTS.includes(intent)
+    DOCTOR_ONLY_INTENTS.includes(
+      intent as ChatIntent,
+    )
   ) {
     return DOCTOR_ACCESS_RESPONSE;
   }
@@ -324,7 +387,7 @@ export function getResponseForIntent(
     if (
       intent === "doctor_login" ||
       DOCTOR_ONLY_INTENTS.includes(
-        intent,
+        intent as ChatIntent,
       )
     ) {
       return {
@@ -349,14 +412,17 @@ export function getResponseForIntent(
     }
   }
 
-  return RESPONSES[intent];
+  return (
+    RESPONSES[intent] ??
+    UNKNOWN_RESPONSE
+  );
 }
 
 export function getGuestAccessResponse(
   response: ChatResponse,
-  intent: ChatIntent,
+  intent: ExtendedChatIntent,
 ): ChatResponse {
-  const accountRequiredIntents: ChatIntent[] = [
+  const accountRequiredIntents: ExtendedChatIntent[] = [
     "book_appointment",
     "appointment_slots",
     "reschedule_appointment",
@@ -369,12 +435,16 @@ export function getGuestAccessResponse(
     "rebook_appointment",
     "patient_profile",
     "notifications",
+    "waitlist",
+    "appointment_assistant",
+    "intake_form",
+    "medical_documents",
+    "appointment_timeline",
+    "notification_preferences",
   ];
 
   if (
-    !accountRequiredIntents.includes(
-      intent,
-    )
+    !accountRequiredIntents.includes(intent)
   ) {
     return response;
   }
@@ -414,9 +484,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname === "/doctors"
-  ) {
+  if (pathname === "/doctors") {
     return [
       {
         label: "Browse doctors",
@@ -436,9 +504,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname === "/appointments"
-  ) {
+  if (pathname === "/appointments") {
     return [
       {
         label: "My appointments",
@@ -458,9 +524,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname === "/profile"
-  ) {
+  if (pathname === "/profile") {
     return [
       {
         label: "My profile",
@@ -480,10 +544,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname ===
-    "/doctor/dashboard"
-  ) {
+  if (pathname === "/doctor/dashboard") {
     return [
       {
         label: "Manage appointments",
@@ -503,10 +564,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname ===
-    "/doctor/appointments"
-  ) {
+  if (pathname === "/doctor/appointments") {
     return [
       {
         label: "Appointments",
@@ -526,10 +584,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname ===
-    "/doctor/calendar"
-  ) {
+  if (pathname === "/doctor/calendar") {
     return [
       {
         label: "Using the calendar",
@@ -549,10 +604,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname ===
-    "/doctor/slot"
-  ) {
+  if (pathname === "/doctor/slot") {
     return [
       {
         label: "Manage availability",
@@ -572,10 +624,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname ===
-    "/doctor/profile"
-  ) {
+  if (pathname === "/doctor/profile") {
     return [
       {
         label: "Doctor profile",
@@ -595,10 +644,7 @@ export function getInitialSuggestions(
     ];
   }
 
-  if (
-    pathname ===
-    "/doctor/prescriptions"
-  ) {
+  if (pathname === "/doctor/prescriptions") {
     return [
       {
         label: "Prescriptions",

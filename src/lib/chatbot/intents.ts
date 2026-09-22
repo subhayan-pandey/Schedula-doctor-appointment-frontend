@@ -3,8 +3,22 @@ import type {
   IntentMatch,
 } from "@/types/chatbot";
 
+type FeatureChatIntent =
+  | "waitlist"
+  | "smart_doctor_search"
+  | "appointment_assistant"
+  | "intake_form"
+  | "medical_documents"
+  | "appointment_timeline"
+  | "notification_preferences"
+  | "support";
+
+type ExtendedChatIntent =
+  | ChatIntent
+  | FeatureChatIntent;
+
 const INTENT_RULES: Array<{
-  intent: ChatIntent;
+  intent: ExtendedChatIntent;
   patterns: RegExp[];
 }> = [
   {
@@ -349,6 +363,108 @@ const INTENT_RULES: Array<{
       /\bwhat.*app.*do\b/,
     ],
   },
+
+  {
+    intent: "waitlist",
+    patterns: [
+      /\bwaitlist\b/,
+      /\bwait list\b/,
+      /\bjoin.*waitlist\b/,
+      /\bjoin.*wait list\b/,
+      /\bwaiting list\b/,
+      /\bwait.*appointment\b/,
+    ],
+  },
+
+  {
+    intent: "smart_doctor_search",
+    patterns: [
+      /\bsmart.*doctor.*search\b/,
+      /\bsmart.*search.*doctor\b/,
+      /\bdoctor.*recommendation\b/,
+      /\brecommend.*doctor\b/,
+      /\bsuggest.*doctor\b/,
+      /\bwhich doctor\b/,
+      /\bhelp.*find.*doctor\b/,
+    ],
+  },
+
+  {
+    intent: "appointment_assistant",
+    patterns: [
+      /\bappointment assistant\b/,
+      /\bappointment.*help\b/,
+      /\bhelp.*appointment\b/,
+      /\bmanage.*appointment.*for me\b/,
+      /\bappointment.*assistant\b/,
+    ],
+  },
+
+  {
+    intent: "intake_form",
+    patterns: [
+      /\bintake form\b/,
+      /\bpatient intake\b/,
+      /\bpre consultation form\b/,
+      /\bpreconsultation form\b/,
+      /\bconsultation form\b/,
+      /\bmedical intake\b/,
+    ],
+  },
+
+  {
+    intent: "medical_documents",
+    patterns: [
+      /\bmedical document\b/,
+      /\bmedical documents\b/,
+      /\bmedical file\b/,
+      /\bmedical files\b/,
+      /\bupload.*document\b/,
+      /\bupload.*medical\b/,
+      /\bpatient documents\b/,
+      /\bmedical records?\b/,
+    ],
+  },
+
+  {
+    intent: "appointment_timeline",
+    patterns: [
+      /\bappointment timeline\b/,
+      /\bappointment.*timeline\b/,
+      /\bbooking timeline\b/,
+      /\bappointment history timeline\b/,
+      /\bappointment.*events\b/,
+    ],
+  },
+
+  {
+    intent: "notification_preferences",
+    patterns: [
+      /\bnotification preferences?\b/,
+      /\bnotification settings?\b/,
+      /\bnotification.*setting\b/,
+      /\bnotification.*preference\b/,
+      /\bturn.*notification.*on\b/,
+      /\bturn.*notification.*off\b/,
+      /\bdisable.*notification\b/,
+      /\benable.*notification\b/,
+    ],
+  },
+
+  {
+    intent: "support",
+    patterns: [
+      /\bsupport\b/,
+      /\bhelp desk\b/,
+      /\bhelpdesk\b/,
+      /\bsupport ticket\b/,
+      /\bcreate.*ticket\b/,
+      /\bsubmit.*ticket\b/,
+      /\bcontact support\b/,
+      /\breport.*problem\b/,
+      /\breport.*issue\b/,
+    ],
+  },
 ];
 
 const ACTION_PATTERNS = [
@@ -365,6 +481,11 @@ const ACTION_PATTERNS = [
   /\bwrite\b/,
   /\bsubmit\b/,
   /\bdownload\b/,
+  /\bjoin\b/,
+  /\bupload\b/,
+  /\bopen\b/,
+  /\benable\b/,
+  /\bdisable\b/,
 ];
 
 const SCHEDULA_CONTEXT_WORDS = [
@@ -387,11 +508,15 @@ const SCHEDULA_CONTEXT_WORDS = [
   "account",
   "dashboard",
   "notification",
+  "waitlist",
+  "document",
+  "medical",
+  "support",
+  "ticket",
+  "intake",
 ];
 
-function normalizeMessage(
-  message: string,
-) {
+function normalizeMessage(message: string) {
   return message
     .toLowerCase()
     .replace(/[^\w\s]/g, " ")
@@ -399,29 +524,22 @@ function normalizeMessage(
     .trim();
 }
 
-function isActionRequest(
-  message: string,
-) {
-  return ACTION_PATTERNS.some(
-    (pattern) =>
-      pattern.test(message),
+function isActionRequest(message: string) {
+  return ACTION_PATTERNS.some((pattern) =>
+    pattern.test(message),
   );
 }
 
-function hasSchedulaContext(
-  message: string,
-) {
-  return SCHEDULA_CONTEXT_WORDS.some(
-    (word) =>
-      message.includes(word),
+function hasSchedulaContext(message: string) {
+  return SCHEDULA_CONTEXT_WORDS.some((word) =>
+    message.includes(word),
   );
 }
 
 export function detectIntent(
   message: string,
 ): IntentMatch {
-  const normalized =
-    normalizeMessage(message);
+  const normalized = normalizeMessage(message);
 
   if (!normalized) {
     return {
@@ -431,28 +549,19 @@ export function detectIntent(
   }
 
   for (const rule of INTENT_RULES) {
-    const matches =
-      rule.patterns.some(
-        (pattern) =>
-          pattern.test(normalized),
-      );
+    const matches = rule.patterns.some((pattern) =>
+      pattern.test(normalized),
+    );
 
     if (matches) {
       return {
-        intent: rule.intent,
-        isActionRequest:
-          isActionRequest(
-            normalized,
-          ),
+        intent: rule.intent as ChatIntent,
+        isActionRequest: isActionRequest(normalized),
       };
     }
   }
 
-  if (
-    !hasSchedulaContext(
-      normalized,
-    )
-  ) {
+  if (!hasSchedulaContext(normalized)) {
     return {
       intent: "out_of_scope",
       isActionRequest: false,
@@ -461,9 +570,6 @@ export function detectIntent(
 
   return {
     intent: "unknown",
-    isActionRequest:
-      isActionRequest(
-        normalized,
-      ),
+    isActionRequest: isActionRequest(normalized),
   };
 }
