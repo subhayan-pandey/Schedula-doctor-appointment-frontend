@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-
 import {
   useEffect,
   useMemo,
@@ -20,25 +19,17 @@ import {
   updateBookingStatus,
 } from "@/lib/bookings-store";
 
-import {
-  getDoctorById,
-} from "@/lib/doctors-store";
+import { getDoctorById } from "@/lib/doctors-store";
 
 import {
   createPatientNotification,
 } from "@/lib/notifications-store";
 
-import {
-  releaseSlot,
-} from "@/lib/slots-store";
+import { releaseSlot } from "@/lib/slots-store";
 
-import {
-  getSession,
-} from "@/lib/storage";
+import { getSession } from "@/lib/storage";
 
-import {
-  formatLongDate,
-} from "@/lib/utils/date";
+import { formatLongDate } from "@/lib/utils/date";
 
 import type {
   Booking,
@@ -52,42 +43,16 @@ type PageStatus =
 
 const FILTERS: {
   label: string;
-  status:
-    | BookingStatus
-    | "all";
+  status: BookingStatus | "all";
 }[] = [
-  {
-    label: "All",
-    status: "all",
-  },
-  {
-    label: "Pending",
-    status: "pending",
-  },
-  {
-    label: "Confirmed",
-    status: "confirmed",
-  },
-  {
-    label: "Upcoming",
-    status: "upcoming",
-  },
-  {
-    label: "Declined",
-    status: "declined",
-  },
-  {
-    label: "Completed",
-    status: "completed",
-  },
-  {
-    label: "Cancelled",
-    status: "cancelled",
-  },
-  {
-    label: "Missed",
-    status: "missed",
-  },
+  { label: "All", status: "all" },
+  { label: "Pending", status: "pending" },
+  { label: "Confirmed", status: "confirmed" },
+  { label: "Upcoming", status: "upcoming" },
+  { label: "Declined", status: "declined" },
+  { label: "Completed", status: "completed" },
+  { label: "Cancelled", status: "cancelled" },
+  { label: "Missed", status: "missed" },
 ];
 
 function getStatusBadgeClass(
@@ -96,25 +61,17 @@ function getStatusBadgeClass(
   switch (status) {
     case "pending":
       return "bg-[var(--warning-soft)] text-[var(--warning)]";
-
     case "confirmed":
       return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
-
     case "upcoming":
       return "bg-[var(--success-soft)] text-[var(--success)]";
-
     case "declined":
-      return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
-
-    case "completed":
-      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
-
     case "cancelled":
       return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
-
+    case "completed":
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
     case "missed":
       return "bg-[var(--canvas)] text-[var(--muted)]";
-
     default:
       return "bg-[var(--canvas)] text-[var(--muted)]";
   }
@@ -126,49 +83,34 @@ function getStatusLabel(
   switch (status) {
     case "pending":
       return "Pending";
-
     case "confirmed":
       return "Confirmed";
-
     case "upcoming":
       return "Upcoming";
-
     case "declined":
       return "Declined";
-
     case "completed":
       return "Completed";
-
     case "cancelled":
       return "Cancelled";
-
     case "missed":
       return "Missed";
-
     default:
       return status;
   }
 }
 
-function getInitials(
-  name: string,
-) {
-  const initials =
+function getInitials(name: string) {
+  return (
     name
       .trim()
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
-      .map(
-        (part) =>
-          part
-            .charAt(0)
-            .toUpperCase(),
+      .map((part) =>
+        part.charAt(0).toUpperCase(),
       )
-      .join("");
-
-  return (
-    initials || "PT"
+      .join("") || "PT"
   );
 }
 
@@ -206,7 +148,6 @@ function ClockIcon() {
         cy="12"
         r="8.5"
       />
-
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -231,7 +172,6 @@ function UserIcon() {
         cy="8"
         r="3"
       />
-
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -288,9 +228,7 @@ function getSearchableBookingText(
     booking.patientId,
     booking.date,
     booking.time,
-    getStatusLabel(
-      booking.status,
-    ),
+    getStatusLabel(booking.status),
   ]
     .filter(Boolean)
     .join(" ")
@@ -301,94 +239,67 @@ export default function DoctorAppointments() {
   const [
     pageStatus,
     setPageStatus,
-  ] = useState<PageStatus>(
-    "loading",
-  );
+  ] = useState<PageStatus>("loading");
 
   const [
     doctorId,
     setDoctorId,
-  ] = useState<
-    string | null
-  >(null);
+  ] = useState<string | null>(null);
 
-  const [
-    bookings,
-    setBookings,
-  ] = useState<Booking[]>(
-    [],
-  );
+  const [bookings, setBookings] =
+    useState<Booking[]>([]);
 
   const [
     activeFilter,
     setActiveFilter,
-  ] = useState<
-    BookingStatus | "all"
-  >("all");
+  ] = useState<BookingStatus | "all">(
+    "all",
+  );
 
-  const [
-    filters,
-    setFilters,
-  ] =
-    useState<AppointmentFilterValues>(
-      {
-        search: "",
-        date: "",
-        status: "all",
-      },
-    );
+  const [filters, setFilters] =
+    useState<AppointmentFilterValues>({
+      search: "",
+      date: "",
+      status: "all",
+    });
 
   const [
     processingBookingId,
     setProcessingBookingId,
-  ] = useState<
-    string | null
-  >(null);
+  ] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.resolve().then(
-      () => {
-        const session =
-          getSession();
+    Promise.resolve().then(() => {
+      const session = getSession();
 
-        if (
-          !session ||
-          session.role !==
-            "doctor"
-        ) {
-          setPageStatus(
-            "unauthorized",
-          );
+      if (
+        !session ||
+        session.role !== "doctor" ||
+        !session.id
+      ) {
+        setPageStatus("unauthorized");
+        return;
+      }
 
-          return;
-        }
+      setDoctorId(session.id);
 
-        setDoctorId(
+      setBookings(
+        getBookingsByDoctorId(
           session.id,
-        );
+        ),
+      );
 
-        setBookings(
-          getBookingsByDoctorId(
-            session.id,
-          ),
-        );
-
-        setPageStatus(
-          "ready",
-        );
-      },
-    );
+      setPageStatus("ready");
+    });
   }, []);
 
   useEffect(() => {
-    if (!doctorId) {
-      return;
-    }
+    if (!doctorId) return;
 
     const currentDoctorId =
       doctorId;
 
-    function handleBookingsUpdated() {
+    function refresh() {
       setBookings(
         getBookingsByDoctorId(
           currentDoctorId,
@@ -398,21 +309,29 @@ export default function DoctorAppointments() {
 
     window.addEventListener(
       "schedula:bookings-updated",
-      handleBookingsUpdated,
+      refresh,
+    );
+
+    window.addEventListener(
+      "storage",
+      refresh,
     );
 
     return () => {
       window.removeEventListener(
         "schedula:bookings-updated",
-        handleBookingsUpdated,
+        refresh,
+      );
+
+      window.removeEventListener(
+        "storage",
+        refresh,
       );
     };
   }, [doctorId]);
 
   function refreshBookings() {
-    if (!doctorId) {
-      return;
-    }
+    if (!doctorId) return;
 
     setBookings(
       getBookingsByDoctorId(
@@ -427,29 +346,19 @@ export default function DoctorAppointments() {
         BookingStatus | "all",
         number
       > = {
-        all:
-          bookings.length,
-
+        all: bookings.length,
         pending: 0,
-
         confirmed: 0,
-
         upcoming: 0,
-
         declined: 0,
-
         completed: 0,
-
         cancelled: 0,
-
         missed: 0,
       };
 
       bookings.forEach(
         (booking) => {
-          counts[
-            booking.status
-          ] += 1;
+          counts[booking.status] += 1;
         },
       );
 
@@ -463,68 +372,48 @@ export default function DoctorAppointments() {
           .trim()
           .toLowerCase();
 
-      const filtered =
-        bookings.filter(
-          (booking) => {
-            if (
-              activeFilter !==
-                "all" &&
-              booking.status !==
-                activeFilter
-            ) {
-              return false;
-            }
+      return bookings
+        .filter((booking) => {
+          if (
+            activeFilter !== "all" &&
+            booking.status !==
+              activeFilter
+          ) {
+            return false;
+          }
 
-            if (
-              filters.status !==
-                "all" &&
-              booking.status !==
-                filters.status
-            ) {
-              return false;
-            }
+          if (
+            filters.status !== "all" &&
+            booking.status !==
+              filters.status
+          ) {
+            return false;
+          }
 
-            if (
-              filters.date &&
-              booking.date !==
-                filters.date
-            ) {
-              return false;
-            }
+          if (
+            filters.date &&
+            booking.date !==
+              filters.date
+          ) {
+            return false;
+          }
 
-            if (
-              search &&
-              !getSearchableBookingText(
-                booking,
-              ).includes(
-                search,
-              )
-            ) {
-              return false;
-            }
+          if (
+            search &&
+            !getSearchableBookingText(
+              booking,
+            ).includes(search)
+          ) {
+            return false;
+          }
 
-            return true;
-          },
+          return true;
+        })
+        .sort((a, b) =>
+          `${b.date} ${b.time}`.localeCompare(
+            `${a.date} ${a.time}`,
+          ),
         );
-
-      return [
-        ...filtered,
-      ].sort(
-        (
-          first,
-          second,
-        ) => {
-          const firstValue =
-            `${first.date} ${first.time}`;
-
-          const secondValue =
-            `${second.date} ${second.time}`;
-
-          return secondValue.localeCompare(
-            firstValue,
-          );
-        },
-      );
     }, [
       bookings,
       activeFilter,
@@ -534,12 +423,9 @@ export default function DoctorAppointments() {
   const hasActiveFilters =
     filters.search.trim()
       .length > 0 ||
-    filters.date.length >
-      0 ||
-    filters.status !==
-      "all" ||
-    activeFilter !==
-      "all";
+    filters.date.length > 0 ||
+    filters.status !== "all" ||
+    activeFilter !== "all";
 
   function notifyPatient(
     booking: Booking,
@@ -550,35 +436,23 @@ export default function DoctorAppointments() {
       | "confirmation"
       | "cancellation",
   ) {
-    if (
-      !booking.patientId
-    ) {
-      return;
-    }
+    if (!booking.patientId) return;
 
-    createPatientNotification(
-      {
-        userId:
-          booking.patientId,
-
-        title,
-
-        message,
-
-        type,
-
-        appointmentId:
-          booking.id,
-      },
-    );
+    createPatientNotification({
+      userId: booking.patientId,
+      title,
+      message,
+      type,
+      appointmentId: booking.id,
+    });
   }
 
   function handleConfirm(
     booking: Booking,
   ) {
     if (
-      booking.status !==
-      "pending"
+      booking.status !== "pending" ||
+      processingBookingId
     ) {
       return;
     }
@@ -587,27 +461,25 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "upcoming",
-    );
+    const updated =
+      updateBookingStatus(
+        booking.id,
+        "upcoming",
+      );
 
-    notifyPatient(
-      booking,
-      "Appointment confirmed",
-      `Your appointment on ${formatLongDate(
-        booking.date,
-      )} at ${
-        booking.time
-      } has been confirmed and is now upcoming.`,
-      "confirmation",
-    );
+    if (updated) {
+      notifyPatient(
+        updated,
+        "Appointment confirmed",
+        `Your appointment on ${formatLongDate(
+          updated.date,
+        )} at ${updated.time} has been confirmed and is now upcoming.`,
+        "confirmation",
+      );
+    }
 
     refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    setProcessingBookingId(null);
   }
 
   function handleDecline(
@@ -615,8 +487,8 @@ export default function DoctorAppointments() {
   ) {
     if (
       !doctorId ||
-      booking.status !==
-        "pending"
+      booking.status !== "pending" ||
+      processingBookingId
     ) {
       return;
     }
@@ -630,35 +502,34 @@ export default function DoctorAppointments() {
       booking.slotId,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "declined",
-    );
+    const updated =
+      updateBookingStatus(
+        booking.id,
+        "declined",
+        "Appointment declined by doctor",
+      );
 
-    notifyPatient(
-      booking,
-      "Appointment declined",
-      `Your appointment request for ${formatLongDate(
-        booking.date,
-      )} at ${
-        booking.time
-      } was declined by the doctor. You can book another available slot.`,
-      "appointment",
-    );
+    if (updated) {
+      notifyPatient(
+        updated,
+        "Appointment declined",
+        `Your appointment request for ${formatLongDate(
+          updated.date,
+        )} at ${updated.time} was declined by the doctor. You can book another available slot.`,
+        "appointment",
+      );
+    }
 
     refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    setProcessingBookingId(null);
   }
 
   function handleMarkUpcoming(
     booking: Booking,
   ) {
     if (
-      booking.status !==
-      "confirmed"
+      booking.status !== "confirmed" ||
+      processingBookingId
     ) {
       return;
     }
@@ -667,35 +538,33 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "upcoming",
-    );
+    const updated =
+      updateBookingStatus(
+        booking.id,
+        "upcoming",
+      );
 
-    notifyPatient(
-      booking,
-      "Appointment is upcoming",
-      `Your appointment on ${formatLongDate(
-        booking.date,
-      )} at ${
-        booking.time
-      } is now upcoming.`,
-      "appointment",
-    );
+    if (updated) {
+      notifyPatient(
+        updated,
+        "Appointment is upcoming",
+        `Your appointment on ${formatLongDate(
+          updated.date,
+        )} at ${updated.time} is now upcoming.`,
+        "appointment",
+      );
+    }
 
     refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    setProcessingBookingId(null);
   }
 
   function handleComplete(
     booking: Booking,
   ) {
     if (
-      booking.status !==
-      "upcoming"
+      booking.status !== "upcoming" ||
+      processingBookingId
     ) {
       return;
     }
@@ -704,31 +573,31 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "completed",
-    );
+    const updated =
+      updateBookingStatus(
+        booking.id,
+        "completed",
+      );
 
-    notifyPatient(
-      booking,
-      "Appointment completed",
-      "Your appointment has been marked as completed. You can now review your doctor and access your prescription when available.",
-      "appointment",
-    );
+    if (updated) {
+      notifyPatient(
+        updated,
+        "Appointment completed",
+        "Your appointment has been marked as completed. You can now review your doctor and access your prescription when available.",
+        "appointment",
+      );
+    }
 
     refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    setProcessingBookingId(null);
   }
 
   function handleMissed(
     booking: Booking,
   ) {
     if (
-      booking.status !==
-      "upcoming"
+      booking.status !== "upcoming" ||
+      processingBookingId
     ) {
       return;
     }
@@ -737,27 +606,25 @@ export default function DoctorAppointments() {
       booking.id,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "missed",
-    );
+    const updated =
+      updateBookingStatus(
+        booking.id,
+        "missed",
+      );
 
-    notifyPatient(
-      booking,
-      "Appointment missed",
-      `Your appointment scheduled for ${formatLongDate(
-        booking.date,
-      )} at ${
-        booking.time
-      } was marked as missed. You can book another appointment.`,
-      "appointment",
-    );
+    if (updated) {
+      notifyPatient(
+        updated,
+        "Appointment missed",
+        `Your appointment scheduled for ${formatLongDate(
+          updated.date,
+        )} at ${updated.time} was marked as missed. You can book another appointment.`,
+        "appointment",
+      );
+    }
 
     refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    setProcessingBookingId(null);
   }
 
   function handleCancel(
@@ -765,14 +632,14 @@ export default function DoctorAppointments() {
   ) {
     if (
       !doctorId ||
-      booking.status ===
-        "completed" ||
-      booking.status ===
-        "missed" ||
-      booking.status ===
-        "cancelled" ||
-      booking.status ===
-        "declined"
+      processingBookingId ||
+      ![
+        "pending",
+        "confirmed",
+        "upcoming",
+      ].includes(
+        booking.status,
+      )
     ) {
       return;
     }
@@ -786,61 +653,47 @@ export default function DoctorAppointments() {
       booking.slotId,
     );
 
-    updateBookingStatus(
-      booking.id,
-      "cancelled",
-    );
+    const updated =
+      updateBookingStatus(
+        booking.id,
+        "cancelled",
+        "Appointment cancelled by doctor",
+      );
 
-    notifyPatient(
-      booking,
-      "Appointment cancelled",
-      `Your appointment scheduled for ${formatLongDate(
-        booking.date,
-      )} at ${
-        booking.time
-      } has been cancelled. You can reschedule or book another appointment.`,
-      "cancellation",
-    );
+    if (updated) {
+      notifyPatient(
+        updated,
+        "Appointment cancelled",
+        `Your appointment scheduled for ${formatLongDate(
+          updated.date,
+        )} at ${updated.time} has been cancelled. You can reschedule or book another appointment.`,
+        "cancellation",
+      );
+    }
 
     refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    setProcessingBookingId(null);
   }
 
   function handleFilterChange(
     nextFilters: AppointmentFilterValues,
   ) {
-    setFilters(
-      nextFilters,
-    );
+    setFilters(nextFilters);
 
-    if (
-      nextFilters.status !==
-      "all"
-    ) {
-      setActiveFilter(
-        nextFilters.status,
-      );
-    }
+    setActiveFilter(
+      nextFilters.status,
+    );
   }
 
   function handleStatusTabChange(
-    status:
-      | BookingStatus
-      | "all",
+    status: BookingStatus | "all",
   ) {
-    setActiveFilter(
-      status,
-    );
+    setActiveFilter(status);
 
-    setFilters(
-      (current) => ({
-        ...current,
-        status,
-      }),
-    );
+    setFilters((current) => ({
+      ...current,
+      status,
+    }));
   }
 
   function clearAllFilters() {
@@ -850,9 +703,7 @@ export default function DoctorAppointments() {
       status: "all",
     });
 
-    setActiveFilter(
-      "all",
-    );
+    setActiveFilter("all");
   }
 
   function renderAppointmentActions(
@@ -862,17 +713,13 @@ export default function DoctorAppointments() {
       processingBookingId ===
       booking.id;
 
-    switch (
-      booking.status
-    ) {
+    switch (booking.status) {
       case "pending":
         return (
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
             <Button
               size="sm"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleConfirm(
                   booking,
@@ -888,9 +735,7 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleDecline(
                   booking,
@@ -902,6 +747,19 @@ export default function DoctorAppointments() {
                 Decline
               </span>
             </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isProcessing}
+              onClick={() =>
+                handleCancel(
+                  booking,
+                )
+              }
+            >
+              Cancel
+            </Button>
           </div>
         );
 
@@ -910,9 +768,7 @@ export default function DoctorAppointments() {
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
             <Button
               size="sm"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleMarkUpcoming(
                   booking,
@@ -930,9 +786,7 @@ export default function DoctorAppointments() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={
-                  isProcessing
-                }
+                disabled={isProcessing}
               >
                 Reschedule
               </Button>
@@ -941,9 +795,7 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleCancel(
                   booking,
@@ -960,9 +812,7 @@ export default function DoctorAppointments() {
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
             <Button
               size="sm"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleComplete(
                   booking,
@@ -980,9 +830,7 @@ export default function DoctorAppointments() {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={
-                  isProcessing
-                }
+                disabled={isProcessing}
               >
                 Reschedule
               </Button>
@@ -991,9 +839,7 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleMissed(
                   booking,
@@ -1006,9 +852,7 @@ export default function DoctorAppointments() {
             <Button
               size="sm"
               variant="outline"
-              disabled={
-                isProcessing
-              }
+              disabled={isProcessing}
               onClick={() =>
                 handleCancel(
                   booking,
@@ -1024,6 +868,19 @@ export default function DoctorAppointments() {
         return (
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
             <Link
+              href={`/doctor/calendar?appointmentId=${encodeURIComponent(
+                booking.id,
+              )}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                Reschedule
+              </Button>
+            </Link>
+
+            <Link
               href={`/doctors/${booking.doctorId}`}
             >
               <Button
@@ -1035,11 +892,9 @@ export default function DoctorAppointments() {
             </Link>
 
             <p className="text-xs leading-5 text-[var(--muted)]">
-              This request was
-              declined. The
-              patient can book
-              another available
-              slot.
+              Rescheduling assigns a new
+              available slot and moves this
+              appointment to upcoming.
             </p>
           </div>
         );
@@ -1060,13 +915,18 @@ export default function DoctorAppointments() {
               </Button>
             </Link>
 
-            <p className="self-center text-xs leading-5 text-[var(--muted)]">
-              Prescription and
-              patient-history
-              management can be
-              opened from the
-              appointment details.
-            </p>
+            <Link
+              href={`/doctor/patients/${encodeURIComponent(
+                booking.patientId,
+              )}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                Patient history
+              </Button>
+            </Link>
           </div>
         );
 
@@ -1085,11 +945,8 @@ export default function DoctorAppointments() {
             </Link>
 
             <p className="text-xs leading-5 text-[var(--muted)]">
-              This appointment
-              was cancelled. The
-              patient can choose
-              another available
-              slot.
+              The appointment was cancelled
+              and its slot was released.
             </p>
           </div>
         );
@@ -1097,6 +954,19 @@ export default function DoctorAppointments() {
       case "missed":
         return (
           <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+            <Link
+              href={`/doctor/patients/${encodeURIComponent(
+                booking.patientId,
+              )}`}
+            >
+              <Button
+                size="sm"
+                variant="outline"
+              >
+                Patient history
+              </Button>
+            </Link>
+
             <Link
               href={`/doctors/${booking.doctorId}`}
             >
@@ -1107,14 +977,6 @@ export default function DoctorAppointments() {
                 Book again
               </Button>
             </Link>
-
-            <p className="text-xs leading-5 text-[var(--muted)]">
-              This appointment is
-              marked as missed.
-              A new appointment
-              can be booked from
-              the available slots.
-            </p>
           </div>
         );
 
@@ -1123,10 +985,7 @@ export default function DoctorAppointments() {
     }
   }
 
-  if (
-    pageStatus ===
-    "loading"
-  ) {
+  if (pageStatus === "loading") {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">
         Loading appointments…
@@ -1134,10 +993,7 @@ export default function DoctorAppointments() {
     );
   }
 
-  if (
-    pageStatus ===
-    "unauthorized"
-  ) {
+  if (pageStatus === "unauthorized") {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
@@ -1150,9 +1006,8 @@ export default function DoctorAppointments() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Log in with a doctor
-            account to manage
-            appointments.
+            Log in with a doctor account to
+            manage appointments.
           </p>
 
           <Link
@@ -1168,12 +1023,9 @@ export default function DoctorAppointments() {
     );
   }
 
-  const doctor =
-    doctorId
-      ? getDoctorById(
-          doctorId,
-        )
-      : undefined;
+  const doctor = doctorId
+    ? getDoctorById(doctorId)
+    : undefined;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
@@ -1189,8 +1041,7 @@ export default function DoctorAppointments() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-              Review and manage
-              your patient
+              Review and manage your patient
               appointments.
             </p>
           </div>
@@ -1225,9 +1076,7 @@ export default function DoctorAppointments() {
             </p>
 
             <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-              {
-                statusCounts.upcoming
-              }
+              {statusCounts.upcoming}
             </p>
           </div>
 
@@ -1237,9 +1086,7 @@ export default function DoctorAppointments() {
             </p>
 
             <p className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-              {
-                statusCounts.pending
-              }
+              {statusCounts.pending}
             </p>
           </div>
         </div>
@@ -1248,9 +1095,7 @@ export default function DoctorAppointments() {
       <section className="mt-8">
         <AppointmentFilters
           value={filters}
-          onChange={
-            handleFilterChange
-          }
+          onChange={handleFilterChange}
           resultCount={
             visibleBookings.length
           }
@@ -1259,50 +1104,44 @@ export default function DoctorAppointments() {
         <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
           <div className="border-b border-[var(--line)] p-3 sm:p-4">
             <div className="flex gap-2 overflow-x-auto">
-              {FILTERS.map(
-                (filter) => {
-                  const isActive =
-                    activeFilter ===
-                    filter.status;
+              {FILTERS.map((filter) => {
+                const isActive =
+                  activeFilter ===
+                  filter.status;
 
-                  return (
-                    <button
-                      key={
-                        filter.status
-                      }
-                      type="button"
-                      onClick={() =>
-                        handleStatusTabChange(
-                          filter.status,
-                        )
-                      }
-                      className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
+                return (
+                  <button
+                    key={filter.status}
+                    type="button"
+                    onClick={() =>
+                      handleStatusTabChange(
+                        filter.status,
+                      )
+                    }
+                    className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                        : "text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
+                    }`}
+                  >
+                    {filter.label}
+
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[11px] ${
                         isActive
-                          ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
-                          : "text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
+                          ? "bg-[var(--surface)] text-[var(--brand-deep)]"
+                          : "bg-[var(--canvas)] text-[var(--muted)]"
                       }`}
                     >
                       {
-                        filter.label
+                        statusCounts[
+                          filter.status
+                        ]
                       }
-
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-[11px] ${
-                          isActive
-                            ? "bg-[var(--surface)] text-[var(--brand-deep)]"
-                            : "bg-[var(--canvas)] text-[var(--muted)]"
-                        }`}
-                      >
-                        {
-                          statusCounts[
-                            filter.status
-                          ]
-                        }
-                      </span>
-                    </button>
-                  );
-                },
-              )}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1311,14 +1150,12 @@ export default function DoctorAppointments() {
             0 ? (
               <EmptyState
                 title={
-                  bookings.length ===
-                  0
+                  bookings.length === 0
                     ? "No appointments yet"
                     : "No matching appointments"
                 }
                 description={
-                  bookings.length ===
-                  0
+                  bookings.length === 0
                     ? "Appointments booked with you will appear here."
                     : "Try changing the search or filter criteria."
                 }
@@ -1347,9 +1184,7 @@ export default function DoctorAppointments() {
 
                     return (
                       <li
-                        key={
-                          booking.id
-                        }
+                        key={booking.id}
                         className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5"
                       >
                         <article>
@@ -1368,21 +1203,17 @@ export default function DoctorAppointments() {
                                   }
                                 </h2>
 
-                                <div className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+                                <div className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
                                   <span className="inline-flex items-center gap-1.5">
                                     <CalendarIcon />
-                                    {
-                                      formatLongDate(
-                                        booking.date,
-                                      )
-                                    }
+                                    {formatLongDate(
+                                      booking.date,
+                                    )}
                                   </span>
 
                                   <span className="inline-flex items-center gap-1.5">
                                     <ClockIcon />
-                                    {
-                                      booking.time
-                                    }
+                                    {booking.time}
                                   </span>
                                 </div>
                               </div>
@@ -1393,11 +1224,9 @@ export default function DoctorAppointments() {
                                 booking.status,
                               )}`}
                             >
-                              {
-                                getStatusLabel(
-                                  booking.status,
-                                )
-                              }
+                              {getStatusLabel(
+                                booking.status,
+                              )}
                             </span>
                           </div>
 
@@ -1408,9 +1237,7 @@ export default function DoctorAppointments() {
                               </p>
 
                               <p className="mt-1 break-all text-sm font-medium text-[var(--ink)]">
-                                {
-                                  booking.id
-                                }
+                                {booking.id}
                               </p>
                             </div>
 
@@ -1434,8 +1261,7 @@ export default function DoctorAppointments() {
 
                           {isProcessing && (
                             <p className="mt-3 text-xs text-[var(--muted)]">
-                              Updating
-                              appointment…
+                              Updating appointment…
                             </p>
                           )}
                         </article>

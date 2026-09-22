@@ -1008,7 +1008,8 @@ export default function MyAppointments() {
 
     if (
       !session ||
-      session.role !== "patient"
+      session.role !== "patient" ||
+      !session.id
     ) {
       setBookings([]);
       return;
@@ -1047,6 +1048,11 @@ export default function MyAppointments() {
       handlePrescriptionsUpdated,
     );
 
+    window.addEventListener(
+      "storage",
+      handleBookingsUpdated,
+    );
+
     return () => {
       window.removeEventListener(
         "schedula:bookings-updated",
@@ -1056,6 +1062,11 @@ export default function MyAppointments() {
       window.removeEventListener(
         "schedula:prescriptions-updated",
         handlePrescriptionsUpdated,
+      );
+
+      window.removeEventListener(
+        "storage",
+        handleBookingsUpdated,
       );
     };
   }, []);
@@ -1126,6 +1137,7 @@ export default function MyAppointments() {
     updateBookingStatus(
       booking.id,
       "cancelled",
+      "Declined appointment cancelled by patient",
     );
 
     refreshBookings();
@@ -1493,7 +1505,7 @@ export default function MyAppointments() {
                           <div className="mt-5 border-t border-[var(--line)] pt-4">
                             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                               <Link
-                                href={`/appointments/${booking.id}`}
+                                href={`/appointments/${booking.id}/reschedule`}
                                 className="sm:w-auto"
                               >
                                 <Button

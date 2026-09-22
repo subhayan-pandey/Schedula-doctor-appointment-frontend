@@ -12,7 +12,15 @@ import {
 } from "@/lib/bookings-store";
 
 import { getDoctorById } from "@/lib/doctors-store";
+
+import {
+  createDoctorNotification,
+} from "@/lib/notifications-store";
+
 import { releaseSlot } from "@/lib/slots-store";
+
+import { getSession } from "@/lib/storage";
+
 import { formatLongDate } from "@/lib/utils/date";
 
 import type {
@@ -100,7 +108,7 @@ function getStatusMessage(
       return "This appointment has been completed.";
 
     case "cancelled":
-      return "This appointment has been cancelled.";
+      return "This appointment has been cancelled. You can choose another available appointment.";
 
     case "missed":
       return "This appointment was marked as missed.";
@@ -210,12 +218,23 @@ export default function AppointmentConfirmationPage() {
   >(undefined);
 
   const [
+    session,
+    setSession,
+  ] = useState<
+    ReturnType<typeof getSession>
+  >(null);
+
+  const [
     isCancelling,
     setIsCancelling,
   ] = useState(false);
 
   useEffect(() => {
     Promise.resolve().then(() => {
+      setSession(
+        getSession(),
+      );
+
       setBooking(
         getBookingById(
           bookingId,
@@ -240,7 +259,7 @@ export default function AppointmentConfirmationPage() {
           appointment
         </h1>
 
-        <p className="mt-2 text-sm text-[var(--muted)]">
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
           It may have been booked in a
           different browser, or the link
           is incorrect.
@@ -258,10 +277,35 @@ export default function AppointmentConfirmationPage() {
     );
   }
 
-  /*
-   * From this point onward, TypeScript
-   * knows that booking is a real Booking.
-   */
+  if (
+    !session ||
+    session.role !== "patient" ||
+    booking.patientId !==
+      session.id
+  ) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold text-[var(--ink)]">
+          Appointment unavailable
+        </h1>
+
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+          You are not authorized to view
+          this appointment.
+        </p>
+
+        <Link
+          href="/appointments"
+          className="mt-6 inline-block"
+        >
+          <Button>
+            View my appointments
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   const currentBooking =
     booking;
 
@@ -270,24 +314,39 @@ export default function AppointmentConfirmationPage() {
       currentBooking.doctorId,
     );
 
-  const isTerminal =
+  const canCancel =
     currentBooking.status ===
-      "completed" ||
+      "pending" ||
     currentBooking.status ===
-      "cancelled" ||
+      "confirmed" ||
     currentBooking.status ===
-      "missed";
+      "upcoming";
+
+  const canReschedule =
+    currentBooking.status ===
+      "confirmed" ||
+    currentBooking.status ===
+      "upcoming";
 
   const isDeclined =
     currentBooking.status ===
     "declined";
 
-  function handleCancelDeclined(
-    bookingToCancel: Booking,
-  ) {
+  const isCompleted =
+    currentBooking.status ===
+    "completed";
+
+  const isMissed =
+    currentBooking.status ===
+    "missed";
+
+  const isCancelled =
+    currentBooking.status ===
+    "cancelled";
+
+  function handleCancel() {
     if (
-      bookingToCancel.status !==
-        "declined" ||
+      !canCancel ||
       isCancelling
     ) {
       return;
@@ -296,19 +355,84 @@ export default function AppointmentConfirmationPage() {
     setIsCancelling(true);
 
     releaseSlot(
-      bookingToCancel.doctorId,
-      bookingToCancel.slotId,
+      currentBooking.doctorId,
+      currentBooking.slotId,
     );
 
-    updateBookingStatus(
-      bookingToCancel.id,
-      "cancelled",
-    );
+    const updatedBooking =
+      updateBookingStatus(
+        currentBooking.id,
+        "cancelled",
+        "Appointment cancelled by patient",
+      );
 
-    setBooking({
-      ...bookingToCancel,
-      status: "cancelled",
-    });
+    if (updatedBooking) {
+      createDoctorNotification({
+        userId:
+          currentBooking.doctorId,
+
+        title:
+          "Appointment cancelled",
+
+        message: `${currentBooking.patientName} cancelled the appointment scheduled for ${formatLongDate(
+          currentBooking.date,
+        )} at ${currentBooking.time}.`,
+
+        type:
+          "cancellation",
+
+        appointmentId:
+          currentBooking.id,
+      });
+
+      setBooking(
+        updatedBooking,
+      );
+    }
+
+    setIsCancelling(false);
+  }
+
+  function handleCancelDeclined() {
+    if (
+      !isDeclined ||
+      isCancelling
+    ) {
+      return;
+    }
+
+    setIsCancelling(true);
+
+    const updatedBooking =
+      updateBookingStatus(
+        currentBooking.id,
+        "cancelled",
+        "Declined appointment cancelled by patient",
+      );
+
+    if (updatedBooking) {
+      createDoctorNotification({
+        userId:
+          currentBooking.doctorId,
+
+        title:
+          "Declined appointment cancelled",
+
+        message: `${currentBooking.patientName} cancelled the declined appointment request for ${formatLongDate(
+          currentBooking.date,
+        )} at ${currentBooking.time}.`,
+
+        type:
+          "cancellation",
+
+        appointmentId:
+          currentBooking.id,
+      });
+
+      setBooking(
+        updatedBooking,
+      );
+    }
 
     setIsCancelling(false);
   }
@@ -437,11 +561,32 @@ export default function AppointmentConfirmationPage() {
           </div>
         )}
 
-        {isTerminal && (
+        {isCancelled && (
+          <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
+            <p className="text-sm font-medium text-[var(--ink)]">
+              This appointment has been
+              cancelled.
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              You can reschedule this
+              appointment using the same
+              appointment record.
+            </p>
+          </div>
+        )}
+
+        {isCompleted && (
           <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm text-[var(--muted)]">
-            This appointment is closed and
-            no further appointment actions
-            are available.
+            This appointment has been
+            completed.
+          </div>
+        )}
+
+        {isMissed && (
+          <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm text-[var(--muted)]">
+            This appointment was marked as
+            missed.
           </div>
         )}
       </div>
@@ -461,10 +606,8 @@ export default function AppointmentConfirmationPage() {
             variant="outline"
             className="flex-1"
             disabled={isCancelling}
-            onClick={() =>
-              handleCancelDeclined(
-                currentBooking,
-              )
+            onClick={
+              handleCancelDeclined
             }
           >
             {isCancelling
@@ -472,48 +615,116 @@ export default function AppointmentConfirmationPage() {
               : "Cancel appointment"}
           </Button>
         </div>
-      ) : (
+      ) : isCancelled ? (
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
-            href="/appointments"
+            href={`/appointments/${currentBooking.id}/reschedule`}
             className="flex-1"
           >
             <Button className="w-full">
-              View my appointments
+              Reschedule
             </Button>
           </Link>
 
           <Link
-            href="/doctors"
+            href={`/doctors/${currentBooking.doctorId}`}
             className="flex-1"
           >
             <Button
               variant="outline"
               className="w-full"
             >
-              {isTerminal
-                ? "Book another"
-                : "Find another doctor"}
+              Book new appointment
             </Button>
           </Link>
+        </div>
+      ) : isCompleted ? (
+        <div className="mt-6">
+          <Link
+            href={`/doctors/${currentBooking.doctorId}`}
+            className="block"
+          >
+            <Button className="w-full">
+              Book another appointment
+            </Button>
+          </Link>
+        </div>
+      ) : isMissed ? (
+        <div className="mt-6">
+          <Link
+            href={`/doctors/${currentBooking.doctorId}`}
+            className="block"
+          >
+            <Button className="w-full">
+              Book again
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          {canReschedule ? (
+            <Link
+              href={`/appointments/${currentBooking.id}/reschedule`}
+              className="flex-1"
+            >
+              <Button className="w-full">
+                Reschedule
+              </Button>
+            </Link>
+          ) : (
+            <Link
+              href="/appointments"
+              className="flex-1"
+            >
+              <Button className="w-full">
+                View my appointments
+              </Button>
+            </Link>
+          )}
+
+          {canCancel && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={isCancelling}
+              onClick={handleCancel}
+            >
+              {isCancelling
+                ? "Cancelling..."
+                : "Cancel appointment"}
+            </Button>
+          )}
+
+          {!canCancel &&
+            !canReschedule && (
+              <Link
+                href="/doctors"
+                className="flex-1"
+              >
+                <Button
+                  variant="outline"
+                  className="w-full"
+                >
+                  Find another doctor
+                </Button>
+              </Link>
+            )}
         </div>
       )}
 
-      {isDeclined && (
-        <div className="mt-3">
-          <Link
-            href="/appointments"
-            className="block"
+      <div className="mt-3">
+        <Link
+          href="/appointments"
+          className="block"
+        >
+          <Button
+            variant="outline"
+            className="w-full"
           >
-            <Button
-              variant="outline"
-              className="w-full"
-            >
-              Back to my appointments
-            </Button>
-          </Link>
-        </div>
-      )}
+            Back to my appointments
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

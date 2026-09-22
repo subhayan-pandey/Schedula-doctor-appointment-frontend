@@ -7,7 +7,7 @@ import {
 } from "@/lib/bookings-store";
 
 import {
-  createNotification,
+  createPatientNotification,
 } from "@/lib/notifications-store";
 
 const KEY =
@@ -22,8 +22,70 @@ type StoredPrescription =
   };
 
 function isBrowser(): boolean {
-  return typeof window !==
-    "undefined";
+  return (
+    typeof window !==
+    "undefined"
+  );
+}
+
+function normalizePrescription(
+  prescription: StoredPrescription,
+): Prescription {
+  return {
+    ...prescription,
+
+    patientId:
+      prescription.patientId ??
+      "",
+
+    medicines:
+      Array.isArray(
+        prescription.medicines,
+      )
+        ? prescription.medicines.map(
+            (medicine) => ({
+              id:
+                medicine.id ||
+                `med-${Date.now()}-${Math.random()
+                  .toString(36)
+                  .slice(2, 8)}`,
+
+              name:
+                medicine.name ??
+                "",
+
+              dosage:
+                medicine.dosage ??
+                "",
+
+              duration:
+                medicine.duration ??
+                "",
+
+              instructions:
+                medicine.instructions ??
+                "",
+            }),
+          )
+        : [],
+
+    diagnosis:
+      prescription.diagnosis ??
+      "",
+
+    instructions:
+      prescription.instructions ??
+      "",
+
+    createdAt:
+      prescription.createdAt ||
+      new Date().toISOString(),
+
+    updatedAt:
+      prescription.updatedAt ||
+      prescription.createdAt ||
+      new Date().toISOString(),
+  };
 }
 
 function readPrescriptions(): Prescription[] {
@@ -46,13 +108,16 @@ function readPrescriptions(): Prescription[] {
         raw,
       ) as StoredPrescription[];
 
+    if (
+      !Array.isArray(
+        stored,
+      )
+    ) {
+      return [];
+    }
+
     return stored.map(
-      (prescription) => ({
-        ...prescription,
-        patientId:
-          prescription.patientId ??
-          "",
-      }),
+      normalizePrescription,
     );
   } catch {
     return [];
@@ -61,7 +126,7 @@ function readPrescriptions(): Prescription[] {
 
 function writePrescriptions(
   prescriptions: Prescription[],
-) {
+): void {
   if (!isBrowser()) {
     return;
   }
@@ -84,6 +149,16 @@ export function getAllPrescriptions(): Prescription[] {
   return readPrescriptions();
 }
 
+export function getPrescriptionById(
+  prescriptionId: string,
+): Prescription | undefined {
+  return readPrescriptions().find(
+    (prescription) =>
+      prescription.id ===
+      prescriptionId,
+  );
+}
+
 export function getPrescriptionByAppointmentId(
   appointmentId: string,
 ): Prescription | undefined {
@@ -91,6 +166,26 @@ export function getPrescriptionByAppointmentId(
     (prescription) =>
       prescription.appointmentId ===
       appointmentId,
+  );
+}
+
+export function getPrescriptionsByPatientId(
+  patientId: string,
+): Prescription[] {
+  return readPrescriptions().filter(
+    (prescription) =>
+      prescription.patientId ===
+      patientId,
+  );
+}
+
+export function getPrescriptionsByDoctorId(
+  doctorId: string,
+): Prescription[] {
+  return readPrescriptions().filter(
+    (prescription) =>
+      prescription.doctorId ===
+      doctorId,
   );
 }
 
@@ -117,15 +212,25 @@ export function savePrescription(
     booking?.patientId ||
     "";
 
-  const normalized: Prescription =
-    {
+  const createdAt =
+    existingIndex >= 0
+      ? prescriptions[
+          existingIndex
+        ].createdAt
+      : prescription.createdAt ||
+        new Date().toISOString();
+
+  const normalized =
+    normalizePrescription({
       ...prescription,
 
       patientId,
 
+      createdAt,
+
       updatedAt:
         new Date().toISOString(),
-    };
+    });
 
   let updated: Prescription[];
 
@@ -152,18 +257,21 @@ export function savePrescription(
   );
 
   /*
-   * Only the first creation generates
-   * a prescription notification.
+   * Notify the patient only when
+   * the prescription is created for
+   * the first time.
    *
-   * Editing the prescription does not
-   * spam the patient with duplicate alerts.
+   * Editing an existing prescription
+   * must not generate duplicate
+   * prescription notifications.
    */
   if (
     existingIndex === -1 &&
     patientId
   ) {
-    createNotification({
-      userId: patientId,
+    createPatientNotification({
+      userId:
+        patientId,
 
       title:
         "New prescription available",

@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useSearchParams } from "next/navigation";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -328,6 +329,14 @@ function ChevronIcon({
 }
 
 export default function DoctorCalendar() {
+  const searchParams =
+    useSearchParams();
+
+  const appointmentId =
+    searchParams.get(
+      "appointmentId",
+    );
+
   const [
     pageStatus,
     setPageStatus,
@@ -516,6 +525,44 @@ export default function DoctorCalendar() {
       );
     };
   }, [doctorId]);
+
+  useEffect(() => {
+    if (
+      !appointmentId ||
+      !doctorId ||
+      bookings.length === 0
+    ) {
+      return;
+    }
+
+    const target =
+      bookings.find(
+        (booking) =>
+          booking.id ===
+          appointmentId,
+      );
+
+    if (!target) {
+      return;
+    }
+
+    const timeoutId =
+      window.setTimeout(() => {
+        setSelectedBooking(
+          target,
+        );
+      }, 0);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, [
+    appointmentId,
+    doctorId,
+    bookings,
+  ]);
 
   const visibleDays =
     useMemo(() => {
@@ -825,16 +872,6 @@ export default function DoctorCalendar() {
       return;
     }
 
-    /*
-     * UPCOMING:
-     *
-     * Existing slot is booked.
-     *
-     * Swap:
-     *
-     * old slot -> available
-     * new slot -> booked
-     */
     if (
       currentStatus ===
       "upcoming"
@@ -875,9 +912,6 @@ export default function DoctorCalendar() {
 
             time:
               latestNewSlot.time,
-
-            status:
-              "upcoming",
           },
         );
 
@@ -949,16 +983,6 @@ export default function DoctorCalendar() {
       return;
     }
 
-    /*
-     * DECLINED:
-     *
-     * The original slot was
-     * already released when the
-     * appointment was declined.
-     *
-     * Therefore only the new
-     * slot is booked.
-     */
     const bookedSlots =
       bookSlot(
         currentDoctorId,
@@ -991,9 +1015,6 @@ export default function DoctorCalendar() {
 
           time:
             latestNewSlot.time,
-
-          status:
-            "upcoming",
         },
       );
 

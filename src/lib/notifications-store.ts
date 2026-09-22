@@ -33,6 +33,15 @@ function isNotificationType(
   );
 }
 
+function isRecipientRole(
+  value: unknown,
+): value is NotificationRecipientRole {
+  return (
+    value === "patient" ||
+    value === "doctor"
+  );
+}
+
 function readNotifications(): AppNotification[] {
   if (!isBrowser()) {
     return [];
@@ -51,23 +60,32 @@ function readNotifications(): AppNotification[] {
     const parsed =
       JSON.parse(
         raw,
-      ) as Array<
-        Partial<AppNotification>
-      >;
+      ) as unknown;
 
-    if (!Array.isArray(parsed)) {
+    if (
+      !Array.isArray(
+        parsed,
+      )
+    ) {
       return [];
     }
 
     return parsed
       .filter(
-        (item) =>
-          item &&
-          typeof item ===
-            "object",
+        (
+          item,
+        ): item is Record<
+          string,
+          unknown
+        > =>
+          Boolean(
+            item &&
+              typeof item ===
+                "object",
+          ),
       )
       .map(
-        (item) => ({
+        (item): AppNotification => ({
           id:
             typeof item.id ===
             "string"
@@ -83,14 +101,16 @@ function readNotifications(): AppNotification[] {
               : "",
 
           /*
-           * Old notifications that do
-           * not contain recipientRole
-           * remain patient notifications.
+           * Existing notifications
+           * created before recipientRole
+           * was introduced are treated as
+           * patient notifications.
            */
           recipientRole:
-            item.recipientRole ===
-            "doctor"
-              ? "doctor"
+            isRecipientRole(
+              item.recipientRole,
+            )
+              ? item.recipientRole
               : "patient",
 
           title:
@@ -119,9 +139,7 @@ function readNotifications(): AppNotification[] {
               : undefined,
 
           isRead:
-            Boolean(
-              item.isRead,
-            ),
+            item.isRead === true,
 
           createdAt:
             typeof item.createdAt ===
@@ -149,6 +167,12 @@ function writeNotifications(
     ),
   );
 
+  /*
+   * Custom event is required because
+   * storage events do not fire in the
+   * same browser tab that performed
+   * localStorage.setItem().
+   */
   window.dispatchEvent(
     new Event(
       "schedula:notifications-updated",
@@ -183,8 +207,9 @@ export function getNotificationsByUserAndRole(
     );
 }
 
-/**
- * Existing patient-only API.
+/*
+ * Backward-compatible patient-only
+ * notification API.
  */
 export function getNotificationsByUserId(
   userId: string,
@@ -195,12 +220,12 @@ export function getNotificationsByUserId(
   );
 }
 
-/**
+/*
  * Central notification creator.
  *
- * recipientRole defaults to patient
- * for backward compatibility with
- * existing callers.
+ * The default role remains patient
+ * so existing callers continue to
+ * behave correctly.
  */
 export function createNotification({
   userId,
@@ -307,10 +332,14 @@ export function createDoctorNotification({
   });
 }
 
-/**
- * Creates a notification only when
- * the same lifecycle notification
- * does not already exist.
+/*
+ * Prevents duplicate lifecycle
+ * notifications.
+ *
+ * Two notifications are considered
+ * duplicates when they belong to the
+ * same recipient, role, appointment,
+ * type and title.
  */
 export function createNotificationOnce({
   userId,
@@ -361,9 +390,9 @@ export function createNotificationOnce({
   });
 }
 
-/**
- * Converts the first part of a slot
- * such as:
+/*
+ * Converts the first time in a slot
+ * string such as:
  *
  * 09:30 AM - 09:45 AM
  *
@@ -449,9 +478,9 @@ function getAppointmentStart(
   return result;
 }
 
-/**
- * Generates a patient reminder
- * for an upcoming appointment
+/*
+ * Creates one patient reminder for
+ * the nearest upcoming appointment
  * occurring within 24 hours.
  */
 function ensureAppointmentReminder(
@@ -531,7 +560,7 @@ function ensureAppointmentReminder(
         ? ""
         : "s"
     }.`,
-
+    
     type:
       "appointment",
 

@@ -56,10 +56,23 @@ function createMedicine(): MedicineDraft {
   };
 }
 
-function formatDate(value: string): string {
-  return new Date(
-    `${value}T00:00:00`,
-  ).toLocaleDateString(
+function formatDate(
+  value: string,
+): string {
+  const date =
+    new Date(
+      `${value}T00:00:00`,
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value;
+  }
+
+  return date.toLocaleDateString(
     "en-IN",
     {
       day: "numeric",
@@ -69,10 +82,28 @@ function formatDate(value: string): string {
   );
 }
 
-function formatTime(
+function formatDateTime(
   value: string,
 ): string {
-  return value;
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value;
+  }
+
+  return date.toLocaleDateString(
+    "en-IN",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    },
+  );
 }
 
 export default function DoctorPrescriptions() {
@@ -152,55 +183,133 @@ export default function DoctorPrescriptions() {
     null,
   );
 
+  function loadDoctorData(
+    currentDoctorId: string,
+  ) {
+    const allBookings =
+      getAllBookings();
+
+    const allPrescriptions =
+      getAllPrescriptions();
+
+    const completedAppointments =
+      allBookings.filter(
+        (booking) =>
+          booking.doctorId ===
+            currentDoctorId &&
+          booking.status ===
+            "completed",
+      );
+
+    const doctorPrescriptions =
+      allPrescriptions.filter(
+        (prescription) =>
+          prescription.doctorId ===
+          currentDoctorId,
+      );
+
+    setAppointments(
+      completedAppointments,
+    );
+
+    setPrescriptions(
+      doctorPrescriptions,
+    );
+  }
+
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session =
-        getSession();
+    const timeoutId =
+      window.setTimeout(() => {
+        const session =
+          getSession();
 
-      if (
-        !session ||
-        session.role !== "doctor"
-      ) {
-        setStatus(
-          "unauthorized",
+        if (
+          !session ||
+          session.role !==
+            "doctor"
+        ) {
+          setStatus(
+            "unauthorized",
+          );
+
+          return;
+        }
+
+        setDoctorId(
+          session.id,
         );
 
-        return;
-      }
-
-      const doctorBookings =
-        getAllBookings().filter(
-          (booking) =>
-            booking.doctorId ===
-            session.id,
+        loadDoctorData(
+          session.id,
         );
 
-      const doctorPrescriptions =
-        getAllPrescriptions().filter(
-          (prescription) =>
-            prescription.doctorId ===
-            session.id,
-        );
+        setStatus("ready");
+      }, 0);
 
-      setDoctorId(
-        session.id,
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!doctorId) {
+      return;
+    }
+
+    function handleBookingsUpdated() {
+      loadDoctorData(
+        doctorId,
+      );
+    }
+
+    function handlePrescriptionsUpdated() {
+      const current =
+        getAllPrescriptions()
+          .filter(
+            (prescription) =>
+              prescription.doctorId ===
+              doctorId,
+          );
+
+      setPrescriptions(
+        current,
       );
 
       setAppointments(
-        doctorBookings.filter(
+        getAllBookings().filter(
           (booking) =>
+            booking.doctorId ===
+              doctorId &&
             booking.status ===
-            "completed",
+              "completed",
         ),
       );
+    }
 
-      setPrescriptions(
-        doctorPrescriptions,
+    window.addEventListener(
+      "schedula:bookings-updated",
+      handleBookingsUpdated,
+    );
+
+    window.addEventListener(
+      "schedula:prescriptions-updated",
+      handlePrescriptionsUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "schedula:bookings-updated",
+        handleBookingsUpdated,
       );
 
-      setStatus("ready");
-    });
-  }, []);
+      window.removeEventListener(
+        "schedula:prescriptions-updated",
+        handlePrescriptionsUpdated,
+      );
+    };
+  }, [doctorId]);
 
   const appointmentPrescriptionMap =
     useMemo(() => {
@@ -278,6 +387,10 @@ export default function DoctorPrescriptions() {
       );
 
     if (!appointment) {
+      setError(
+        "The appointment associated with this prescription could not be found.",
+      );
+
       return;
     }
 
@@ -308,6 +421,10 @@ export default function DoctorPrescriptions() {
       );
 
     if (!appointment) {
+      setError(
+        "The appointment associated with this prescription could not be found.",
+      );
+
       return;
     }
 
@@ -328,17 +445,21 @@ export default function DoctorPrescriptions() {
     );
 
     setMedicines(
-      prescription.medicines.map(
-        (medicine) => ({
-          id: medicine.id,
-          name: medicine.name,
-          dosage: medicine.dosage,
-          duration:
-            medicine.duration,
-          instructions:
-            medicine.instructions,
-        }),
-      ),
+      prescription.medicines.length >
+        0
+        ? prescription.medicines.map(
+            (medicine) => ({
+              id: medicine.id,
+              name: medicine.name,
+              dosage:
+                medicine.dosage,
+              duration:
+                medicine.duration,
+              instructions:
+                medicine.instructions,
+            }),
+          )
+        : [createMedicine()],
     );
 
     setInstructions(
@@ -424,20 +545,74 @@ export default function DoctorPrescriptions() {
           doctorId,
       ),
     );
+
+    setAppointments(
+      getAllBookings().filter(
+        (booking) =>
+          booking.doctorId ===
+            doctorId &&
+          booking.status ===
+            "completed",
+      ),
+    );
   }
 
   function handleSave() {
+    const session =
+      getSession();
+
+    if (
+      !session ||
+      session.role !==
+        "doctor"
+    ) {
+      setError(
+        "Doctor authentication is required.",
+      );
+
+      return;
+    }
+
     if (
       !selectedAppointment
     ) {
+      setError(
+        "Select a completed appointment first.",
+      );
+
+      return;
+    }
+
+    if (
+      selectedAppointment.doctorId !==
+      session.id
+    ) {
+      setError(
+        "You are not authorized to manage this appointment.",
+      );
+
+      return;
+    }
+
+    if (
+      selectedAppointment.status !==
+      "completed"
+    ) {
+      setError(
+        "Prescriptions can only be created for completed appointments.",
+      );
+
       return;
     }
 
     setError(null);
     setSuccess(null);
 
+    const trimmedDiagnosis =
+      diagnosis.trim();
+
     if (
-      diagnosis.trim().length ===
+      trimmedDiagnosis.length ===
       0
     ) {
       setError(
@@ -447,31 +622,28 @@ export default function DoctorPrescriptions() {
       return;
     }
 
-    const validMedicines =
-      medicines.filter(
-        (medicine) =>
-          medicine.name.trim() &&
-          medicine.dosage.trim() &&
-          medicine.duration.trim(),
-      );
-
     if (
-      validMedicines.length ===
+      medicines.length ===
       0
     ) {
       setError(
-        "Add at least one complete medicine.",
+        "Add at least one medicine.",
       );
 
       return;
     }
 
-    if (
-      validMedicines.length !==
-      medicines.length
-    ) {
+    const invalidMedicine =
+      medicines.find(
+        (medicine) =>
+          !medicine.name.trim() ||
+          !medicine.dosage.trim() ||
+          !medicine.duration.trim(),
+      );
+
+    if (invalidMedicine) {
       setError(
-        "Complete all medicine fields or remove incomplete medicines.",
+        "Complete all medicine name, dosage and duration fields or remove incomplete medicines.",
       );
 
       return;
@@ -484,12 +656,15 @@ export default function DoctorPrescriptions() {
       {
         id:
           editingPrescription?.id ??
-          `rx-${Date.now()}`,
+          `rx-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2, 8)}`,
 
         appointmentId:
           selectedAppointment.id,
 
-        doctorId,
+        doctorId:
+          session.id,
 
         patientId:
           selectedAppointment.patientId,
@@ -498,10 +673,10 @@ export default function DoctorPrescriptions() {
           selectedAppointment.patientName,
 
         diagnosis:
-          diagnosis.trim(),
+          trimmedDiagnosis,
 
         medicines:
-          validMedicines.map(
+          medicines.map(
             (
               medicine,
             ): PrescriptionMedicine => ({
@@ -722,16 +897,14 @@ export default function DoctorPrescriptions() {
                                   )}
                                 </span>
 
-                                <span
-                                  aria-hidden="true"
-                                >
+                                <span aria-hidden="true">
                                   •
                                 </span>
 
                                 <span>
-                                  {formatTime(
-                                    appointment.time,
-                                  )}
+                                  {
+                                    appointment.time
+                                  }
                                 </span>
                               </div>
 
@@ -783,7 +956,6 @@ export default function DoctorPrescriptions() {
                             ) : (
                               <Button
                                 size="sm"
-                                variant="primary"
                                 onClick={() =>
                                   openCreate(
                                     appointment,
@@ -804,15 +976,13 @@ export default function DoctorPrescriptions() {
 
             <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
               <div className="border-b border-[var(--line)] px-5 py-5 sm:px-6">
-                <div>
-                  <h2 className="text-base font-semibold text-[var(--ink)]">
-                    Prescription history
-                  </h2>
+                <h2 className="text-base font-semibold text-[var(--ink)]">
+                  Prescription history
+                </h2>
 
-                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                    Prescriptions already created for your patients.
-                  </p>
-                </div>
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Prescriptions already created for your patients.
+                </p>
               </div>
 
               {prescriptions.length ===
@@ -829,71 +999,80 @@ export default function DoctorPrescriptions() {
               ) : (
                 <div className="divide-y divide-[var(--line)]">
                   {prescriptions.map(
-                    (prescription) => (
-                      <div
-                        key={
-                          prescription.id
-                        }
-                        className="p-4 sm:p-5"
-                      >
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-[var(--ink)]">
-                              {
-                                prescription.patientName
-                              }
-                            </p>
+                    (prescription) => {
+                      const appointment =
+                        appointments.find(
+                          (item) =>
+                            item.id ===
+                            prescription.appointmentId,
+                        );
 
-                            <p className="mt-1 text-sm text-[var(--muted)]">
-                              {
-                                prescription.diagnosis
-                              }
-                            </p>
+                      return (
+                        <div
+                          key={
+                            prescription.id
+                          }
+                          className="p-4 sm:p-5"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-[var(--ink)]">
+                                {
+                                  prescription.patientName
+                                }
+                              </p>
 
-                            <p className="mt-1 text-xs text-[var(--muted)]">
-                              {
-                                prescription
-                                  .medicines
-                                  .length
-                              }{" "}
-                              medicine
-                              {prescription
-                                .medicines
-                                .length !==
-                              1
-                                ? "s"
-                                : ""}
-                            </p>
-                          </div>
+                              <p className="mt-1 text-xs text-[var(--muted)]">
+                                {appointment
+                                  ? `${formatDate(
+                                      appointment.date,
+                                    )} • ${
+                                      appointment.time
+                                    }`
+                                  : "Completed appointment"}
+                              </p>
 
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                openView(
-                                  prescription,
-                                )
-                              }
-                            >
-                              View
-                            </Button>
+                              <p className="mt-2 text-xs text-[var(--muted)]">
+                                {prescription.medicines.length}{" "}
+                                medicine
+                                {prescription.medicines.length !==
+                                1
+                                  ? "s"
+                                  : ""}{" "}
+                                •{" "}
+                                {prescription.diagnosis}
+                              </p>
+                            </div>
 
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                openEdit(
-                                  prescription,
-                                )
-                              }
-                            >
-                              Edit
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  openView(
+                                    prescription,
+                                  )
+                                }
+                              >
+                                View
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  openEdit(
+                                    prescription,
+                                  )
+                                }
+                              >
+                                Edit
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ),
+                      );
+                    },
                   )}
                 </div>
               )}
@@ -959,23 +1138,23 @@ export default function DoctorPrescriptions() {
                         )}
                       </span>
 
-                      <span
-                        aria-hidden="true"
-                      >
+                      <span aria-hidden="true">
                         •
                       </span>
 
                       <span>
-                        {formatTime(
-                          selectedAppointment.time,
-                        )}
+                        {
+                          selectedAppointment.time
+                        }
                       </span>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={resetForm}
+                    onClick={
+                      resetForm
+                    }
                     className="shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
                   >
                     Close
@@ -1007,7 +1186,9 @@ export default function DoctorPrescriptions() {
                     <textarea
                       id="prescription-diagnosis"
                       rows={3}
-                      value={diagnosis}
+                      value={
+                        diagnosis
+                      }
                       onChange={(
                         event,
                       ) =>
@@ -1060,12 +1241,14 @@ export default function DoctorPrescriptions() {
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5">
                               <span className="grid size-7 place-items-center rounded-lg bg-[var(--surface)] text-xs font-semibold text-[var(--brand-deep)]">
-                                {index + 1}
+                                {index +
+                                  1}
                               </span>
 
                               <p className="text-sm font-semibold text-[var(--ink)]">
                                 Medicine{" "}
-                                {index + 1}
+                                {index +
+                                  1}
                               </p>
                             </div>
 
@@ -1243,7 +1426,9 @@ function PrescriptionView({
           </p>
 
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--ink)]">
-            {appointment.patientName}
+            {
+              appointment.patientName
+            }
           </h2>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
@@ -1253,16 +1438,12 @@ function PrescriptionView({
               )}
             </span>
 
-            <span
-              aria-hidden="true"
-            >
+            <span aria-hidden="true">
               •
             </span>
 
             <span>
-              {formatTime(
-                appointment.time,
-              )}
+              {appointment.time}
             </span>
           </div>
         </div>
@@ -1290,21 +1471,23 @@ function PrescriptionView({
         </section>
 
         <section>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                Medicines
-              </p>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+              Medicines
+            </p>
 
-              <p className="mt-1 text-xs text-[var(--muted)]">
-                {prescription.medicines.length}{" "}
-                medicine
-                {prescription.medicines.length !==
-                1
-                  ? "s"
-                  : ""}
-              </p>
-            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {
+                prescription
+                  .medicines.length
+              }{" "}
+              medicine
+              {prescription
+                .medicines
+                .length !== 1
+                ? "s"
+                : ""}
+            </p>
           </div>
 
           <div className="mt-3 space-y-3">
@@ -1375,29 +1558,15 @@ function PrescriptionView({
           <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--muted)]">
             <span>
               Created{" "}
-              {new Date(
+              {formatDateTime(
                 prescription.createdAt,
-              ).toLocaleDateString(
-                "en-IN",
-                {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                },
               )}
             </span>
 
             <span>
               Updated{" "}
-              {new Date(
+              {formatDateTime(
                 prescription.updatedAt,
-              ).toLocaleDateString(
-                "en-IN",
-                {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                },
               )}
             </span>
           </div>
