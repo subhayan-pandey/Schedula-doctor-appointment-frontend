@@ -27,7 +27,11 @@ type FieldErrors = {
   form?: string;
 };
 
-export default function DoctorLoginForm() {
+export default function DoctorLoginForm({
+  onForgotPassword,
+}: {
+  onForgotPassword?: () => void;
+}) {
   const router = useRouter();
 
   const [identifier, setIdentifier] =
@@ -57,9 +61,7 @@ export default function DoctorLoginForm() {
 
     setErrors(nextErrors);
 
-    return (
-      Object.keys(nextErrors).length === 0
-    );
+    return Object.keys(nextErrors).length === 0;
   }
 
   function handleSubmit(
@@ -77,12 +79,13 @@ export default function DoctorLoginForm() {
       const account =
         matchesDoctorAccount(
           identifier,
+          password,
         );
 
       if (!account) {
         setErrors({
           form:
-            "No doctor account found with these details. Register first to continue.",
+            "No doctor account was found with these details, or the password is incorrect.",
         });
 
         setIsSubmitting(false);
@@ -173,6 +176,13 @@ export default function DoctorLoginForm() {
               password: undefined,
             }));
           }
+
+          if (errors.form) {
+            setErrors((current) => ({
+              ...current,
+              form: undefined,
+            }));
+          }
         }}
         error={errors.password}
         autoComplete="current-password"
@@ -183,28 +193,21 @@ export default function DoctorLoginForm() {
           className="rounded-xl border border-[var(--urgent)]/20 bg-[var(--urgent-soft)] px-3.5 py-3"
           role="alert"
         >
-          <div className="flex items-start gap-2.5">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="mt-0.5 size-4 shrink-0 text-[var(--urgent-deep)]"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="8" />
-              <path
-                d="M12 8v4M12 16h.01"
-                strokeLinecap="round"
-              />
-            </svg>
-
-            <p className="text-sm leading-5 text-[var(--urgent-deep)]">
-              {errors.form}
-            </p>
-          </div>
+          <p className="text-sm leading-5 text-[var(--urgent-deep)]">
+            {errors.form}
+          </p>
         </div>
       )}
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          className="text-sm font-semibold text-[var(--brand-deep)] hover:underline"
+        >
+          Forgot password?
+        </button>
+      </div>
 
       <Button
         type="submit"
@@ -228,7 +231,7 @@ export default function DoctorLoginForm() {
         <p className="text-sm text-[var(--muted)]">
           New to Schedula?{" "}
           <Link
-            href="/doctor/register"
+            href="/signup"
             className="font-semibold text-[var(--brand-deep)] hover:underline"
           >
             Register as a doctor

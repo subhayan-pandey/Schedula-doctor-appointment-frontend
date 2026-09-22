@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   useState,
   type FormEvent,
@@ -10,12 +9,20 @@ import {
 import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
 
-import { setSession } from "@/lib/storage";
+import DoctorRegisterForm from "@/features/doctor-auth/components/DoctorRegisterForm";
+
+import {
+  getPatientAccount,
+  savePatientAccount,
+  setSession,
+} from "@/lib/storage";
 
 import {
   isValidEmailOrMobile,
   isValidPassword,
 } from "@/lib/utils/validators";
+
+type Role = "patient" | "doctor";
 
 type FieldErrors = {
   name?: string;
@@ -25,8 +32,52 @@ type FieldErrors = {
 };
 
 export default function SignupForm() {
-  const router = useRouter();
+  const [role, setRole] =
+    useState<Role>("patient");
 
+  if (role === "doctor") {
+    return (
+      <div className="flex flex-col gap-5">
+        <RoleToggle
+          role={role}
+          onChange={setRole}
+        />
+
+        <DoctorRegisterForm />
+
+        <div className="border-t border-[var(--line)] pt-5 text-center">
+          <p className="text-sm text-[var(--muted)]">
+            Want to create a patient account?{" "}
+            <button
+              type="button"
+              onClick={() =>
+                setRole("patient")
+              }
+              className="font-semibold text-[var(--brand-deep)] hover:underline"
+            >
+              Switch to patient
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PatientSignupForm
+      role={role}
+      onRoleChange={setRole}
+    />
+  );
+}
+
+function PatientSignupForm({
+  role,
+  onRoleChange,
+}: {
+  role: Role;
+  onRoleChange: (role: Role) => void;
+}) {
   const [name, setName] =
     useState("");
 
@@ -41,6 +92,9 @@ export default function SignupForm() {
 
   const [errors, setErrors] =
     useState<FieldErrors>({});
+
+  const [formError, setFormError] =
+    useState("");
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
@@ -68,7 +122,8 @@ export default function SignupForm() {
     }
 
     if (
-      confirmPassword !== password
+      confirmPassword !==
+      password
     ) {
       nextErrors.confirmPassword =
         "Passwords do not match";
@@ -76,9 +131,7 @@ export default function SignupForm() {
 
     setErrors(nextErrors);
 
-    return (
-      Object.keys(nextErrors).length === 0
-    );
+    return Object.keys(nextErrors).length === 0;
   }
 
   function handleSubmit(
@@ -90,23 +143,48 @@ export default function SignupForm() {
       return;
     }
 
+    setFormError("");
     setIsSubmitting(true);
 
-    /*
-     * Simulated network delay.
-     * This project has no real backend.
-     */
     window.setTimeout(() => {
-      setSession({
-        id: `patient-${Date.now()}`,
+      const existing =
+        getPatientAccount(
+          emailOrMobile,
+        );
+
+      if (existing) {
+        setFormError(
+          "An account already exists with these details. Please log in instead.",
+        );
+
+        setIsSubmitting(false);
+        return;
+      }
+
+      const account = {
+        id: `patient-${emailOrMobile
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "-")}`,
         name: name.trim(),
-        emailOrMobile,
+        emailOrMobile:
+          emailOrMobile.trim(),
+        password,
+      };
+
+      savePatientAccount(account);
+
+      setSession({
+        id: account.id,
+        name: account.name,
+        emailOrMobile:
+          account.emailOrMobile,
         role: "patient",
       });
 
       setIsSubmitting(false);
 
-      router.push("/");
+      window.location.href = "/";
     }, 600);
   }
 
@@ -116,6 +194,11 @@ export default function SignupForm() {
       noValidate
       className="flex flex-col gap-5"
     >
+      <RoleToggle
+        role={role}
+        onChange={onRoleChange}
+      />
+
       <div className="rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
         <div className="flex items-start gap-3">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand-deep)]">
@@ -167,9 +250,12 @@ export default function SignupForm() {
           if (errors.emailOrMobile) {
             setErrors((current) => ({
               ...current,
-              emailOrMobile: undefined,
+              emailOrMobile:
+                undefined,
             }));
           }
+
+          setFormError("");
         }}
         error={errors.emailOrMobile}
         autoComplete="username"
@@ -219,38 +305,29 @@ export default function SignupForm() {
               }));
             }
           }}
-          error={errors.confirmPassword}
+          error={
+            errors.confirmPassword
+          }
           autoComplete="new-password"
         />
       </div>
 
-      <div className="rounded-xl bg-[var(--canvas)] px-3.5 py-3">
-        <div className="flex items-start gap-2.5">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="mt-0.5 size-4 shrink-0 text-[var(--brand-deep)]"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="8" />
-            <path
-              d="M12 10v5"
-              strokeLinecap="round"
-            />
-            <path
-              d="M12 7.5h.01"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-
-          <p className="text-xs leading-5 text-[var(--muted)]">
-            Use a password with at least 6
-            characters for this demo account.
+      {formError && (
+        <div
+          className="rounded-xl border border-[var(--urgent)]/20 bg-[var(--urgent-soft)] px-3.5 py-3"
+          role="alert"
+        >
+          <p className="text-sm leading-5 text-[var(--urgent-deep)]">
+            {formError}
           </p>
         </div>
+      )}
+
+      <div className="rounded-xl bg-[var(--canvas)] px-3.5 py-3">
+        <p className="text-xs leading-5 text-[var(--muted)]">
+          Use a password with at least 6 characters
+          for this demo account.
+        </p>
       </div>
 
       <Button
@@ -276,6 +353,48 @@ export default function SignupForm() {
         </p>
       </div>
     </form>
+  );
+}
+
+function RoleToggle({
+  role,
+  onChange,
+}: {
+  role: Role;
+  onChange: (role: Role) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-1.5">
+      <div className="grid grid-cols-2 gap-1">
+        <button
+          type="button"
+          onClick={() =>
+            onChange("patient")
+          }
+          className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+            role === "patient"
+              ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
+              : "text-[var(--muted)] hover:text-[var(--ink)]"
+          }`}
+        >
+          Patient
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            onChange("doctor")
+          }
+          className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+            role === "doctor"
+              ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
+              : "text-[var(--muted)] hover:text-[var(--ink)]"
+          }`}
+        >
+          Doctor
+        </button>
+      </div>
+    </div>
   );
 }
 

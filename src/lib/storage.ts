@@ -1,6 +1,17 @@
 import type { User } from "@/types/user";
 
-const SESSION_KEY = "schedula:session";
+const SESSION_KEY =
+  "schedula:session";
+
+const PATIENT_ACCOUNT_KEY =
+  "schedula:patient-account";
+
+export type PatientAccount = {
+  id: string;
+  name: string;
+  emailOrMobile: string;
+  password: string;
+};
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -12,7 +23,9 @@ function emitSessionUpdated(): void {
   }
 
   window.dispatchEvent(
-    new Event("schedula:session-updated"),
+    new Event(
+      "schedula:session-updated",
+    ),
   );
 }
 
@@ -60,4 +73,52 @@ export function clearSession(): void {
   );
 
   emitSessionUpdated();
+}
+
+export function getPatientAccount(
+  identifier?: string,
+): PatientAccount | null {
+  if (!isBrowser()) {
+    return null;
+  }
+
+  try {
+    const raw =
+      window.localStorage.getItem(
+        PATIENT_ACCOUNT_KEY,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    const account =
+      JSON.parse(raw) as PatientAccount;
+
+    if (!identifier) {
+      return account;
+    }
+
+    return account.emailOrMobile
+      .trim()
+      .toLowerCase() ===
+      identifier.trim().toLowerCase()
+      ? account
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePatientAccount(
+  account: PatientAccount,
+): void {
+  if (!isBrowser()) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    PATIENT_ACCOUNT_KEY,
+    JSON.stringify(account),
+  );
 }

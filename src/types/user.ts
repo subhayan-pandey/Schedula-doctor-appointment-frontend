@@ -1,4 +1,6 @@
-export type UserRole = "patient" | "doctor";
+export type UserRole =
+  | "patient"
+  | "doctor";
 
 export type User = {
   id: string;

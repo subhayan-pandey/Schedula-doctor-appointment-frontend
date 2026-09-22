@@ -149,9 +149,6 @@ export default function DoctorRegisterForm() {
 
     setIsSubmitting(true);
 
-    /*
-     * Simulated network delay.
-     */
     window.setTimeout(() => {
       const accountId =
         `doctor-${Date.now()}`;
@@ -174,22 +171,21 @@ export default function DoctorRegisterForm() {
       const experience =
         Number(experienceYears);
 
-      saveDoctorAccount({
-        id: accountId,
-        name: trimmedName,
-        email: trimmedEmail,
-        phone: trimmedPhone,
-        specialty,
-        experienceYears:
-          experience,
-        clinic: trimmedClinic,
-        location: trimmedLocation,
-      });
+      saveDoctorAccount(
+        {
+          id: accountId,
+          name: trimmedName,
+          email: trimmedEmail,
+          phone: trimmedPhone,
+          specialty,
+          experienceYears:
+            experience,
+          clinic: trimmedClinic,
+          location: trimmedLocation,
+        },
+        password,
+      );
 
-      /*
-       * Keep the registered doctor visible
-       * in the patient-facing catalog.
-       */
       addDoctor({
         id: accountId,
         name: trimmedName,
@@ -544,7 +540,7 @@ export default function DoctorRegisterForm() {
         <p className="text-sm text-[var(--muted)]">
           Already registered?{" "}
           <Link
-            href="/doctor/login"
+            href="/login"
             className="font-semibold text-[var(--brand-deep)] hover:underline"
           >
             Log in
