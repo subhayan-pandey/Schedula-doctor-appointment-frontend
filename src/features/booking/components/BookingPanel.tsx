@@ -15,6 +15,7 @@ import Button from "@/components/ui/Button";
 import DateStrip from "@/components/ui/DateStrip";
 
 import SlotGrid from "@/features/booking/components/SlotGrid";
+import WaitlistPanel from "@/features/booking/components/WaitlistPanel";
 
 import {
   bookSlot,
@@ -32,6 +33,10 @@ import {
 import {
   getSession,
 } from "@/lib/storage";
+
+import {
+  syncWaitlistAvailability,
+} from "@/lib/waitlist-store";
 
 import {
   getNextDays,
@@ -105,6 +110,11 @@ export default function BookingPanel({
         );
 
       setSlots(
+        latestSlots,
+      );
+
+      syncWaitlistAvailability(
+        doctorId,
         latestSlots,
       );
 
@@ -211,6 +221,13 @@ export default function BookingPanel({
         "Evening",
     );
 
+  const hasAvailableSlots =
+    slotsForDate.some(
+      (slot) =>
+        slot.status ===
+        "available",
+    );
+
   function handleSelectDate(
     isoDate: string,
   ) {
@@ -302,9 +319,7 @@ export default function BookingPanel({
               selectedSlotId,
           );
 
-        if (
-          !bookedSlot
-        ) {
+        if (!bookedSlot) {
           setBookingError(
             "Unable to complete the booking. Please try again.",
           );
@@ -411,11 +426,17 @@ export default function BookingPanel({
           </p>
         ) : slotsForDate.length ===
           0 ? (
-          <p className="text-sm text-[var(--muted)]">
-            No slots configured
-            for this date. Try
-            another day.
-          </p>
+          <WaitlistPanel
+            doctorId={
+              doctorId
+            }
+            selectedDate={
+              selectedDate
+            }
+            slots={
+              slotsForDate
+            }
+          />
         ) : (
           <>
             <SlotGrid
@@ -443,6 +464,20 @@ export default function BookingPanel({
                 setSelectedSlotId
               }
             />
+
+            {!hasAvailableSlots && (
+              <WaitlistPanel
+                doctorId={
+                  doctorId
+                }
+                selectedDate={
+                  selectedDate
+                }
+                slots={
+                  slotsForDate
+                }
+              />
+            )}
           </>
         )}
       </div>
@@ -453,21 +488,23 @@ export default function BookingPanel({
         </p>
       )}
 
-      <Button
-        size="lg"
-        className="mt-6 w-full"
-        disabled={
-          !selectedSlotId ||
-          isBooking
-        }
-        onClick={
-          handleConfirmBooking
-        }
-      >
-        {isBooking
-          ? "Booking..."
-          : "Book appointment"}
-      </Button>
+      {hasAvailableSlots && (
+        <Button
+          size="lg"
+          className="mt-6 w-full"
+          disabled={
+            !selectedSlotId ||
+            isBooking
+          }
+          onClick={
+            handleConfirmBooking
+          }
+        >
+          {isBooking
+            ? "Booking..."
+            : "Book appointment"}
+        </Button>
+      )}
     </div>
   );
 }
