@@ -284,7 +284,7 @@ const RESPONSES: Record<
 
   appointment_assistant: {
     content:
-      "The Appointment Assistant is intended to guide you through appointment-related tasks such as finding a doctor, checking availability, and managing an appointment.",
+      "The Appointment Assistant can use your existing appointment information to help you understand appointment status, upcoming visits, pending requests, and available appointment actions.",
     action: {
       label: "My appointments",
       href: "/appointments",
@@ -349,11 +349,17 @@ export function getResponseForIntent(
   intent: ExtendedChatIntent,
   role: ChatUserRole,
 ): ChatResponse {
-  if (intent === "out_of_scope") {
+  if (
+    intent ===
+    "out_of_scope"
+  ) {
     return OUT_OF_SCOPE_RESPONSE;
   }
 
-  if (intent === "unknown") {
+  if (
+    intent ===
+    "unknown"
+  ) {
     return UNKNOWN_RESPONSE;
   }
 
@@ -366,16 +372,27 @@ export function getResponseForIntent(
     return DOCTOR_ACCESS_RESPONSE;
   }
 
-  if (role === "doctor") {
-    if (intent === "login") {
+  if (
+    role === "doctor"
+  ) {
+    if (
+      intent ===
+      "login"
+    ) {
       return RESPONSES.doctor_login;
     }
 
-    if (intent === "signup") {
+    if (
+      intent ===
+      "signup"
+    ) {
       return RESPONSES.doctor_registration;
     }
 
-    if (intent === "logout") {
+    if (
+      intent ===
+      "logout"
+    ) {
       return {
         content:
           "Use the Log out option in the top-right area of the doctor navigation to end your current doctor session.",
@@ -383,9 +400,12 @@ export function getResponseForIntent(
     }
   }
 
-  if (role === "guest") {
+  if (
+    role === "guest"
+  ) {
     if (
-      intent === "doctor_login" ||
+      intent ===
+        "doctor_login" ||
       DOCTOR_ONLY_INTENTS.includes(
         intent as ChatIntent,
       )
@@ -394,19 +414,26 @@ export function getResponseForIntent(
         content:
           "This is a doctor-only feature. Use Doctor Login to access the doctor workflow. New doctors can register for a doctor account first.",
         action: {
-          label: "Doctor login",
-          href: "/doctor/login",
+          label:
+            "Doctor login",
+          href:
+            "/doctor/login",
         },
       };
     }
 
-    if (intent === "logout") {
+    if (
+      intent ===
+      "logout"
+    ) {
       return {
         content:
           "You're already logged out. Use Log in to access an existing patient account.",
         action: {
-          label: "Log in",
-          href: "/login",
+          label:
+            "Log in",
+          href:
+            "/login",
         },
       };
     }
@@ -422,29 +449,32 @@ export function getGuestAccessResponse(
   response: ChatResponse,
   intent: ExtendedChatIntent,
 ): ChatResponse {
-  const accountRequiredIntents: ExtendedChatIntent[] = [
-    "book_appointment",
-    "appointment_slots",
-    "reschedule_appointment",
-    "cancel_appointment",
-    "view_appointments",
-    "completed_appointment",
-    "missed_appointment",
-    "prescription",
-    "review_doctor",
-    "rebook_appointment",
-    "patient_profile",
-    "notifications",
-    "waitlist",
-    "appointment_assistant",
-    "intake_form",
-    "medical_documents",
-    "appointment_timeline",
-    "notification_preferences",
-  ];
+  const accountRequiredIntents: ExtendedChatIntent[] =
+    [
+      "book_appointment",
+      "appointment_slots",
+      "reschedule_appointment",
+      "cancel_appointment",
+      "view_appointments",
+      "completed_appointment",
+      "missed_appointment",
+      "prescription",
+      "review_doctor",
+      "rebook_appointment",
+      "patient_profile",
+      "notifications",
+      "waitlist",
+      "appointment_assistant",
+      "intake_form",
+      "medical_documents",
+      "appointment_timeline",
+      "notification_preferences",
+    ];
 
   if (
-    !accountRequiredIntents.includes(intent)
+    !accountRequiredIntents.includes(
+      intent,
+    )
   ) {
     return response;
   }
@@ -464,220 +494,281 @@ export function getInitialSuggestions(
   pathname: string,
   role: ChatUserRole,
 ): ChatSuggestion[] {
-  if (pathname === "/") {
+  if (
+    pathname === "/"
+  ) {
     return [
       {
-        label: "How Schedula works",
+        label:
+          "How Schedula works",
         message:
           "How does Schedula work?",
       },
       {
-        label: "Find doctors",
+        label:
+          "Find doctors",
         message:
           "How can I check doctors?",
       },
       {
-        label: "Getting started",
+        label:
+          "Getting started",
         message:
           "How do I create an account?",
       },
     ];
   }
 
-  if (pathname === "/doctors") {
+  if (
+    pathname === "/doctors"
+  ) {
     return [
       {
-        label: "Browse doctors",
+        label:
+          "Browse doctors",
         message:
           "How can I check doctors?",
       },
       {
-        label: "Doctor details",
+        label:
+          "Doctor details",
         message:
           "How can I see doctor details?",
       },
       {
-        label: "Book an appointment",
+        label:
+          "Book an appointment",
         message:
           "How do I book an appointment?",
       },
     ];
   }
 
-  if (pathname === "/appointments") {
+  if (
+    pathname === "/appointments"
+  ) {
     return [
       {
-        label: "My appointments",
+        label:
+          "My appointments",
         message:
           "How can I check my appointments?",
       },
       {
-        label: "Reschedule",
+        label:
+          "Next appointment",
         message:
-          "How do I reschedule my appointment?",
+          "What is my next appointment?",
       },
       {
-        label: "Appointment status",
+        label:
+          "Appointment status",
         message:
-          "What do appointment statuses mean?",
+          "What is the status of my appointments?",
       },
     ];
   }
 
-  if (pathname === "/profile") {
+  if (
+    pathname === "/profile"
+  ) {
     return [
       {
-        label: "My profile",
+        label:
+          "My profile",
         message:
           "How do I update my profile?",
       },
       {
-        label: "My appointments",
+        label:
+          "My appointments",
         message:
           "How can I check my appointments?",
       },
       {
-        label: "Prescriptions",
+        label:
+          "Prescriptions",
         message:
           "How do prescriptions work?",
       },
     ];
   }
 
-  if (pathname === "/doctor/dashboard") {
+  if (
+    pathname ===
+    "/doctor/dashboard"
+  ) {
     return [
       {
-        label: "Manage appointments",
+        label:
+          "Manage appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
       {
-        label: "Use the calendar",
+        label:
+          "Use the calendar",
         message:
           "How does the doctor calendar work?",
       },
       {
-        label: "Manage availability",
+        label:
+          "Manage availability",
         message:
           "How do I manage appointment availability?",
       },
     ];
   }
 
-  if (pathname === "/doctor/appointments") {
+  if (
+    pathname ===
+    "/doctor/appointments"
+  ) {
     return [
       {
-        label: "Appointments",
+        label:
+          "Appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
       {
-        label: "Appointment statuses",
+        label:
+          "Appointment statuses",
         message:
           "What do appointment statuses mean?",
       },
       {
-        label: "Prescriptions",
+        label:
+          "Prescriptions",
         message:
           "How does prescription management work?",
       },
     ];
   }
 
-  if (pathname === "/doctor/calendar") {
+  if (
+    pathname ===
+    "/doctor/calendar"
+  ) {
     return [
       {
-        label: "Using the calendar",
+        label:
+          "Using the calendar",
         message:
           "How does the doctor calendar work?",
       },
       {
-        label: "Calendar views",
+        label:
+          "Calendar views",
         message:
           "How do day, week and month views work?",
       },
       {
-        label: "Availability",
+        label:
+          "Availability",
         message:
           "How do I manage appointment availability?",
       },
     ];
   }
 
-  if (pathname === "/doctor/slot") {
+  if (
+    pathname ===
+    "/doctor/slot"
+  ) {
     return [
       {
-        label: "Manage availability",
+        label:
+          "Manage availability",
         message:
           "How do I manage appointment availability?",
       },
       {
-        label: "Appointment slots",
+        label:
+          "Appointment slots",
         message:
           "How do appointment slots work?",
       },
       {
-        label: "Doctor calendar",
+        label:
+          "Doctor calendar",
         message:
           "How does the doctor calendar work?",
       },
     ];
   }
 
-  if (pathname === "/doctor/profile") {
+  if (
+    pathname ===
+    "/doctor/profile"
+  ) {
     return [
       {
-        label: "Doctor profile",
+        label:
+          "Doctor profile",
         message:
           "How do I update my doctor profile?",
       },
       {
-        label: "Availability",
+        label:
+          "Availability",
         message:
           "How do I manage appointment availability?",
       },
       {
-        label: "Appointments",
+        label:
+          "Appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
     ];
   }
 
-  if (pathname === "/doctor/prescriptions") {
+  if (
+    pathname ===
+    "/doctor/prescriptions"
+  ) {
     return [
       {
-        label: "Prescriptions",
+        label:
+          "Prescriptions",
         message:
           "How does prescription management work?",
       },
       {
-        label: "Prescription details",
+        label:
+          "Prescription details",
         message:
           "What information can a prescription include?",
       },
       {
-        label: "Appointments",
+        label:
+          "Appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
     ];
   }
 
-  if (role === "doctor") {
+  if (
+    role === "doctor"
+  ) {
     return [
       {
-        label: "Doctor dashboard",
+        label:
+          "Doctor dashboard",
         message:
           "How does the Doctor Dashboard work?",
       },
       {
-        label: "Appointments",
+        label:
+          "Appointments",
         message:
           "How do I manage appointments as a doctor?",
       },
       {
-        label: "Calendar",
+        label:
+          "Calendar",
         message:
           "How does the doctor calendar work?",
       },
@@ -686,17 +777,20 @@ export function getInitialSuggestions(
 
   return [
     {
-      label: "Find doctors",
+      label:
+        "Find doctors",
       message:
         "How can I check doctors?",
     },
     {
-      label: "Book appointments",
+      label:
+        "Book appointments",
       message:
         "How do I book an appointment?",
     },
     {
-      label: "Using Schedula",
+      label:
+        "Using Schedula",
       message:
         "How does Schedula work?",
     },

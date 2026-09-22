@@ -365,21 +365,24 @@ export default function BookingPanel({
             new Date().toISOString(),
         });
 
-        createDoctorNotification({
-          userId:
-            doctorId,
+        createDoctorNotification(
+          {
+            userId:
+              doctorId,
 
-          title:
-            "New appointment request",
+            title:
+              "New appointment request",
 
-          message: `${patientName} requested an appointment for ${bookedSlot.date} at ${bookedSlot.time}.`,
+            message:
+              `${patientName} requested an appointment for ${bookedSlot.date} at ${bookedSlot.time}.`,
 
-          type:
-            "appointment",
+            type:
+              "appointment",
 
-          appointmentId:
-            bookingId,
-        });
+            appointmentId:
+              bookingId,
+          },
+        );
 
         setSlots(
           updatedSlots,

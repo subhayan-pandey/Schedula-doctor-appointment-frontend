@@ -14,6 +14,9 @@ import ChatWindow from "./ChatWindow";
 import { useChat } from "@/context/ChatContext";
 
 import { detectIntent } from "@/lib/chatbot/intents";
+import {
+  getAppointmentAssistantResponse,
+} from "@/lib/chatbot/appointment-assistant";
 
 import {
   getGuestAccessResponse,
@@ -51,11 +54,6 @@ function createMessage(
 }
 
 function getCurrentUserRole(): ChatUserRole {
-  /*
-   * Avoid accessing browser-only storage during SSR.
-   * Guests are the safe default until the client can
-   * read the existing Schedula session.
-   */
   if (typeof window === "undefined") {
     return "guest";
   }
@@ -91,14 +89,6 @@ export default function Chatbot() {
   const responseTimerRef =
     useRef<number | null>(null);
 
-  /*
-   * Resolve the current role from the existing
-   * application session.
-   *
-   * There is intentionally no setState inside
-   * an effect here, which avoids the React warning
-   * about cascading renders.
-   */
   const userRole =
     getCurrentUserRole();
 
@@ -108,21 +98,12 @@ export default function Chatbot() {
   const messages =
     conversations[pathname] ?? [];
 
-  /*
-   * These suggestions are lightweight derived data.
-   * useMemo is unnecessary here and would only add
-   * dependency-management overhead.
-   */
   const suggestions =
     getInitialSuggestions(
       pathname,
       userRole,
     );
 
-  /*
-   * Clear a pending assistant response when the
-   * component is unmounted.
-   */
   useEffect(() => {
     return () => {
       if (
@@ -158,10 +139,6 @@ export default function Chatbot() {
   function handleMessage(
     content: string,
   ) {
-    /*
-     * Prevent duplicate messages while an
-     * assistant response is being prepared.
-     */
     if (
       responseTimerRef.current !==
       null
@@ -193,16 +170,25 @@ export default function Chatbot() {
       trimmedContent,
     );
 
-    let response =
-      getResponseForIntent(
-        intent,
-        userRole,
-      );
+    let response;
 
-    /*
-     * Apply guest-specific access rules after
-     * normal intent resolution.
-     */
+    if (
+      intent ===
+      "appointment_assistant"
+    ) {
+      response =
+        getAppointmentAssistantResponse(
+          trimmedContent,
+          userRole,
+        );
+    } else {
+      response =
+        getResponseForIntent(
+          intent,
+          userRole,
+        );
+    }
+
     if (
       userRole === "guest"
     ) {
@@ -248,11 +234,6 @@ export default function Chatbot() {
     closeChat();
   }
 
-  /*
-   * Hide the chatbot only on authentication pages.
-   * Every other page keeps the existing "Need help?"
-   * trigger available.
-   */
   if (isHidden) {
     return null;
   }
