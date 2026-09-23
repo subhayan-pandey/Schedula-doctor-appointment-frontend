@@ -106,6 +106,10 @@ export default function ProfileMenu({
     };
   }, []);
 
+  function closeMenu() {
+    setIsOpen(false);
+  }
+
   return (
     <div
       ref={menuRef}
@@ -188,11 +192,7 @@ export default function ProfileMenu({
                 <Link
                   href="/doctor/dashboard"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   Dashboard
@@ -201,11 +201,7 @@ export default function ProfileMenu({
                 <Link
                   href="/doctor/appointments"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   Appointments
@@ -214,11 +210,7 @@ export default function ProfileMenu({
                 <Link
                   href="/doctor/calendar"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   Calendar
@@ -227,11 +219,7 @@ export default function ProfileMenu({
                 <Link
                   href="/doctor/prescriptions"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   Prescriptions
@@ -242,11 +230,7 @@ export default function ProfileMenu({
                 <Link
                   href="/appointments"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   My Appointments
@@ -255,11 +239,7 @@ export default function ProfileMenu({
                 <Link
                   href="/doctors"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   Find Doctors
@@ -268,11 +248,7 @@ export default function ProfileMenu({
                 <Link
                   href="/medical-documents"
                   role="menuitem"
-                  onClick={() =>
-                    setIsOpen(
-                      false,
-                    )
-                  }
+                  onClick={closeMenu}
                   className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
                 >
                   Medical Documents
@@ -283,14 +259,43 @@ export default function ProfileMenu({
             <Link
               href={profileHref}
               role="menuitem"
-              onClick={() =>
-                setIsOpen(
-                  false,
-                )
-              }
+              onClick={closeMenu}
               className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
             >
               My Profile
+            </Link>
+          </div>
+
+          <div className="border-t border-[var(--line)] p-2">
+            <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+              Schedula
+            </p>
+
+            <Link
+              href="/search"
+              role="menuitem"
+              onClick={closeMenu}
+              className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
+            >
+              Search
+            </Link>
+
+            <Link
+              href="/settings/notifications"
+              role="menuitem"
+              onClick={closeMenu}
+              className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
+            >
+              Notification Preferences
+            </Link>
+
+            <Link
+              href="/support"
+              role="menuitem"
+              onClick={closeMenu}
+              className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
+            >
+              Support
             </Link>
           </div>
 

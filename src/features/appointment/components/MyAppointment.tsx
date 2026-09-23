@@ -11,6 +11,7 @@ import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
 import AppointmentIntelligence from "@/features/appointment/components/AppointmentIntelligence";
+import AppointmentTimeline from "@/features/appointment/components/AppointmentTimeline";
 
 import {
   getBookingsByPatientId,
@@ -1443,6 +1444,13 @@ export default function MyAppointments() {
                                   </p>
                                 </div>
                               )}
+
+                              <div className="mt-4">
+                                <AppointmentTimeline
+                                  booking={booking}
+                                  compact
+                                />
+                              </div>
 
                               {booking.status ===
                                 "completed" && (

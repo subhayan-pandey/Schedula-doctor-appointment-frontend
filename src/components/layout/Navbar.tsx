@@ -71,12 +71,6 @@ const THEME_VARIABLE_KEYS = [
     array.indexOf(value) === index,
 );
 
-/*
- * Main navbar links.
- *
- * Anything here must NOT also appear in the
- * account dropdown.
- */
 const PATIENT_MAIN_NAV: NavItem[] = [
   {
     href: "/doctors",
@@ -107,9 +101,6 @@ const DOCTOR_MAIN_NAV: NavItem[] = [
   },
 ];
 
-/*
- * Account-only links.
- */
 const PATIENT_ACCOUNT_NAV: NavItem[] = [
   {
     href: "/profile",
@@ -243,10 +234,6 @@ function applyTheme(
     return;
   }
 
-  /*
-   * Light theme uses the exact original
-   * globals.css palette.
-   */
   setThemeVariables(
     LIGHT_THEME_VARIABLES,
   );
@@ -334,6 +321,33 @@ function ThemeIcon({
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        cx="11"
+        cy="11"
+        r="6.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+
+      <path
+        d="m16 16 4.5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export default function Navbar() {
   const pathname =
     usePathname();
@@ -371,18 +385,12 @@ export default function Navbar() {
       "system",
     );
 
-  /*
-   * Refresh session on route changes.
-   */
   useEffect(() => {
     Promise.resolve().then(() => {
       setUser(getSession());
     });
   }, [pathname]);
 
-  /*
-   * Load saved theme.
-   */
   useEffect(() => {
     Promise.resolve().then(() => {
       setTheme(
@@ -391,9 +399,6 @@ export default function Navbar() {
     });
   }, []);
 
-  /*
-   * Apply selected theme.
-   */
   useEffect(() => {
     applyTheme(theme);
 
@@ -416,28 +421,34 @@ export default function Navbar() {
     const media =
       window.matchMedia(
         "(prefers-color-scheme: dark)",
+      ).matches;
+
+    if (!media) {
+      return;
+    }
+
+    const mediaQuery =
+      window.matchMedia(
+        "(prefers-color-scheme: dark)",
       );
 
     function handleSystemThemeChange() {
       applyTheme("system");
     }
 
-    media.addEventListener(
+    mediaQuery.addEventListener(
       "change",
       handleSystemThemeChange,
     );
 
     return () => {
-      media.removeEventListener(
+      mediaQuery.removeEventListener(
         "change",
         handleSystemThemeChange,
       );
     };
   }, [theme]);
 
-  /*
-   * Close profile menu when clicking outside.
-   */
   useEffect(() => {
     function handlePointerDown(
       event: MouseEvent,
@@ -493,9 +504,6 @@ export default function Navbar() {
     };
   }, []);
 
-  /*
-   * Close mobile menu when clicking outside.
-   */
   useEffect(() => {
     if (!isMobileMenuOpen) {
       return;
@@ -575,7 +583,6 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--line)] bg-[var(--surface)]">
       <div className="mx-auto flex h-[68px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
-        {/* Logo */}
         <Link
           href="/"
           onClick={closeMenus}
@@ -590,7 +597,6 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* Desktop navigation */}
         <nav className="hidden items-center gap-6 lg:flex">
           {mainNavigation.map(
             (item) => {
@@ -621,18 +627,31 @@ export default function Navbar() {
           )}
         </nav>
 
-        {/* Right-side controls */}
         <div
           ref={profileMenuRef}
           className="relative flex items-center gap-2"
         >
           {user && (
-            <NotificationBell />
+            <>
+              <Link
+                href="/search"
+                onClick={closeMenus}
+                aria-label="Search Schedula"
+                className={`grid size-10 place-items-center rounded-lg border transition ${
+                  pathname === "/search"
+                    ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                    : "border-transparent text-[var(--muted)] hover:border-[var(--line)] hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
+                }`}
+              >
+                <SearchIcon />
+              </Link>
+
+              <NotificationBell />
+            </>
           )}
 
           {user ? (
             <>
-              {/* Profile button */}
               <button
                 type="button"
                 onClick={() => {
@@ -687,7 +706,6 @@ export default function Navbar() {
                 </svg>
               </button>
 
-              {/* Mobile navigation button */}
               <button
                 type="button"
                 onClick={() => {
@@ -744,10 +762,8 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* Profile dropdown */}
               {isProfileMenuOpen && (
                 <div className="absolute right-0 top-14 z-50 hidden w-[360px] overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl lg:block">
-                  {/* Profile header */}
                   <div className="flex items-center gap-3.5 px-4 py-4">
                     <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
                       {initials}
@@ -772,7 +788,6 @@ export default function Navbar() {
 
                   <div className="border-t border-[var(--line)]" />
 
-                  {/* Account */}
                   <div className="px-3 py-3">
                     <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
                       Account
@@ -837,11 +852,63 @@ export default function Navbar() {
                         );
                       },
                     )}
+
+                    <Link
+                      href="/search"
+                      role="menuitem"
+                      onClick={() =>
+                        setIsProfileMenuOpen(
+                          false,
+                        )
+                      }
+                      className={`mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                        pathname === "/search"
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                          : "text-[var(--ink)] hover:bg-[var(--canvas)]"
+                      }`}
+                    >
+                      <SearchIcon />
+                      Search
+                    </Link>
+
+                    <Link
+                      href="/settings/notifications"
+                      role="menuitem"
+                      onClick={() =>
+                        setIsProfileMenuOpen(
+                          false,
+                        )
+                      }
+                      className={`mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                        pathname ===
+                        "/settings/notifications"
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                          : "text-[var(--ink)] hover:bg-[var(--canvas)]"
+                      }`}
+                    >
+                      Notifications
+                    </Link>
+
+                    <Link
+                      href="/support"
+                      role="menuitem"
+                      onClick={() =>
+                        setIsProfileMenuOpen(
+                          false,
+                        )
+                      }
+                      className={`mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${
+                        pathname === "/support"
+                          ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                          : "text-[var(--ink)] hover:bg-[var(--canvas)]"
+                      }`}
+                    >
+                      Support
+                    </Link>
                   </div>
 
                   <div className="border-t border-[var(--line)]" />
 
-                  {/* Appearance */}
                   <div className="px-3 py-3">
                     <p className="px-3 text-sm font-semibold text-[var(--ink)]">
                       Appearance
@@ -900,7 +967,6 @@ export default function Navbar() {
 
                   <div className="border-t border-[var(--line)]" />
 
-                  {/* Logout */}
                   <div className="p-3">
                     <button
                       type="button"
@@ -950,7 +1016,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Mobile navigation */}
       {isMobileMenuOpen &&
         user && (
           <div
@@ -959,7 +1024,6 @@ export default function Navbar() {
             className="border-t border-[var(--line)] bg-[var(--surface)] lg:hidden"
           >
             <div className="mx-auto max-w-7xl px-4 py-4 sm:px-8">
-              {/* User identity */}
               <div className="flex items-center gap-3 rounded-xl bg-[var(--canvas)] px-3.5 py-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
                   {initials}
@@ -982,7 +1046,6 @@ export default function Navbar() {
                 </span>
               </div>
 
-              {/* Main navigation */}
               <nav className="mt-3 space-y-1">
                 {mainNavigation.map(
                   (item) => {
@@ -1011,7 +1074,6 @@ export default function Navbar() {
                   },
                 )}
 
-                {/* Account-only navigation */}
                 {accountNavigation.map(
                   (item) => {
                     const active =
@@ -1038,9 +1100,45 @@ export default function Navbar() {
                     );
                   },
                 )}
+
+                <Link
+                  href="/search"
+                  onClick={closeMenus}
+                  className={`flex items-center rounded-lg px-3 py-3 text-sm font-medium ${
+                    pathname === "/search"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                      : "text-[var(--ink)] hover:bg-[var(--canvas)]"
+                  }`}
+                >
+                  Search
+                </Link>
+
+                <Link
+                  href="/settings/notifications"
+                  onClick={closeMenus}
+                  className={`flex items-center rounded-lg px-3 py-3 text-sm font-medium ${
+                    pathname ===
+                    "/settings/notifications"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                      : "text-[var(--ink)] hover:bg-[var(--canvas)]"
+                  }`}
+                >
+                  Notification preferences
+                </Link>
+
+                <Link
+                  href="/support"
+                  onClick={closeMenus}
+                  className={`flex items-center rounded-lg px-3 py-3 text-sm font-medium ${
+                    pathname === "/support"
+                      ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                      : "text-[var(--ink)] hover:bg-[var(--canvas)]"
+                  }`}
+                >
+                  Support
+                </Link>
               </nav>
 
-              {/* Mobile appearance */}
               <div className="mt-3 border-t border-[var(--line)] pt-3">
                 <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
                   Appearance
@@ -1091,7 +1189,6 @@ export default function Navbar() {
                 </div>
               </div>
 
-              {/* Mobile logout */}
               <button
                 type="button"
                 onClick={handleLogout}

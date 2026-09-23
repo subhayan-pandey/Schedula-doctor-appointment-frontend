@@ -8,6 +8,10 @@ import {
   getBookingsByPatientId,
 } from "@/lib/bookings-store";
 
+import {
+  isNotificationPreferenceEnabled,
+} from "@/lib/notification-preferences-store";
+
 const KEY =
   "schedula:notifications";
 
@@ -244,6 +248,23 @@ export function createNotification({
       createdAt:
         new Date().toISOString(),
     };
+
+  /*
+   * Notification preferences control
+   * whether a notification is persisted.
+   *
+   * The notification object is still
+   * returned so existing callers do not
+   * need to change their contracts.
+   */
+  if (
+    !isNotificationPreferenceEnabled(
+      userId,
+      type,
+    )
+  ) {
+    return notification;
+  }
 
   writeNotifications([
     notification,
@@ -522,7 +543,7 @@ function ensureAppointmentReminder(
         ? ""
         : "s"
     }.`,
-    
+
     type:
       "appointment",
 
