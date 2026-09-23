@@ -846,14 +846,9 @@ export default function DoctorCalendar() {
       const updatedBooking =
         rescheduleBooking(
           currentBooking.id,
-          {
-            slotId:
-              latestNewSlot.id,
-            date:
-              latestNewSlot.date,
-            time:
-              latestNewSlot.time,
-          },
+          latestNewSlot.id,
+          latestNewSlot.date,
+          latestNewSlot.time,
         );
 
       if (!updatedBooking) {
@@ -932,16 +927,11 @@ export default function DoctorCalendar() {
 
     const updatedBooking =
       rescheduleBooking(
-        currentBooking.id,
-        {
-          slotId:
-            latestNewSlot.id,
-          date:
-            latestNewSlot.date,
-          time:
-            latestNewSlot.time,
-        },
-      );
+          currentBooking.id,
+          latestNewSlot.id,
+          latestNewSlot.date,
+          latestNewSlot.time,
+        );
 
     if (!updatedBooking) {
       releaseSlot(
