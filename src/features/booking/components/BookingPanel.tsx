@@ -36,13 +36,13 @@ import {
 } from "@/lib/utils/date";
 
 import {
-  initializeDoctorSlots,
-  bookDoctorSlot,
-} from "@/store/slices/slotsSlice";
-
-import {
   addAppointment,
 } from "@/store/slices/appointmentsSlice";
+
+import {
+  bookDoctorSlot,
+  initializeDoctorSlots,
+} from "@/store/slices/slotsSlice";
 
 import {
   addNotification,
@@ -121,6 +121,22 @@ export default function BookingPanel({
         ),
     );
 
+  const refreshSlots =
+    useCallback(() => {
+      if (!doctorId) {
+        return;
+      }
+
+      dispatch(
+        initializeDoctorSlots(
+          doctorId,
+        ),
+      );
+    }, [
+      dispatch,
+      doctorId,
+    ]);
+
   useEffect(() => {
     if (
       doctorId &&
@@ -138,18 +154,6 @@ export default function BookingPanel({
     slotsInitialized,
   ]);
 
-  const refreshSlots =
-    useCallback(() => {
-      dispatch(
-        initializeDoctorSlots(
-          doctorId,
-        ),
-      );
-    }, [
-      dispatch,
-      doctorId,
-    ]);
-
   useEffect(() => {
     if (!slotsInitialized) {
       return;
@@ -158,35 +162,6 @@ export default function BookingPanel({
     syncWaitlistAvailability(
       doctorId,
       slots,
-    );
-
-    setSelectedSlotId(
-      (
-        currentSelectedSlotId,
-      ) => {
-        if (
-          !currentSelectedSlotId
-        ) {
-          return null;
-        }
-
-        const selectedSlot =
-          slots.find(
-            (slot) =>
-              slot.id ===
-              currentSelectedSlotId,
-          );
-
-        if (
-          !selectedSlot ||
-          selectedSlot.status !==
-            "available"
-        ) {
-          return null;
-        }
-
-        return currentSelectedSlotId;
-      },
     );
   }, [
     doctorId,
@@ -258,6 +233,17 @@ export default function BookingPanel({
         "available",
     );
 
+  const selectedSlot =
+    slots.find(
+      (slot) =>
+        slot.id ===
+        selectedSlotId,
+    );
+
+  const canBookSelectedSlot =
+    selectedSlot?.status ===
+    "available";
+
   function handleSelectDate(
     isoDate: string,
   ) {
@@ -301,6 +287,31 @@ export default function BookingPanel({
       return;
     }
 
+    const slotToBook =
+      slots.find(
+        (slot) =>
+          slot.id ===
+          selectedSlotId,
+      );
+
+    if (
+      !slotToBook ||
+      slotToBook.status !==
+        "available"
+    ) {
+      setBookingError(
+        "Sorry, this slot was just booked or is no longer available. Please pick another slot.",
+      );
+
+      setSelectedSlotId(
+        null,
+      );
+
+      refreshSlots();
+
+      return;
+    }
+
     setIsBooking(
       true,
     );
@@ -311,69 +322,16 @@ export default function BookingPanel({
 
     window.setTimeout(
       () => {
-        const selectedSlot =
-          slots.find(
-            (slot) =>
-              slot.id ===
+        dispatch(
+          bookDoctorSlot({
+            doctorId,
+            slotId:
               selectedSlotId,
-          );
-
-        if (
-          !selectedSlot ||
-          selectedSlot.status !==
-            "available"
-        ) {
-          setBookingError(
-            "Sorry, this slot was just booked or is no longer available. Please pick another slot.",
-          );
-
-          refreshSlots();
-
-          setSelectedSlotId(
-            null,
-          );
-
-          setIsBooking(
-            false,
-          );
-
-          return;
-        }
+          }),
+        );
 
         const bookingId =
           `bk-${Date.now()}`;
-
-        const updatedSlots =
-          dispatch(
-            bookDoctorSlot({
-              doctorId,
-              slotId:
-                selectedSlotId,
-            }),
-          );
-
-        if (
-          !updatedSlots
-        ) {
-          setBookingError(
-            "Sorry, this slot was just booked or is no longer available. Please pick another slot.",
-          );
-
-          refreshSlots();
-
-          setSelectedSlotId(
-            null,
-          );
-
-          setIsBooking(
-            false,
-          );
-
-          return;
-        }
-
-        const bookedSlot =
-          selectedSlot;
 
         const appointment =
           {
@@ -383,7 +341,7 @@ export default function BookingPanel({
             doctorId,
 
             slotId:
-              bookedSlot.id,
+              slotToBook.id,
 
             patientId:
               user.id,
@@ -392,10 +350,10 @@ export default function BookingPanel({
               user.name,
 
             date:
-              bookedSlot.date,
+              slotToBook.date,
 
             time:
-              bookedSlot.time,
+              slotToBook.time,
 
             status:
               "pending" as const,
@@ -420,7 +378,7 @@ export default function BookingPanel({
                 "New appointment request",
 
               message:
-                `${user.name} requested an appointment for ${bookedSlot.date} at ${bookedSlot.time}.`,
+                `${user.name} requested an appointment for ${slotToBook.date} at ${slotToBook.time}.`,
 
               type:
                 "appointment",
@@ -544,7 +502,7 @@ export default function BookingPanel({
           size="lg"
           className="mt-6 w-full"
           disabled={
-            !selectedSlotId ||
+            !canBookSelectedSlot ||
             isBooking
           }
           onClick={

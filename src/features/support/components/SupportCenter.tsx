@@ -200,16 +200,12 @@ export default function SupportCenter() {
     [selectedTicketId, tickets],
   );
 
-  const messages =
-    useMemo<SupportTicketMessage[]>(
-      () =>
-        selectedTicketId
-          ? getSupportTicketMessages(
-              selectedTicketId,
-            )
-          : [],
-      [selectedTicketId, tickets],
-    );
+  const messages: SupportTicketMessage[] =
+    selectedTicketId
+      ? getSupportTicketMessages(
+          selectedTicketId,
+        )
+      : [];
 
   const loadTickets = useCallback(() => {
     try {

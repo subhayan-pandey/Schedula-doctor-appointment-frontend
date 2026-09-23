@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { useDispatch, useSelector } from "react-redux";
+
 import NotificationBell from "@/components/ui/NotificationBell";
 
-import { clearSession, getSession } from "@/lib/storage";
-
-import type { User } from "@/types/user";
+import { logout } from "@/store/slices/authSlice";
+import type { AppDispatch, RootState } from "@/store";
 
 type ThemeChoice = "light" | "dark" | "system";
 
@@ -355,6 +356,15 @@ export default function Navbar() {
   const router =
     useRouter();
 
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
   const profileMenuRef =
     useRef<HTMLDivElement | null>(
       null,
@@ -362,11 +372,6 @@ export default function Navbar() {
 
   const mobileMenuRef =
     useRef<HTMLDivElement | null>(
-      null,
-    );
-
-  const [user, setUser] =
-    useState<User | null>(
       null,
     );
 
@@ -384,12 +389,6 @@ export default function Navbar() {
     useState<ThemeChoice>(
       "system",
     );
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setUser(getSession());
-    });
-  }, [pathname]);
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -415,15 +414,6 @@ export default function Navbar() {
     );
 
     if (theme !== "system") {
-      return;
-    }
-
-    const media =
-      window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
-
-    if (!media) {
       return;
     }
 
@@ -547,9 +537,7 @@ export default function Navbar() {
   }
 
   function handleLogout() {
-    clearSession();
-
-    setUser(null);
+    dispatch(logout());
 
     closeMenus();
 

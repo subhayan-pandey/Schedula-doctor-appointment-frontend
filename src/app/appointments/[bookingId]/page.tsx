@@ -6,39 +6,47 @@ import {
   useState,
 } from "react";
 import { useParams } from "next/navigation";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 
 import PreConsultationIntakeForm from "@/features/appointment/components/PreConsultationIntakeForm";
 
 import {
-  getBookingById,
-  updateBookingStatus,
-} from "@/lib/bookings-store";
-
-import {
-  getDoctorById,
-} from "@/lib/doctors-store";
-
-import {
   createDoctorNotification,
 } from "@/lib/notifications-store";
-
-import {
-  getSlotsForDoctor,
-  releaseSlot,
-} from "@/lib/slots-store";
-
-import {
-  getSession,
-} from "@/lib/storage";
 
 import {
   formatLongDate,
 } from "@/lib/utils/date";
 
+import {
+  initializeAppointments,
+  updateAppointmentStatus,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  initializeDoctors,
+} from "@/store/slices/doctorsSlice";
+
+import {
+  addNotification,
+} from "@/store/slices/notificationsSlice";
+
+import {
+  initializeDoctorSlots,
+  releaseDoctorSlot,
+} from "@/store/slices/slotsSlice";
+
 import type {
-  Booking,
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import type {
   BookingStatus,
 } from "@/types/booking";
 
@@ -224,19 +232,74 @@ export default function AppointmentConfirmationPage() {
       bookingId: string;
     }>();
 
-  const [
-    booking,
-    setBooking,
-  ] = useState<
-    Booking | null | undefined
-  >(undefined);
+  const dispatch =
+    useDispatch<AppDispatch>();
 
-  const [
-    session,
-    setSession,
-  ] = useState<
-    ReturnType<typeof getSession>
-  >(null);
+  const booking =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments.find(
+          (appointment) =>
+            appointment.id ===
+            bookingId,
+        ) ?? null,
+    );
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
+
+  const doctor =
+    useSelector(
+      (state: RootState) =>
+        booking
+          ? state.doctors.doctors.find(
+              (item) =>
+                item.id ===
+                booking.doctorId,
+            ) ?? null
+          : null,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
+  const slots =
+    useSelector(
+      (state: RootState) =>
+        booking
+          ? state.slots.slotsByDoctor[
+              booking.doctorId
+            ] ?? []
+          : [],
+    );
+
+  const slotsInitialized =
+    useSelector(
+      (state: RootState) =>
+        booking
+          ? state.slots.initializedDoctors.includes(
+              booking.doctorId,
+            )
+          : false,
+    );
 
   const [
     isCancelling,
@@ -244,49 +307,53 @@ export default function AppointmentConfirmationPage() {
   ] = useState(false);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      setSession(
-        getSession(),
-      );
-
-      setBooking(
-        getBookingById(
-          bookingId,
-        ) ?? null,
-      );
-    });
-  }, [bookingId]);
-
-  useEffect(() => {
-    function handleBookingsUpdated() {
-      const latestBooking =
-        getBookingById(
-          bookingId,
-        );
-
-      if (!latestBooking) {
-        return;
-      }
-
-      setBooking(
-        latestBooking,
+    if (
+      !appointmentsInitialized
+    ) {
+      dispatch(
+        initializeAppointments(),
       );
     }
+  }, [
+    dispatch,
+    appointmentsInitialized,
+  ]);
 
-    window.addEventListener(
-      "schedula:bookings-updated",
-      handleBookingsUpdated,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "schedula:bookings-updated",
-        handleBookingsUpdated,
+  useEffect(() => {
+    if (!doctorsInitialized) {
+      dispatch(
+        initializeDoctors(),
       );
-    };
-  }, [bookingId]);
+    }
+  }, [
+    dispatch,
+    doctorsInitialized,
+  ]);
 
-  if (booking === undefined) {
+  useEffect(() => {
+    if (
+      !booking ||
+      slotsInitialized
+    ) {
+      return;
+    }
+
+    dispatch(
+      initializeDoctorSlots(
+        booking.doctorId,
+      ),
+    );
+  }, [
+    dispatch,
+    booking,
+    slotsInitialized,
+  ]);
+
+  if (
+    !authInitialized ||
+    !appointmentsInitialized ||
+    !doctorsInitialized
+  ) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
         Loading appointment…
@@ -321,10 +388,10 @@ export default function AppointmentConfirmationPage() {
   }
 
   if (
-    !session ||
-    session.role !== "patient" ||
+    !user ||
+    user.role !== "patient" ||
     booking.patientId !==
-      session.id
+      user.id
   ) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
@@ -351,11 +418,6 @@ export default function AppointmentConfirmationPage() {
 
   const currentBooking =
     booking;
-
-  const doctor =
-    getDoctorById(
-      currentBooking.doctorId,
-    );
 
   const canCancel =
     currentBooking.status ===
@@ -390,20 +452,14 @@ export default function AppointmentConfirmationPage() {
   function handleCancel() {
     if (
       !canCancel ||
-      isCancelling
+      isCancelling ||
+      !slotsInitialized
     ) {
       return;
     }
 
-    setIsCancelling(true);
-
-    const currentSlots =
-      getSlotsForDoctor(
-        currentBooking.doctorId,
-      );
-
     const currentSlot =
-      currentSlots.find(
+      slots.find(
         (slot) =>
           slot.id ===
           currentBooking.slotId,
@@ -414,117 +470,53 @@ export default function AppointmentConfirmationPage() {
       currentSlot.status !==
         "booked"
     ) {
-      setIsCancelling(false);
-
       return;
     }
 
-    const releasedSlots =
-      releaseSlot(
-        currentBooking.doctorId,
-        currentBooking.slotId,
-      );
+    setIsCancelling(true);
 
-    const releasedSlot =
-      releasedSlots.find(
-        (slot) =>
-          slot.id ===
-          currentBooking.slotId,
-      );
-
-    if (
-      !releasedSlot ||
-      releasedSlot.status !==
-        "available"
-    ) {
-      setIsCancelling(false);
-
-      return;
-    }
-
-    const updatedBooking =
-      updateBookingStatus(
-        currentBooking.id,
-        "cancelled",
-        "Appointment cancelled by patient",
-      );
-
-    if (!updatedBooking) {
-      const restoredSlots =
-        getSlotsForDoctor(
+    dispatch(
+      releaseDoctorSlot({
+        doctorId:
           currentBooking.doctorId,
-        );
+        slotId:
+          currentBooking.slotId,
+      }),
+    );
 
-      const restoredSlot =
-        restoredSlots.find(
-          (slot) =>
-            slot.id ===
-            currentBooking.slotId,
-        );
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          currentBooking.id,
+        status: "cancelled",
+        actionReason:
+          "Appointment cancelled by patient",
+      }),
+    );
 
-      if (
-        restoredSlot &&
-        restoredSlot.status ===
-          "available"
-      ) {
-        const restored =
-          restoredSlots.map(
-            (slot) =>
-              slot.id ===
-              currentBooking.slotId
-                ? {
-                    ...slot,
-                    status:
-                      "booked",
-                  }
-                : slot,
-          );
+    const notification =
+      createDoctorNotification({
+        userId:
+          currentBooking.doctorId,
 
-        window.localStorage.setItem(
-          `schedula:slots:${currentBooking.doctorId}`,
-          JSON.stringify(
-            restored,
-          ),
-        );
+        title:
+          "Appointment cancelled",
 
-        window.dispatchEvent(
-          new CustomEvent(
-            "schedula:slots-updated",
-            {
-              detail: {
-                doctorId:
-                  currentBooking.doctorId,
-              },
-            },
-          ),
-        );
-      }
+        message: `${currentBooking.patientName} cancelled the appointment scheduled for ${formatLongDate(
+          currentBooking.date,
+        )} at ${currentBooking.time}.`,
 
-      setIsCancelling(false);
+        type:
+          "cancellation",
 
-      return;
-    }
+        appointmentId:
+          currentBooking.id,
+      });
 
-    createDoctorNotification({
-      userId:
-        currentBooking.doctorId,
-
-      title:
-        "Appointment cancelled",
-
-      message: `${currentBooking.patientName} cancelled the appointment scheduled for ${formatLongDate(
-        currentBooking.date,
-      )} at ${currentBooking.time}.`,
-
-      type:
-        "cancellation",
-
-      appointmentId:
-        currentBooking.id,
-    });
-
-    setBooking(
-      updatedBooking,
+    dispatch(
+      addNotification(
+        notification,
+      ),
     );
 
     setIsCancelling(false);
@@ -540,14 +532,17 @@ export default function AppointmentConfirmationPage() {
 
     setIsCancelling(true);
 
-    const updatedBooking =
-      updateBookingStatus(
-        currentBooking.id,
-        "cancelled",
-        "Declined appointment cancelled by patient",
-      );
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          currentBooking.id,
+        status: "cancelled",
+        actionReason:
+          "Declined appointment cancelled by patient",
+      }),
+    );
 
-    if (updatedBooking) {
+    const notification =
       createDoctorNotification({
         userId:
           currentBooking.doctorId,
@@ -566,10 +561,11 @@ export default function AppointmentConfirmationPage() {
           currentBooking.id,
       });
 
-      setBooking(
-        updatedBooking,
-      );
-    }
+    dispatch(
+      addNotification(
+        notification,
+      ),
+    );
 
     setIsCancelling(false);
   }
@@ -834,8 +830,13 @@ export default function AppointmentConfirmationPage() {
             <Button
               variant="outline"
               className="flex-1"
-              disabled={isCancelling}
-              onClick={handleCancel}
+              disabled={
+                isCancelling ||
+                !slotsInitialized
+              }
+              onClick={
+                handleCancel
+              }
             >
               {isCancelling
                 ? "Cancelling..."

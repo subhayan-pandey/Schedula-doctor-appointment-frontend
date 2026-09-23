@@ -4,147 +4,247 @@ import {
 } from "@reduxjs/toolkit";
 
 import {
-  addBooking,
-  getAllBookings,
-  updateBooking,
-  updateBookingStatus,
-} from "@/lib/bookings-store";
+  bookSlot,
+  createSlot,
+  getSlotsForDoctor,
+  releaseSlot,
+  removeSlot,
+  rescheduleSlot,
+  toggleSlotAvailability,
+} from "@/lib/slots-store";
 
 import type {
-  Booking,
-  BookingStatus,
-} from "@/types/booking";
+  Slot,
+} from "@/types/slot";
 
-type AppointmentsState = {
-  appointments: Booking[];
-  initialized: boolean;
+type SlotsState = {
+  slotsByDoctor: Record<
+    string,
+    Slot[]
+  >;
+  initializedDoctors: string[];
 };
 
-const initialState: AppointmentsState = {
-  appointments: [],
-  initialized: false,
+const initialState: SlotsState = {
+  slotsByDoctor: {},
+  initializedDoctors: [],
 };
 
-const appointmentsSlice = createSlice({
-  name: "appointments",
+const slotsSlice = createSlice({
+  name: "slots",
+
   initialState,
+
   reducers: {
-    initializeAppointments(state) {
-      state.appointments =
-        getAllBookings();
-      state.initialized = true;
-    },
-
-    setAppointments(
+    initializeDoctorSlots(
       state,
-      action: PayloadAction<Booking[]>,
+      action: PayloadAction<string>,
     ) {
-      state.appointments =
+      const doctorId =
         action.payload;
-      state.initialized = true;
-    },
 
-    addAppointment(
-      state,
-      action: PayloadAction<Booking>,
-    ) {
-      const appointment =
-        addBooking(
-          action.payload,
+      if (!doctorId) {
+        return;
+      }
+
+      state.slotsByDoctor[
+        doctorId
+      ] =
+        getSlotsForDoctor(
+          doctorId,
         );
 
-      const exists =
-        state.appointments.some(
-          (booking) =>
-            booking.id ===
-            appointment.id,
-        );
-
-      if (!exists) {
-        state.appointments.push(
-          appointment,
+      if (
+        !state.initializedDoctors.includes(
+          doctorId,
+        )
+      ) {
+        state.initializedDoctors.push(
+          doctorId,
         );
       }
     },
 
-    updateAppointment(
+    setDoctorSlots(
       state,
       action: PayloadAction<{
-        bookingId: string;
-        updates: Partial<
-          Pick<
-            Booking,
-            | "slotId"
-            | "date"
-            | "time"
-            | "status"
-            | "actionReason"
-          >
-        >;
+        doctorId: string;
+        slots: Slot[];
       }>,
     ) {
+      const {
+        doctorId,
+        slots,
+      } = action.payload;
+
+      state.slotsByDoctor[
+        doctorId
+      ] = slots;
+
+      if (
+        !state.initializedDoctors.includes(
+          doctorId,
+        )
+      ) {
+        state.initializedDoctors.push(
+          doctorId,
+        );
+      }
+    },
+
+    bookDoctorSlot(
+      state,
+      action: PayloadAction<{
+        doctorId: string;
+        slotId: string;
+      }>,
+    ) {
+      const {
+        doctorId,
+        slotId,
+      } = action.payload;
+
       const updated =
-        updateBooking(
-          action.payload
-            .bookingId,
-          action.payload
-            .updates,
+        bookSlot(
+          doctorId,
+          slotId,
         );
 
       if (!updated) {
         return;
       }
 
-      state.appointments =
-        state.appointments.map(
-          (booking) =>
-            booking.id ===
-            updated.id
-              ? updated
-              : booking,
-        );
+      state.slotsByDoctor[
+        doctorId
+      ] = updated;
     },
 
-    updateAppointmentStatus(
+    rescheduleDoctorSlot(
       state,
       action: PayloadAction<{
-        bookingId: string;
-        status: BookingStatus;
-        actionReason?: string;
+        doctorId: string;
+        currentSlotId: string;
+        newSlotId: string;
       }>,
     ) {
+      const {
+        doctorId,
+        currentSlotId,
+        newSlotId,
+      } = action.payload;
+
       const updated =
-        updateBookingStatus(
-          action.payload
-            .bookingId,
-          action.payload
-            .status,
-          action.payload
-            .actionReason,
+        rescheduleSlot(
+          doctorId,
+          currentSlotId,
+          newSlotId,
         );
 
       if (!updated) {
         return;
       }
 
-      state.appointments =
-        state.appointments.map(
-          (booking) =>
-            booking.id ===
-            updated.id
-              ? updated
-              : booking,
+      state.slotsByDoctor[
+        doctorId
+      ] = updated;
+    },
+
+    releaseDoctorSlot(
+      state,
+      action: PayloadAction<{
+        doctorId: string;
+        slotId: string;
+      }>,
+    ) {
+      const {
+        doctorId,
+        slotId,
+      } = action.payload;
+
+      state.slotsByDoctor[
+        doctorId
+      ] = releaseSlot(
+        doctorId,
+        slotId,
+      );
+    },
+
+    createDoctorSlot(
+      state,
+      action: PayloadAction<{
+        doctorId: string;
+        slot: {
+          date: string;
+          time: string;
+          period: Slot["period"];
+        };
+      }>,
+    ) {
+      const {
+        doctorId,
+        slot,
+      } = action.payload;
+
+      state.slotsByDoctor[
+        doctorId
+      ] = createSlot(
+        doctorId,
+        slot,
+      );
+    },
+
+    removeDoctorSlot(
+      state,
+      action: PayloadAction<{
+        doctorId: string;
+        slotId: string;
+      }>,
+    ) {
+      const {
+        doctorId,
+        slotId,
+      } = action.payload;
+
+      state.slotsByDoctor[
+        doctorId
+      ] = removeSlot(
+        doctorId,
+        slotId,
+      );
+    },
+
+    toggleDoctorSlotAvailability(
+      state,
+      action: PayloadAction<{
+        doctorId: string;
+        slotId: string;
+      }>,
+    ) {
+      const {
+        doctorId,
+        slotId,
+      } = action.payload;
+
+      state.slotsByDoctor[
+        doctorId
+      ] =
+        toggleSlotAvailability(
+          doctorId,
+          slotId,
         );
     },
   },
 });
 
 export const {
-  initializeAppointments,
-  setAppointments,
-  addAppointment,
-  updateAppointment,
-  updateAppointmentStatus,
-} = appointmentsSlice.actions;
+  initializeDoctorSlots,
+  setDoctorSlots,
+  bookDoctorSlot,
+  rescheduleDoctorSlot,
+  releaseDoctorSlot,
+  createDoctorSlot,
+  removeDoctorSlot,
+  toggleDoctorSlotAvailability,
+} = slotsSlice.actions;
 
-export default appointmentsSlice.reducer;
+export default slotsSlice.reducer;

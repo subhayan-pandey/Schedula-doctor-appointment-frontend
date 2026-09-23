@@ -13,6 +13,11 @@ import {
   useRouter,
 } from "next/navigation";
 
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 import DateStrip from "@/components/ui/DateStrip";
 
@@ -20,8 +25,6 @@ import SlotGrid from "@/features/booking/components/SlotGrid";
 
 import {
   canRescheduleBooking,
-  getBookingById,
-  rescheduleBooking,
 } from "@/lib/bookings-store";
 
 import {
@@ -29,32 +32,33 @@ import {
 } from "@/lib/notifications-store";
 
 import {
-  getDoctorById,
-} from "@/lib/doctors-store";
-
-import {
-  bookSlot,
-  getSlotsForDoctor,
-  releaseSlot,
-  rescheduleSlot,
-} from "@/lib/slots-store";
-
-import {
-  getSession,
-} from "@/lib/storage";
-
-import {
   getNextDays,
   toISODate,
 } from "@/lib/utils/date";
 
-import type {
-  Booking,
-} from "@/types/booking";
+import {
+  initializeAppointments,
+  updateAppointment,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  initializeDoctors,
+} from "@/store/slices/doctorsSlice";
+
+import {
+  addNotification,
+} from "@/store/slices/notificationsSlice";
+
+import {
+  bookDoctorSlot,
+  initializeDoctorSlots,
+  rescheduleDoctorSlot,
+} from "@/store/slices/slotsSlice";
 
 import type {
-  Slot,
-} from "@/types/slot";
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 type PageStatus =
   | "loading"
@@ -75,30 +79,12 @@ export default function RescheduleAppointmentPage() {
   const bookingId =
     params.bookingId;
 
+  const dispatch =
+    useDispatch<AppDispatch>();
+
   const days = useMemo(
     () =>
       getNextDays(14),
-    [],
-  );
-
-  const [
-    pageStatus,
-    setPageStatus,
-  ] = useState<PageStatus>(
-    "loading",
-  );
-
-  const [
-    booking,
-    setBooking,
-  ] = useState<
-    Booking | null
-  >(null);
-
-  const [
-    slots,
-    setSlots,
-  ] = useState<Slot[]>(
     [],
   );
 
@@ -133,213 +119,171 @@ export default function RescheduleAppointmentPage() {
     string | null
   >(null);
 
-  const loadBooking =
-    useCallback(() => {
-      const session =
-        getSession();
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
 
-      if (
-        !session ||
-        session.role !==
-          "patient"
-      ) {
-        setPageStatus(
-          "unauthorized",
-        );
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
 
-        return;
-      }
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
 
-      const currentBooking =
-        getBookingById(
-          bookingId,
-        );
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
 
-      if (!currentBooking) {
-        setPageStatus(
-          "not-found",
-        );
+  const booking =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments.find(
+          (appointment) =>
+            appointment.id ===
+            bookingId,
+        ) ?? null,
+    );
 
-        return;
-      }
+  const slots =
+    useSelector(
+      (state: RootState) =>
+        booking
+          ? state.slots.slotsByDoctor[
+              booking.doctorId
+            ] ?? []
+          : [],
+    );
 
-      if (
-        currentBooking.patientId !==
-        session.id
-      ) {
-        setPageStatus(
-          "forbidden",
-        );
+  const slotsInitialized =
+    useSelector(
+      (state: RootState) =>
+        booking
+          ? state.slots.initializedDoctors.includes(
+              booking.doctorId,
+            )
+          : false,
+    );
 
-        return;
-      }
-
-      const canReschedule =
-        canRescheduleBooking(
-          currentBooking,
-        ) ||
-        currentBooking.status ===
-          "cancelled";
-
-      setBooking(
-        currentBooking,
-      );
-
-      if (!canReschedule) {
-        setPageStatus(
-          "ready",
-        );
-
-        setError(
-          "This appointment cannot be rescheduled in its current status.",
-        );
-
-        return;
-      }
-
-      const currentSlots =
-        getSlotsForDoctor(
-          currentBooking.doctorId,
-        );
-
-      setSlots(
-        currentSlots,
-      );
-
-      const today =
-        toISODate(
-          new Date(),
-        );
-
-      const bookingDateExists =
-        days.some(
-          (day) =>
-            toISODate(day) ===
-            currentBooking.date,
-        );
-
-      if (
-        bookingDateExists &&
-        currentBooking.date >=
-          today
-      ) {
-        setSelectedDate(
-          currentBooking.date,
-        );
-      } else {
-        setSelectedDate(
-          toISODate(
-            days[0],
-          ),
-        );
-      }
-
-      setSelectedSlotId(
-        null,
-      );
-
-      setPageStatus(
-        "ready",
-      );
-    }, [
-      bookingId,
-      days,
-    ]);
+  const doctor =
+    useSelector(
+      (state: RootState) =>
+        booking
+          ? state.doctors.doctors.find(
+              (item) =>
+                item.id ===
+                booking.doctorId,
+            ) ?? null
+          : null,
+    );
 
   useEffect(() => {
-    const timeoutId =
-      window.setTimeout(() => {
-        loadBooking();
-      }, 0);
-
-    return () => {
-      window.clearTimeout(
-        timeoutId,
+    if (!appointmentsInitialized) {
+      dispatch(
+        initializeAppointments(),
       );
-    };
+    }
   }, [
-    loadBooking,
+    dispatch,
+    appointmentsInitialized,
   ]);
 
-  const refreshSlots =
-    useCallback(() => {
-      if (!booking) {
-        return;
-      }
-
-      const latestSlots =
-        getSlotsForDoctor(
-          booking.doctorId,
-        );
-
-      setSlots(
-        latestSlots,
+  useEffect(() => {
+    if (!doctorsInitialized) {
+      dispatch(
+        initializeDoctors(),
       );
+    }
+  }, [
+    dispatch,
+    doctorsInitialized,
+  ]);
 
-      setSelectedSlotId(
-        (
-          currentSelectedSlotId,
-        ) => {
-          if (
-            !currentSelectedSlotId
-          ) {
-            return null;
-          }
+  const pageStatus: PageStatus =
+    !authInitialized ||
+    !appointmentsInitialized
+      ? "loading"
+      : !user ||
+          user.role !== "patient"
+        ? "unauthorized"
+        : !booking
+          ? "not-found"
+          : booking.patientId !==
+              user.id
+            ? "forbidden"
+            : "ready";
 
-          const selectedSlot =
-            latestSlots.find(
-              (slot) =>
-                slot.id ===
-                currentSelectedSlotId,
-            );
-
-          if (
-            !selectedSlot ||
-            selectedSlot.status !==
-              "available"
-          ) {
-            return null;
-          }
-
-          return currentSelectedSlotId;
-        },
-      );
-    }, [
-      booking,
-    ]);
+  const canReschedule =
+    booking
+      ? canRescheduleBooking(
+          booking,
+        ) ||
+        booking.status ===
+          "cancelled"
+      : false;
 
   useEffect(() => {
     if (
-      pageStatus !==
-        "ready" ||
-      !booking
+      pageStatus !== "ready" ||
+      !booking ||
+      !canReschedule
     ) {
       return;
     }
 
-    const timeoutId =
-      window.setTimeout(() => {
-        refreshSlots();
-      }, 0);
-
-    return () => {
-      window.clearTimeout(
-        timeoutId,
+    if (!slotsInitialized) {
+      dispatch(
+        initializeDoctorSlots(
+          booking.doctorId,
+        ),
       );
-    };
+    }
   }, [
-    pageStatus,
+    dispatch,
     booking,
-    refreshSlots,
+    pageStatus,
+    canReschedule,
+    slotsInitialized,
   ]);
 
+  const bookingDate =
+    booking &&
+    days.some(
+      (day) =>
+        toISODate(day) ===
+        booking.date,
+    ) &&
+    booking.date >=
+      toISODate(new Date())
+      ? booking.date
+      : null;
+
+  const effectiveSelectedDate =
+    selectedDate ||
+    bookingDate ||
+    toISODate(days[0]);
+
+  const bookingDoctorId =
+    booking?.doctorId ?? null;
+
   useEffect(() => {
-    if (!booking) {
+    if (
+      !bookingDoctorId ||
+      !slotsInitialized
+    ) {
       return;
     }
 
-    const currentDoctorId =
-      booking.doctorId;
+    const doctorId =
+      bookingDoctorId;
 
     function handleSlotsUpdated(
       event: Event,
@@ -352,12 +296,16 @@ export default function RescheduleAppointmentPage() {
       if (
         customEvent.detail
           ?.doctorId !==
-        currentDoctorId
+        doctorId
       ) {
         return;
       }
 
-      refreshSlots();
+      dispatch(
+        initializeDoctorSlots(
+          doctorId,
+        ),
+      );
     }
 
     window.addEventListener(
@@ -372,51 +320,41 @@ export default function RescheduleAppointmentPage() {
       );
     };
   }, [
-    booking,
-    refreshSlots,
+    dispatch,
+    bookingDoctorId,
+    slotsInitialized,
   ]);
 
-  useEffect(() => {
-    function handleBookingsUpdated() {
-      const latestBooking =
-        getBookingById(
-          bookingId,
-        );
-
-      if (!latestBooking) {
+  const refreshSlots =
+    useCallback(() => {
+      if (!booking) {
         return;
       }
 
-      setBooking(
-        latestBooking,
+      dispatch(
+        initializeDoctorSlots(
+          booking.doctorId,
+        ),
       );
-    }
 
-    window.addEventListener(
-      "schedula:bookings-updated",
-      handleBookingsUpdated,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "schedula:bookings-updated",
-        handleBookingsUpdated,
+      setSelectedSlotId(
+        null,
       );
-    };
-  }, [
-    bookingId,
-  ]);
+    }, [
+      dispatch,
+      booking,
+    ]);
 
   const slotsForDate =
     useMemo(() => {
       return slots.filter(
         (slot) =>
           slot.date ===
-          selectedDate,
+          effectiveSelectedDate,
       );
     }, [
       slots,
-      selectedDate,
+      effectiveSelectedDate,
     ]);
 
   const morningSlots =
@@ -460,13 +398,6 @@ export default function RescheduleAppointmentPage() {
       slots,
       selectedSlotId,
     ]);
-
-  const doctor =
-    booking
-      ? getDoctorById(
-          booking.doctorId,
-        )
-      : undefined;
 
   function handleSelectDate(
     isoDate: string,
@@ -513,12 +444,9 @@ export default function RescheduleAppointmentPage() {
       return;
     }
 
-    const currentSession =
-      getSession();
-
     if (
-      !currentSession ||
-      currentSession.role !==
+      !user ||
+      user.role !==
         "patient"
     ) {
       setError(
@@ -529,7 +457,7 @@ export default function RescheduleAppointmentPage() {
     }
 
     if (
-      currentSession.id !==
+      user.id !==
       booking.patientId
     ) {
       setError(
@@ -601,115 +529,63 @@ export default function RescheduleAppointmentPage() {
     const oldSlotId =
       booking.slotId;
 
-    let slotOperationSucceeded =
-      false;
-
     if (isCancelled) {
-      const bookedSlots =
-        bookSlot(
-          booking.doctorId,
-          selectedSlot.id,
-        );
-
-      slotOperationSucceeded =
-        Boolean(
-          bookedSlots,
-        );
-    } else {
-      const rescheduledSlots =
-        rescheduleSlot(
-          booking.doctorId,
-          oldSlotId,
-          selectedSlot.id,
-        );
-
-      slotOperationSucceeded =
-        Boolean(
-          rescheduledSlots,
-        );
-    }
-
-    if (
-      !slotOperationSucceeded
-    ) {
-      setError(
-        "This slot was just booked or is no longer available. Please choose another slot.",
-      );
-
-      refreshSlots();
-
-      setIsRescheduling(
-        false,
-      );
-
-      return;
-    }
-
-    const updatedBooking =
-      rescheduleBooking(
-        booking.id,
-        {
+      dispatch(
+        bookDoctorSlot({
+          doctorId:
+            booking.doctorId,
           slotId:
             selectedSlot.id,
+        }),
+      );
+    } else {
+      dispatch(
+        rescheduleDoctorSlot({
+          doctorId:
+            booking.doctorId,
+          currentSlotId:
+            oldSlotId,
+          newSlotId:
+            selectedSlot.id,
+        }),
+      );
+    }
 
+    dispatch(
+      updateAppointment({
+        bookingId:
+          booking.id,
+        updates: {
+          slotId:
+            selectedSlot.id,
           date:
             selectedSlot.date,
-
           time:
             selectedSlot.time,
         },
-      );
-
-    if (!updatedBooking) {
-      if (isCancelled) {
-        releaseSlot(
-          booking.doctorId,
-          selectedSlot.id,
-        );
-      } else {
-        rescheduleSlot(
-          booking.doctorId,
-          selectedSlot.id,
-          oldSlotId,
-        );
-      }
-
-      refreshSlots();
-
-      setError(
-        "We could not update the appointment. Your previous slot has been restored. Please try again.",
-      );
-
-      setIsRescheduling(
-        false,
-      );
-
-      return;
-    }
-
-    createDoctorNotification({
-      userId:
-        booking.doctorId,
-
-      title:
-        "Appointment rescheduled",
-
-      message: `${currentSession.name} rescheduled their appointment to ${selectedSlot.date} at ${selectedSlot.time}.`,
-
-      type:
-        "reschedule",
-
-      appointmentId:
-        booking.id,
-    });
-
-    setBooking(
-      updatedBooking,
+      }),
     );
 
-    setSlots(
-      getSlotsForDoctor(
-        booking.doctorId,
+    const notification =
+      createDoctorNotification({
+        userId:
+          booking.doctorId,
+
+        title:
+          "Appointment rescheduled",
+
+        message: `${user.name} rescheduled their appointment to ${selectedSlot.date} at ${selectedSlot.time}.`,
+
+        type:
+          "reschedule",
+
+        appointmentId:
+          booking.id,
+      });
+
+    dispatch(
+      addNotification(
+        notification,
       ),
     );
 
@@ -833,13 +709,6 @@ export default function RescheduleAppointmentPage() {
     );
   }
 
-  const canReschedule =
-    canRescheduleBooking(
-      booking,
-    ) ||
-    booking.status ===
-      "cancelled";
-
   if (!canReschedule) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
@@ -910,9 +779,7 @@ export default function RescheduleAppointmentPage() {
         <section className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
-              {
-                doctor.avatarInitials
-              }
+              {doctor.avatarInitials}
             </div>
 
             <div className="min-w-0">
@@ -967,7 +834,7 @@ export default function RescheduleAppointmentPage() {
           <DateStrip
             days={days}
             selectedDate={
-              selectedDate
+              effectiveSelectedDate
             }
             onSelect={
               handleSelectDate
@@ -1084,7 +951,8 @@ export default function RescheduleAppointmentPage() {
               className="w-full"
               disabled={
                 !selectedSlot ||
-                isRescheduling
+                isRescheduling ||
+                !slotsInitialized
               }
               onClick={
                 handleReschedule
