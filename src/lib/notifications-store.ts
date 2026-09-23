@@ -85,7 +85,9 @@ function readNotifications(): AppNotification[] {
           ),
       )
       .map(
-        (item): AppNotification => ({
+        (
+          item,
+        ): AppNotification => ({
           id:
             typeof item.id ===
             "string"
@@ -100,12 +102,6 @@ function readNotifications(): AppNotification[] {
               ? item.userId
               : "",
 
-          /*
-           * Existing notifications
-           * created before recipientRole
-           * was introduced are treated as
-           * patient notifications.
-           */
           recipientRole:
             isRecipientRole(
               item.recipientRole,
@@ -167,12 +163,6 @@ function writeNotifications(
     ),
   );
 
-  /*
-   * Custom event is required because
-   * storage events do not fire in the
-   * same browser tab that performed
-   * localStorage.setItem().
-   */
   window.dispatchEvent(
     new Event(
       "schedula:notifications-updated",
@@ -207,10 +197,6 @@ export function getNotificationsByUserAndRole(
     );
 }
 
-/*
- * Backward-compatible patient-only
- * notification API.
- */
 export function getNotificationsByUserId(
   userId: string,
 ): AppNotification[] {
@@ -220,13 +206,6 @@ export function getNotificationsByUserId(
   );
 }
 
-/*
- * Central notification creator.
- *
- * The default role remains patient
- * so existing callers continue to
- * behave correctly.
- */
 export function createNotification({
   userId,
   recipientRole = "patient",
@@ -332,15 +311,6 @@ export function createDoctorNotification({
   });
 }
 
-/*
- * Prevents duplicate lifecycle
- * notifications.
- *
- * Two notifications are considered
- * duplicates when they belong to the
- * same recipient, role, appointment,
- * type and title.
- */
 export function createNotificationOnce({
   userId,
   recipientRole = "patient",
@@ -390,14 +360,6 @@ export function createNotificationOnce({
   });
 }
 
-/*
- * Converts the first time in a slot
- * string such as:
- *
- * 09:30 AM - 09:45 AM
- *
- * into a Date.
- */
 function getAppointmentStart(
   date: string,
   time: string,
@@ -478,11 +440,6 @@ function getAppointmentStart(
   return result;
 }
 
-/*
- * Creates one patient reminder for
- * the nearest upcoming appointment
- * occurring within 24 hours.
- */
 function ensureAppointmentReminder(
   patientId: string,
 ): void {
@@ -494,7 +451,10 @@ function ensureAppointmentReminder(
     Date.now();
 
   const twentyFourHours =
-    24 * 60 * 60 * 1000;
+    24 *
+    60 *
+    60 *
+    1000;
 
   const candidate =
     getBookingsByPatientId(
@@ -541,7 +501,9 @@ function ensureAppointmentReminder(
       Math.ceil(
         (candidate.start!.getTime() -
           now) /
-          (60 * 60 * 1000),
+          (60 *
+            60 *
+            1000),
       ),
     );
 

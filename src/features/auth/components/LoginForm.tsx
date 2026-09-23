@@ -103,7 +103,10 @@ export default function LoginForm() {
 
     setErrors(nextErrors);
 
-    return Object.keys(nextErrors).length === 0;
+    return (
+      Object.keys(nextErrors).length ===
+      0
+    );
   }
 
   function validateForgot(): boolean {
@@ -119,14 +122,20 @@ export default function LoginForm() {
         "Password must be at least 6 characters";
     }
 
-    if (confirmPassword !== newPassword) {
+    if (
+      confirmPassword !==
+      newPassword
+    ) {
       nextErrors.password =
         "Passwords do not match";
     }
 
     setErrors(nextErrors);
 
-    return Object.keys(nextErrors).length === 0;
+    return (
+      Object.keys(nextErrors).length ===
+      0
+    );
   }
 
   function handlePatientLogin(
@@ -142,8 +151,13 @@ export default function LoginForm() {
     resetMessages();
 
     window.setTimeout(() => {
+      const normalizedIdentifier =
+        emailOrMobile.trim();
+
       const account =
-        getPatientAccount(emailOrMobile);
+        getPatientAccount(
+          normalizedIdentifier,
+        );
 
       if (
         account &&
@@ -159,22 +173,25 @@ export default function LoginForm() {
 
       const accountId =
         account?.id ??
-        `patient-${emailOrMobile
-          .trim()
+        `patient-${normalizedIdentifier
           .toLowerCase()
-          .replace(/[^a-z0-9]/g, "-")}`;
+          .replace(
+            /[^a-z0-9]/g,
+            "-",
+          )}`;
 
       const name =
         account?.name ??
-        (emailOrMobile.split("@")[0] ||
-          "Patient");
+        (normalizedIdentifier.split(
+          "@",
+        )[0] || "Patient");
 
       if (!account) {
         savePatientAccount({
           id: accountId,
           name,
           emailOrMobile:
-            emailOrMobile.trim(),
+            normalizedIdentifier,
           password,
         });
       }
@@ -183,7 +200,7 @@ export default function LoginForm() {
         id: accountId,
         name,
         emailOrMobile:
-          emailOrMobile.trim(),
+          normalizedIdentifier,
         role: "patient",
       });
 
@@ -208,7 +225,9 @@ export default function LoginForm() {
     window.setTimeout(() => {
       if (role === "patient") {
         const account =
-          getPatientAccount(emailOrMobile);
+          getPatientAccount(
+            emailOrMobile,
+          );
 
         if (!account) {
           setFormError(
@@ -240,7 +259,9 @@ export default function LoginForm() {
   if (mode === "forgot") {
     return (
       <form
-        onSubmit={handleForgotPassword}
+        onSubmit={
+          handleForgotPassword
+        }
         noValidate
         className="flex flex-col gap-5"
       >
@@ -270,7 +291,9 @@ export default function LoginForm() {
               event.target.value,
             );
 
-            if (errors.emailOrMobile) {
+            if (
+              errors.emailOrMobile
+            ) {
               setErrors((current) => ({
                 ...current,
                 emailOrMobile:
@@ -280,7 +303,9 @@ export default function LoginForm() {
 
             setFormError("");
           }}
-          error={errors.emailOrMobile}
+          error={
+            errors.emailOrMobile
+          }
           autoComplete="username"
         />
 
@@ -447,7 +472,8 @@ export default function LoginForm() {
           if (errors.emailOrMobile) {
             setErrors((current) => ({
               ...current,
-              emailOrMobile: undefined,
+              emailOrMobile:
+                undefined,
             }));
           }
 
@@ -464,7 +490,9 @@ export default function LoginForm() {
         placeholder="Enter your password"
         value={password}
         onChange={(event) => {
-          setPassword(event.target.value);
+          setPassword(
+            event.target.value,
+          );
 
           if (errors.password) {
             setErrors((current) => ({

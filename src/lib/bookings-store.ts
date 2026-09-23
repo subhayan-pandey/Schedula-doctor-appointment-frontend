@@ -81,9 +81,7 @@ function readBookings(): Booking[] {
       ) as unknown;
 
     if (
-      !Array.isArray(
-        parsed,
-      )
+      !Array.isArray(parsed)
     ) {
       return [];
     }

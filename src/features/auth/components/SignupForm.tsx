@@ -131,7 +131,10 @@ function PatientSignupForm({
 
     setErrors(nextErrors);
 
-    return Object.keys(nextErrors).length === 0;
+    return (
+      Object.keys(nextErrors).length ===
+      0
+    );
   }
 
   function handleSubmit(
@@ -147,9 +150,12 @@ function PatientSignupForm({
     setIsSubmitting(true);
 
     window.setTimeout(() => {
+      const normalizedIdentifier =
+        emailOrMobile.trim();
+
       const existing =
         getPatientAccount(
-          emailOrMobile,
+          normalizedIdentifier,
         );
 
       if (existing) {
@@ -162,13 +168,15 @@ function PatientSignupForm({
       }
 
       const account = {
-        id: `patient-${emailOrMobile
-          .trim()
+        id: `patient-${normalizedIdentifier
           .toLowerCase()
-          .replace(/[^a-z0-9]/g, "-")}`,
+          .replace(
+            /[^a-z0-9]/g,
+            "-",
+          )}`,
         name: name.trim(),
         emailOrMobile:
-          emailOrMobile.trim(),
+          normalizedIdentifier,
         password,
       };
 
@@ -257,7 +265,9 @@ function PatientSignupForm({
 
           setFormError("");
         }}
-        error={errors.emailOrMobile}
+        error={
+          errors.emailOrMobile
+        }
         autoComplete="username"
       />
 
@@ -408,11 +418,17 @@ function UserPlusIcon() {
       className="size-4"
       aria-hidden="true"
     >
-      <circle cx="9" cy="8" r="3" />
+      <circle
+        cx="9"
+        cy="8"
+        r="3"
+      />
+
       <path
         d="M3.5 20c.7-3.5 2.6-5.3 5.5-5.3 2.2 0 3.8 1 4.8 2.9"
         strokeLinecap="round"
       />
+
       <path
         d="M17 10v6M14 13h6"
         strokeLinecap="round"
