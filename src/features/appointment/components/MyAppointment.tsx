@@ -10,6 +10,8 @@ import {
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
+import AppointmentIntelligence from "@/features/appointment/components/AppointmentIntelligence";
+
 import {
   getBookingsByPatientId,
   updateBookingStatus,
@@ -1138,7 +1140,9 @@ export default function MyAppointments() {
     );
   }
 
-  if (!getSession()) {
+  const session = getSession();
+
+  if (!session) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
@@ -1156,6 +1160,30 @@ export default function MyAppointments() {
         >
           <Button>
             Login
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (session.role !== "patient") {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold text-[var(--ink)]">
+          Patient portal required
+        </h1>
+
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          Log in with a patient account
+          to view patient appointments.
+        </p>
+
+        <Link
+          href="/login"
+          className="mt-6 inline-block"
+        >
+          <Button>
+            Patient login
           </Button>
         </Link>
       </div>
@@ -1183,6 +1211,12 @@ export default function MyAppointments() {
             Keep track of your upcoming,
             completed, and past appointments.
           </p>
+        </div>
+
+        <div className="mt-6">
+          <AppointmentIntelligence
+            bookings={bookings}
+          />
         </div>
 
         <div className="mt-6 overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-1">

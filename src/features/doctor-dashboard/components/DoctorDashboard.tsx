@@ -11,6 +11,7 @@ import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
 import StatCard from "@/features/doctor-dashboard/components/StatCard";
+import DoctorAvailabilityIntelligence from "@/features/doctor-dashboard/components/DoctorAvailabilityIntelligence";
 
 import {
   getSession,
@@ -149,6 +150,13 @@ export default function DoctorDashboard() {
     setAvailableSlotCount,
   ] = useState(0);
 
+  const [
+    doctorId,
+    setDoctorId,
+  ] = useState<string | null>(
+    null,
+  );
+
   function refreshDashboard(
     currentDoctorId: string,
   ) {
@@ -193,6 +201,10 @@ export default function DoctorDashboard() {
 
         return;
       }
+
+      setDoctorId(
+        session.id,
+      );
 
       setAccount(
         getDoctorAccount(),
@@ -258,6 +270,11 @@ export default function DoctorDashboard() {
       handleSlotsUpdated,
     );
 
+    window.addEventListener(
+      "storage",
+      handleBookingsUpdated,
+    );
+
     return () => {
       window.removeEventListener(
         "schedula:bookings-updated",
@@ -267,6 +284,11 @@ export default function DoctorDashboard() {
       window.removeEventListener(
         "schedula:slots-updated",
         handleSlotsUpdated,
+      );
+
+      window.removeEventListener(
+        "storage",
+        handleBookingsUpdated,
       );
     };
   }, []);
@@ -412,6 +434,14 @@ export default function DoctorDashboard() {
           description="Appointments today"
         />
       </div>
+
+      {doctorId && (
+        <div className="mt-8">
+          <DoctorAvailabilityIntelligence
+            doctorId={doctorId}
+          />
+        </div>
+      )}
 
       <section className="mt-8">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
