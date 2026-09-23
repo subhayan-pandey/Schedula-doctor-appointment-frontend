@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Doctor } from "@/types/doctor";
-import type { Slot } from "@/types/slot";
 
 import {
   getDoctorAvailabilityIntelligence,
   type DoctorAvailabilityIntelligence,
 } from "@/lib/doctor-availability-intelligence";
 import { getDoctorById } from "@/lib/doctors-store";
-import { getSlotsForDoctor } from "@/lib/slots-store";
 
 type DoctorAvailabilityIntelligenceProps = {
   doctorId: string;
@@ -66,14 +64,14 @@ export default function DoctorAvailabilityIntelligence({
   const [doctor, setDoctor] = useState<Doctor | undefined>(() =>
     getDoctorById(doctorId),
   );
-  const [slots, setSlots] = useState<Slot[]>(() =>
-    getSlotsForDoctor(doctorId),
-  );
+
+  const [, setRefreshVersion] =
+    useState(0);
 
   useEffect(() => {
     const refresh = () => {
       setDoctor(getDoctorById(doctorId));
-      setSlots(getSlotsForDoctor(doctorId));
+      setRefreshVersion((current) => current + 1);
     };
 
     refresh();
@@ -99,13 +97,11 @@ export default function DoctorAvailabilityIntelligence({
     };
   }, [doctorId]);
 
-  const intelligence = useMemo(() => {
-    if (!doctor) {
-      return undefined;
-    }
-
-    return getDoctorAvailabilityIntelligence(doctor);
-  }, [doctor, slots]);
+  const intelligence = doctor
+    ? getDoctorAvailabilityIntelligence(
+        doctor,
+      )
+    : undefined;
 
   if (!doctor || !intelligence) {
     return null;

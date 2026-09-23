@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useState,
   type FormEvent,
@@ -78,6 +79,8 @@ function PatientSignupForm({
   role: Role;
   onRoleChange: (role: Role) => void;
 }) {
+  const router = useRouter();
+
   const [name, setName] =
     useState("");
 
@@ -192,7 +195,7 @@ function PatientSignupForm({
 
       setIsSubmitting(false);
 
-      window.location.href = "/";
+      router.push("/");
     }, 600);
   }
 
