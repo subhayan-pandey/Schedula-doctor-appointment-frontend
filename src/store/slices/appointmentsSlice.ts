@@ -1,7 +1,4 @@
-import {
-  createSlice,
-  type PayloadAction,
-} from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 import {
   addBooking,
@@ -30,8 +27,7 @@ const appointmentsSlice = createSlice({
   initialState,
   reducers: {
     initializeAppointments(state) {
-      state.appointments =
-        getAllBookings();
+      state.appointments = getAllBookings();
       state.initialized = true;
     },
 
@@ -39,8 +35,7 @@ const appointmentsSlice = createSlice({
       state,
       action: PayloadAction<Booking[]>,
     ) {
-      state.appointments =
-        action.payload;
+      state.appointments = action.payload;
       state.initialized = true;
     },
 
@@ -48,22 +43,14 @@ const appointmentsSlice = createSlice({
       state,
       action: PayloadAction<Booking>,
     ) {
-      const appointment =
-        addBooking(
-          action.payload,
-        );
+      const appointment = addBooking(action.payload);
 
-      const exists =
-        state.appointments.some(
-          (booking) =>
-            booking.id ===
-            appointment.id,
-        );
+      const exists = state.appointments.some(
+        (booking) => booking.id === appointment.id,
+      );
 
       if (!exists) {
-        state.appointments.push(
-          appointment,
-        );
+        state.appointments.push(appointment);
       }
     },
 
@@ -79,30 +66,24 @@ const appointmentsSlice = createSlice({
             | "time"
             | "status"
             | "actionReason"
+            | "consultationType"
           >
         >;
       }>,
     ) {
-      const updated =
-        updateBooking(
-          action.payload
-            .bookingId,
-          action.payload
-            .updates,
-        );
+      const updated = updateBooking(
+        action.payload.bookingId,
+        action.payload.updates,
+      );
 
-      if (!updated) {
-        return;
-      }
+      if (!updated) return;
 
-      state.appointments =
-        state.appointments.map(
-          (booking) =>
-            booking.id ===
-            updated.id
-              ? updated
-              : booking,
-        );
+      state.appointments = state.appointments.map(
+        (booking) =>
+          booking.id === updated.id
+            ? updated
+            : booking,
+      );
     },
 
     updateAppointmentStatus(
@@ -113,28 +94,20 @@ const appointmentsSlice = createSlice({
         actionReason?: string;
       }>,
     ) {
-      const updated =
-        updateBookingStatus(
-          action.payload
-            .bookingId,
-          action.payload
-            .status,
-          action.payload
-            .actionReason,
-        );
+      const updated = updateBookingStatus(
+        action.payload.bookingId,
+        action.payload.status,
+        action.payload.actionReason,
+      );
 
-      if (!updated) {
-        return;
-      }
+      if (!updated) return;
 
-      state.appointments =
-        state.appointments.map(
-          (booking) =>
-            booking.id ===
-            updated.id
-              ? updated
-              : booking,
-        );
+      state.appointments = state.appointments.map(
+        (booking) =>
+          booking.id === updated.id
+            ? updated
+            : booking,
+      );
     },
   },
 });

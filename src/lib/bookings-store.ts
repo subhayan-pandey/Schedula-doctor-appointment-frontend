@@ -1,209 +1,101 @@
-import type {
+import type { Booking, BookingStatus } from "@/types/booking";
+
+const KEY = "schedula:bookings";
+
+type StoredBooking = Omit<
   Booking,
-  BookingStatus,
-} from "@/types/booking";
+  | "patientId"
+  | "consultationType"
+  | "updatedAt"
+  | "rescheduleCount"
+  | "actionReason"
+> & {
+  patientId?: string;
+  consultationType?: Booking["consultationType"];
+  updatedAt?: string;
+  rescheduleCount?: number;
+  actionReason?: string;
+};
 
-const KEY =
-  "schedula:bookings";
-
-type StoredBooking =
-  Omit<
-    Booking,
-    | "patientId"
-    | "updatedAt"
-    | "rescheduleCount"
-    | "actionReason"
-  > & {
-    patientId?: string;
-    updatedAt?: string;
-    rescheduleCount?: number;
-    actionReason?: string;
-  };
-
-function isBrowser(): boolean {
-  return (
-    typeof window !==
-    "undefined"
-  );
+function isBrowser() {
+  return typeof window !== "undefined";
 }
 
-function normalizeBooking(
-  booking: StoredBooking,
-): Booking {
-  const createdAt =
-    typeof booking.createdAt ===
-    "string"
-      ? booking.createdAt
-      : new Date().toISOString();
-
+function normalizeBooking(booking: StoredBooking): Booking {
   return {
     ...booking,
-
-    patientId:
-      booking.patientId ??
-      "",
-
-    createdAt,
-
-    updatedAt:
-      booking.updatedAt ??
-      createdAt,
-
-    rescheduleCount:
-      typeof booking.rescheduleCount ===
-      "number"
-        ? booking.rescheduleCount
-        : 0,
-
-    actionReason:
-      booking.actionReason,
+    patientId: booking.patientId ?? "",
+    consultationType: booking.consultationType ?? "in-person",
+    createdAt: booking.createdAt ?? new Date().toISOString(),
+    updatedAt: booking.updatedAt,
+    rescheduleCount: booking.rescheduleCount ?? 0,
+    actionReason: booking.actionReason,
   };
 }
 
 function readBookings(): Booking[] {
-  if (!isBrowser()) {
-    return [];
-  }
+  if (!isBrowser()) return [];
 
   try {
-    const raw =
-      window.localStorage.getItem(
-        KEY,
-      );
+    const raw = window.localStorage.getItem(KEY);
+    if (!raw) return [];
 
-    if (!raw) {
-      return [];
-    }
+    const parsed = JSON.parse(raw);
 
-    const parsed =
-      JSON.parse(
-        raw,
-      ) as unknown;
+    if (!Array.isArray(parsed)) return [];
 
-    if (
-      !Array.isArray(parsed)
-    ) {
-      return [];
-    }
-
-    return parsed
-      .filter(
-        (
-          item,
-        ): item is StoredBooking =>
-          Boolean(
-            item &&
-              typeof item ===
-                "object",
-          ),
-      )
-      .map(
-        normalizeBooking,
-      );
+    return parsed.map(normalizeBooking);
   } catch {
     return [];
   }
 }
 
-function writeBookings(
-  bookings: Booking[],
-): void {
-  if (!isBrowser()) {
-    return;
-  }
+function writeBookings(bookings: Booking[]) {
+  if (!isBrowser()) return;
 
-  window.localStorage.setItem(
-    KEY,
-    JSON.stringify(
-      bookings,
-    ),
-  );
+  window.localStorage.setItem(KEY, JSON.stringify(bookings));
 
-  window.dispatchEvent(
-    new Event(
-      "schedula:bookings-updated",
-    ),
-  );
+  window.dispatchEvent(new Event("schedula:bookings-updated"));
 }
 
 export function getAllBookings(): Booking[] {
   return readBookings();
 }
 
-export function getBookingById(
-  bookingId: string,
-): Booking | undefined {
-  return readBookings().find(
-    (booking) =>
-      booking.id ===
-      bookingId,
-  );
+export function getBookingById(id: string): Booking | null {
+  return readBookings().find((booking) => booking.id === id) ?? null;
 }
 
-export function getBookingsByPatientId(
-  patientId: string,
-): Booking[] {
+export function getBookingsByPatientId(patientId: string): Booking[] {
   return readBookings().filter(
-    (booking) =>
-      booking.patientId ===
-      patientId,
+    (booking) => booking.patientId === patientId,
   );
 }
 
-export function getBookingsByDoctorId(
-  doctorId: string,
-): Booking[] {
+export function getBookingsByDoctorId(doctorId: string): Booking[] {
   return readBookings().filter(
-    (booking) =>
-      booking.doctorId ===
-      doctorId,
+    (booking) => booking.doctorId === doctorId,
   );
 }
 
-export function addBooking(
-  booking: Booking,
-): Booking {
-  const bookings =
-    readBookings();
+export function addBooking(booking: Booking): Booking {
+  const bookings = readBookings();
 
-  const existing =
-    bookings.find(
-      (item) =>
-        item.id ===
-        booking.id,
-    );
+  const normalizedBooking = normalizeBooking(booking);
 
-  if (existing) {
-    return existing;
+  const existingIndex = bookings.findIndex(
+    (item) => item.id === normalizedBooking.id,
+  );
+
+  if (existingIndex >= 0) {
+    bookings[existingIndex] = normalizedBooking;
+  } else {
+    bookings.push(normalizedBooking);
   }
 
-  const now =
-    new Date().toISOString();
+  writeBookings(bookings);
 
-  const normalized: Booking =
-    {
-      ...booking,
-
-      createdAt:
-        booking.createdAt ||
-        now,
-
-      updatedAt:
-        booking.updatedAt ||
-        booking.createdAt ||
-        now,
-
-      rescheduleCount:
-        booking.rescheduleCount ??
-        0,
-    };
-
-  writeBookings([
-    ...bookings,
-    normalized,
-  ]);
-
-  return normalized;
+  return normalizedBooking;
 }
 
 export function updateBookingStatus(
@@ -211,49 +103,24 @@ export function updateBookingStatus(
   status: BookingStatus,
   actionReason?: string,
 ): Booking | null {
-  const bookings =
-    readBookings();
+  const bookings = readBookings();
 
-  const existing =
-    bookings.find(
-      (booking) =>
-        booking.id ===
-        bookingId,
-    );
-
-  if (!existing) {
-    return null;
-  }
-
-  const now =
-    new Date().toISOString();
-
-  const updatedBooking: Booking =
-    {
-      ...existing,
-
-      status,
-
-      updatedAt:
-        now,
-
-      actionReason:
-        actionReason ??
-        existing.actionReason,
-    };
-
-  const updated =
-    bookings.map(
-      (booking) =>
-        booking.id ===
-        bookingId
-          ? updatedBooking
-          : booking,
-    );
-
-  writeBookings(
-    updated,
+  const index = bookings.findIndex(
+    (booking) => booking.id === bookingId,
   );
+
+  if (index === -1) return null;
+
+  const updatedBooking: Booking = {
+    ...bookings[index],
+    status,
+    updatedAt: new Date().toISOString(),
+    ...(actionReason !== undefined ? { actionReason } : {}),
+  };
+
+  bookings[index] = updatedBooking;
+
+  writeBookings(bookings);
 
   return updatedBooking;
 }
@@ -268,215 +135,78 @@ export function updateBooking(
       | "time"
       | "status"
       | "actionReason"
+      | "consultationType"
     >
   >,
 ): Booking | null {
-  const bookings =
-    readBookings();
+  const bookings = readBookings();
 
-  const existing =
-    bookings.find(
-      (booking) =>
-        booking.id ===
-        bookingId,
-    );
-
-  if (!existing) {
-    return null;
-  }
-
-  const updatedBooking: Booking =
-    {
-      ...existing,
-
-      ...updates,
-
-      updatedAt:
-        new Date().toISOString(),
-    };
-
-  const updated =
-    bookings.map(
-      (booking) =>
-        booking.id ===
-        bookingId
-          ? updatedBooking
-          : booking,
-    );
-
-  writeBookings(
-    updated,
+  const index = bookings.findIndex(
+    (booking) => booking.id === bookingId,
   );
+
+  if (index === -1) return null;
+
+  const updatedBooking: Booking = {
+    ...bookings[index],
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+
+  bookings[index] = updatedBooking;
+
+  writeBookings(bookings);
 
   return updatedBooking;
 }
 
 export function rescheduleBooking(
   bookingId: string,
-  updates: Pick<
-    Booking,
-    | "slotId"
-    | "date"
-    | "time"
-  >,
+  slotId: string,
+  date: string,
+  time: string,
 ): Booking | null {
-  const bookings =
-    readBookings();
+  const booking = getBookingById(bookingId);
 
-  const existing =
-    bookings.find(
-      (booking) =>
-        booking.id ===
-        bookingId,
-    );
+  if (!booking) return null;
 
-  if (!existing) {
-    return null;
-  }
-
-  if (
-    existing.slotId ===
-      updates.slotId &&
-    existing.date ===
-      updates.date &&
-    existing.time ===
-      updates.time
-  ) {
-    return existing;
-  }
-
-  const updatedBooking: Booking =
-    {
-      ...existing,
-
-      slotId:
-        updates.slotId,
-
-      date:
-        updates.date,
-
-      time:
-        updates.time,
-
-      status:
-        "upcoming",
-
-      updatedAt:
-        new Date().toISOString(),
-
-      rescheduleCount:
-        (existing.rescheduleCount ??
-          0) + 1,
-
-      actionReason:
-        "Appointment rescheduled",
-    };
-
-  const updated =
-    bookings.map(
-      (booking) =>
-        booking.id ===
-        bookingId
-          ? updatedBooking
-          : booking,
-    );
-
-  writeBookings(
-    updated,
-  );
-
-  return updatedBooking;
+  return updateBooking(bookingId, {
+    slotId,
+    date,
+    time,
+  });
 }
 
 export function confirmBooking(
   bookingId: string,
 ): Booking | null {
-  const booking =
-    getBookingById(
-      bookingId,
-    );
-
-  if (
-    !booking ||
-    booking.status !==
-      "pending"
-  ) {
-    return null;
-  }
-
-  return updateBookingStatus(
-    bookingId,
-    "upcoming",
-    "Appointment confirmed by doctor",
-  );
+  return updateBookingStatus(bookingId, "confirmed");
 }
 
 export function canCancelBooking(
-  booking:
-    | Booking
-    | null
-    | undefined,
+  booking: Booking,
 ): boolean {
-  if (!booking) {
-    return false;
-  }
-
-  return (
-    booking.status ===
-      "pending" ||
-    booking.status ===
-      "confirmed" ||
-    booking.status ===
-      "upcoming"
+  return !["completed", "cancelled", "declined", "missed"].includes(
+    booking.status,
   );
 }
 
 export function canRescheduleBooking(
-  booking:
-    | Booking
-    | null
-    | undefined,
+  booking: Booking,
 ): boolean {
-  if (!booking) {
-    return false;
-  }
-
-  return (
-    booking.status ===
-      "confirmed" ||
-    booking.status ===
-      "upcoming"
+  return !["completed", "cancelled", "declined", "missed"].includes(
+    booking.status,
   );
 }
 
 export function canCompleteBooking(
-  booking:
-    | Booking
-    | null
-    | undefined,
+  booking: Booking,
 ): boolean {
-  return (
-    booking?.status ===
-    "upcoming"
-  );
+  return ["confirmed", "upcoming"].includes(booking.status);
 }
 
 export function canMarkMissed(
-  booking:
-    | Booking
-    | null
-    | undefined,
+  booking: Booking,
 ): boolean {
-  if (!booking) {
-    return false;
-  }
-
-  return (
-    booking.status ===
-      "pending" ||
-    booking.status ===
-      "confirmed" ||
-    booking.status ===
-      "upcoming"
-  );
+  return ["confirmed", "upcoming"].includes(booking.status);
 }

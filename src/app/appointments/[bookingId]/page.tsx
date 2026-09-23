@@ -226,6 +226,17 @@ function getStatusIconClasses(
   }
 }
 
+function getConsultationTypeLabel(
+  consultationType:
+    | "online"
+    | "in-person"
+    | undefined,
+) {
+  return consultationType === "online"
+    ? "Online Consultation"
+    : "In-Person Consultation";
+}
+
 export default function AppointmentConfirmationPage() {
   const { bookingId } =
     useParams<{
@@ -642,6 +653,18 @@ export default function AppointmentConfirmationPage() {
             >
               {getStatusLabel(
                 currentBooking.status,
+              )}
+            </dd>
+          </div>
+
+          <div className="flex justify-between gap-2">
+            <dt className="text-[var(--muted)]">
+              Consultation
+            </dt>
+
+            <dd className="font-medium text-[var(--ink)]">
+              {getConsultationTypeLabel(
+                currentBooking.consultationType,
               )}
             </dd>
           </div>

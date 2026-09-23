@@ -129,6 +129,17 @@ function getStatusMessage(
   }
 }
 
+function getConsultationTypeLabel(
+  consultationType:
+    | "online"
+    | "in-person"
+    | undefined,
+) {
+  return consultationType === "online"
+    ? "Online Consultation"
+    : "In-Person Consultation";
+}
+
 function getInitials(
   name: string,
 ) {
@@ -882,6 +893,18 @@ export default function DoctorAppointmentDetailsPage() {
             <dd className="mt-1 text-sm font-semibold text-[var(--ink)]">
               {getStatusLabel(
                 booking.status,
+              )}
+            </dd>
+          </div>
+
+          <div className="rounded-xl bg-[var(--canvas)] p-4">
+            <dt className="text-xs font-medium text-[var(--muted)]">
+              Consultation
+            </dt>
+
+            <dd className="mt-1 text-sm font-semibold text-[var(--ink)]">
+              {getConsultationTypeLabel(
+                booking.consultationType,
               )}
             </dd>
           </div>

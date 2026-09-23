@@ -53,6 +53,10 @@ import type {
   RootState,
 } from "@/store";
 
+import type {
+  ConsultationType,
+} from "@/types/consultation";
+
 export default function BookingPanel({
   doctorId,
 }: {
@@ -86,6 +90,13 @@ export default function BookingPanel({
   ] = useState<
     string | null
   >(null);
+
+  const [
+    consultationType,
+    setConsultationType,
+  ] = useState<ConsultationType>(
+    "in-person",
+  );
 
   const [
     isBooking,
@@ -260,6 +271,18 @@ export default function BookingPanel({
     );
   }
 
+  function handleSelectConsultationType(
+    type: ConsultationType,
+  ) {
+    setConsultationType(
+      type,
+    );
+
+    setBookingError(
+      null,
+    );
+  }
+
   function handleConfirmBooking() {
     if (
       !selectedSlotId ||
@@ -358,6 +381,8 @@ export default function BookingPanel({
             status:
               "pending" as const,
 
+            consultationType,
+
             createdAt:
               new Date().toISOString(),
           };
@@ -378,7 +403,7 @@ export default function BookingPanel({
                 "New appointment request",
 
               message:
-                `${user.name} requested an appointment for ${slotToBook.date} at ${slotToBook.time}.`,
+                `${user.name} requested an ${consultationType === "online" ? "online" : "in-person"} appointment for ${slotToBook.date} at ${slotToBook.time}.`,
 
               type:
                 "appointment",
@@ -426,6 +451,69 @@ export default function BookingPanel({
             handleSelectDate
           }
         />
+      </div>
+
+      <div className="mt-5">
+        <p className="text-sm font-medium text-[var(--ink)]">
+          Consultation type
+        </p>
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            aria-pressed={
+              consultationType ===
+              "in-person"
+            }
+            onClick={() =>
+              handleSelectConsultationType(
+                "in-person",
+              )
+            }
+            className={`rounded-xl border p-4 text-left transition ${
+              consultationType ===
+              "in-person"
+                ? "border-[var(--brand)] bg-[var(--brand-soft)]"
+                : "border-[var(--line)] bg-[var(--surface)] hover:border-[var(--brand)]"
+            }`}
+          >
+            <p className="text-sm font-semibold text-[var(--ink)]">
+              In-Person
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              Visit the doctor at the
+              clinic.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            aria-pressed={
+              consultationType ===
+              "online"
+            }
+            onClick={() =>
+              handleSelectConsultationType(
+                "online",
+              )
+            }
+            className={`rounded-xl border p-4 text-left transition ${
+              consultationType ===
+              "online"
+                ? "border-[var(--brand)] bg-[var(--brand-soft)]"
+                : "border-[var(--line)] bg-[var(--surface)] hover:border-[var(--brand)]"
+            }`}
+          >
+            <p className="text-sm font-semibold text-[var(--ink)]">
+              Online
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+              Consult the doctor online.
+            </p>
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-col gap-5">

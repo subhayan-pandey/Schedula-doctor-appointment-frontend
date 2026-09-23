@@ -100,6 +100,17 @@ function getStatusLabel(
   }
 }
 
+function getConsultationTypeLabel(
+  consultationType:
+    | "online"
+    | "in-person"
+    | undefined,
+) {
+  return consultationType === "online"
+    ? "Online Consultation"
+    : "In-Person Consultation";
+}
+
 function getInitials(name: string) {
   return (
     name
@@ -229,6 +240,9 @@ function getSearchableBookingText(
     booking.date,
     booking.time,
     getStatusLabel(booking.status),
+    getConsultationTypeLabel(
+      booking.consultationType,
+    ),
   ]
     .filter(Boolean)
     .join(" ")
@@ -1230,7 +1244,7 @@ export default function DoctorAppointments() {
                             </span>
                           </div>
 
-                          <div className="mt-4 flex flex-col gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="mt-4 grid gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:grid-cols-2">
                             <div>
                               <p className="text-xs font-medium text-[var(--muted)]">
                                 Appointment ID
@@ -1241,6 +1255,20 @@ export default function DoctorAppointments() {
                               </p>
                             </div>
 
+                            <div>
+                              <p className="text-xs font-medium text-[var(--muted)]">
+                                Consultation type
+                              </p>
+
+                              <p className="mt-1 text-sm font-medium text-[var(--ink)]">
+                                {getConsultationTypeLabel(
+                                  booking.consultationType,
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex flex-col gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:flex-row sm:items-center sm:justify-end">
                             <Link
                               href={`/appointments/${booking.id}`}
                               className="shrink-0"

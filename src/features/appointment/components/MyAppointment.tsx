@@ -19,6 +19,10 @@ import {
 } from "@/lib/bookings-store";
 
 import {
+  getDoctorById,
+} from "@/lib/doctors-store";
+
+import {
   getPrescriptionByAppointmentId,
 } from "@/lib/prescriptions-store";
 
@@ -26,10 +30,6 @@ import {
   getReviewByAppointmentId,
   saveReview,
 } from "@/lib/reviews-store";
-
-import {
-  getDoctorById,
-} from "@/lib/doctors-store";
 
 import {
   getSession,
@@ -346,6 +346,17 @@ function AppointmentMeta({
       </span>
     </div>
   );
+}
+
+function getConsultationTypeLabel(
+  consultationType:
+    | "online"
+    | "in-person"
+    | undefined,
+) {
+  return consultationType === "online"
+    ? "Online Consultation"
+    : "In-Person Consultation";
 }
 
 function PrescriptionModal({
@@ -675,9 +686,7 @@ function wrapPdfText(
   let current = "";
 
   for (const word of words) {
-    if (
-      current.length === 0
-    ) {
+    if (!current) {
       current = word;
       continue;
     }
@@ -713,13 +722,12 @@ function buildPdfDocument(
         : wrapPdfText(line),
     );
 
-  const contentLines: string[] =
-    [
-      "BT",
-      "/F1 10 Tf",
-      "50 760 Td",
-      "14 TL",
-    ];
+  const contentLines = [
+    "BT",
+    "/F1 10 Tf",
+    "50 760 Td",
+    "14 TL",
+  ];
 
   safeLines.forEach(
     (line, index) => {
@@ -737,36 +745,18 @@ function buildPdfDocument(
     },
   );
 
-  contentLines.push(
-    "ET",
-  );
+  contentLines.push("ET");
 
   const stream =
-    contentLines.join(
-      "\n",
-    );
+    contentLines.join("\n");
 
-  const objects: string[] = [];
-
-  objects.push(
+  const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
-  );
-
-  objects.push(
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-  );
-
-  objects.push(
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
-  );
-
-  objects.push(
     `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
-  );
-
-  objects.push(
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-  );
+  ];
 
   let pdf =
     "%PDF-1.4\n";
@@ -798,12 +788,8 @@ function buildPdfDocument(
     index <= objects.length;
     index += 1
   ) {
-    pdf += `${String(
-      offsets[index],
-    ).padStart(
-      10,
-      "0",
-    )} 00000 n \n`;
+    pdf +=
+      `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
   }
 
   pdf +=
@@ -842,6 +828,9 @@ function downloadPrescription(
       booking.date,
     )}`,
     `Time: ${booking.time}`,
+    `Consultation: ${getConsultationTypeLabel(
+      booking.consultationType,
+    )}`,
     "",
     `Diagnosis: ${
       prescription.diagnosis
@@ -953,9 +942,7 @@ function downloadPrescription(
   anchor.remove();
 
   window.setTimeout(() => {
-    URL.revokeObjectURL(
-      url,
-    );
+    URL.revokeObjectURL(url);
   }, 1000);
 }
 
@@ -1141,7 +1128,8 @@ export default function MyAppointments() {
     );
   }
 
-  const session = getSession();
+  const session =
+    getSession();
 
   if (!session) {
     return (
@@ -1167,7 +1155,10 @@ export default function MyAppointments() {
     );
   }
 
-  if (session.role !== "patient") {
+  if (
+    session.role !==
+    "patient"
+  ) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
@@ -1380,18 +1371,33 @@ export default function MyAppointments() {
                                   {booking.time}
                                 </AppointmentMeta>
 
-                                {doctor?.clinic && (
+                                <AppointmentMeta
+                                  icon={
+                                    <span className="text-xs font-semibold">
+                                      {booking.consultationType ===
+                                      "online"
+                                        ? "ON"
+                                        : "IP"}
+                                    </span>
+                                  }
+                                >
+                                  {getConsultationTypeLabel(
+                                    booking.consultationType,
+                                  )}
+                                </AppointmentMeta>
+                              </div>
+
+                              {doctor?.clinic && (
+                                <div className="mt-2">
                                   <AppointmentMeta
                                     icon={
                                       <LocationIcon />
                                     }
                                   >
-                                    {
-                                      doctor.clinic
-                                    }
+                                    {doctor.clinic}
                                   </AppointmentMeta>
-                                )}
-                              </div>
+                                </div>
+                              )}
 
                               {booking.status ===
                                 "declined" && (
