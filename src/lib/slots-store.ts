@@ -23,16 +23,18 @@ function emitSlotsUpdated(
     return;
   }
 
-  window.dispatchEvent(
-    new CustomEvent(
-      "schedula:slots-updated",
-      {
-        detail: {
-          doctorId,
+  window.setTimeout(() => {
+    window.dispatchEvent(
+      new CustomEvent(
+        "schedula:slots-updated",
+        {
+          detail: {
+            doctorId,
+          },
         },
-      },
-    ),
-  );
+      ),
+    );
+  }, 0);
 }
 
 function isSlotStatus(
