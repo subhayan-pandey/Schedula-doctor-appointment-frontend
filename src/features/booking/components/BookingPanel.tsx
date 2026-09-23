@@ -11,6 +11,11 @@ import {
   useRouter,
 } from "next/navigation";
 
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 import DateStrip from "@/components/ui/DateStrip";
 
@@ -18,21 +23,8 @@ import SlotGrid from "@/features/booking/components/SlotGrid";
 import WaitlistPanel from "@/features/booking/components/WaitlistPanel";
 
 import {
-  bookSlot,
-  getSlotsForDoctor,
-} from "@/lib/slots-store";
-
-import {
-  addBooking,
-} from "@/lib/bookings-store";
-
-import {
   createDoctorNotification,
 } from "@/lib/notifications-store";
-
-import {
-  getSession,
-} from "@/lib/storage";
 
 import {
   syncWaitlistAvailability,
@@ -43,9 +35,23 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 
+import {
+  initializeDoctorSlots,
+  bookDoctorSlot,
+} from "@/store/slices/slotsSlice";
+
+import {
+  addAppointment,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  addNotification,
+} from "@/store/slices/notificationsSlice";
+
 import type {
-  Slot,
-} from "@/types/slot";
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 export default function BookingPanel({
   doctorId,
@@ -54,6 +60,9 @@ export default function BookingPanel({
 }) {
   const router =
     useRouter();
+
+  const dispatch =
+    useDispatch<AppDispatch>();
 
   const days = useMemo(
     () =>
@@ -79,18 +88,6 @@ export default function BookingPanel({
   >(null);
 
   const [
-    slots,
-    setSlots,
-  ] = useState<Slot[]>(
-    [],
-  );
-
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
-
-  const [
     isBooking,
     setIsBooking,
   ] = useState(false);
@@ -102,66 +99,99 @@ export default function BookingPanel({
     string | null
   >(null);
 
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const slots =
+    useSelector(
+      (state: RootState) =>
+        state.slots.slotsByDoctor[
+          doctorId
+        ] ?? [],
+    );
+
+  const slotsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.slots.initializedDoctors.includes(
+          doctorId,
+        ),
+    );
+
+  useEffect(() => {
+    if (
+      doctorId &&
+      !slotsInitialized
+    ) {
+      dispatch(
+        initializeDoctorSlots(
+          doctorId,
+        ),
+      );
+    }
+  }, [
+    dispatch,
+    doctorId,
+    slotsInitialized,
+  ]);
+
   const refreshSlots =
     useCallback(() => {
-      const latestSlots =
-        getSlotsForDoctor(
+      dispatch(
+        initializeDoctorSlots(
           doctorId,
-        );
-
-      setSlots(
-        latestSlots,
-      );
-
-      syncWaitlistAvailability(
-        doctorId,
-        latestSlots,
-      );
-
-      setSelectedSlotId(
-        (
-          currentSelectedSlotId,
-        ) => {
-          if (
-            !currentSelectedSlotId
-          ) {
-            return null;
-          }
-
-          const selectedSlot =
-            latestSlots.find(
-              (slot) =>
-                slot.id ===
-                currentSelectedSlotId,
-            );
-
-          if (
-            !selectedSlot ||
-            selectedSlot.status !==
-              "available"
-          ) {
-            return null;
-          }
-
-          return currentSelectedSlotId;
-        },
+        ),
       );
     }, [
+      dispatch,
       doctorId,
     ]);
 
   useEffect(() => {
-    Promise.resolve().then(
-      () => {
-        refreshSlots();
+    if (!slotsInitialized) {
+      return;
+    }
 
-        setIsLoading(
-          false,
-        );
+    syncWaitlistAvailability(
+      doctorId,
+      slots,
+    );
+
+    setSelectedSlotId(
+      (
+        currentSelectedSlotId,
+      ) => {
+        if (
+          !currentSelectedSlotId
+        ) {
+          return null;
+        }
+
+        const selectedSlot =
+          slots.find(
+            (slot) =>
+              slot.id ===
+              currentSelectedSlotId,
+          );
+
+        if (
+          !selectedSlot ||
+          selectedSlot.status !==
+            "available"
+        ) {
+          return null;
+        }
+
+        return currentSelectedSlotId;
       },
     );
   }, [
-    refreshSlots,
+    doctorId,
+    slots,
+    slotsInitialized,
   ]);
 
   useEffect(() => {
@@ -252,10 +282,7 @@ export default function BookingPanel({
       return;
     }
 
-    const session =
-      getSession();
-
-    if (!session) {
+    if (!user) {
       setBookingError(
         "Please log in before booking an appointment.",
       );
@@ -264,7 +291,7 @@ export default function BookingPanel({
     }
 
     if (
-      session.role !==
+      user.role !==
       "patient"
     ) {
       setBookingError(
@@ -284,22 +311,55 @@ export default function BookingPanel({
 
     window.setTimeout(
       () => {
-        const updatedSlots =
-          bookSlot(
-            doctorId,
-            selectedSlotId,
+        const selectedSlot =
+          slots.find(
+            (slot) =>
+              slot.id ===
+              selectedSlotId,
           );
 
-        if (!updatedSlots) {
+        if (
+          !selectedSlot ||
+          selectedSlot.status !==
+            "available"
+        ) {
           setBookingError(
             "Sorry, this slot was just booked or is no longer available. Please pick another slot.",
           );
 
-          setSlots(
-            getSlotsForDoctor(
-              doctorId,
-            ),
+          refreshSlots();
+
+          setSelectedSlotId(
+            null,
           );
+
+          setIsBooking(
+            false,
+          );
+
+          return;
+        }
+
+        const bookingId =
+          `bk-${Date.now()}`;
+
+        const updatedSlots =
+          dispatch(
+            bookDoctorSlot({
+              doctorId,
+              slotId:
+                selectedSlotId,
+            }),
+          );
+
+        if (
+          !updatedSlots
+        ) {
+          setBookingError(
+            "Sorry, this slot was just booked or is no longer available. Please pick another slot.",
+          );
+
+          refreshSlots();
 
           setSelectedSlotId(
             null,
@@ -313,79 +373,67 @@ export default function BookingPanel({
         }
 
         const bookedSlot =
-          updatedSlots.find(
-            (slot) =>
-              slot.id ===
-              selectedSlotId,
-          );
+          selectedSlot;
 
-        if (!bookedSlot) {
-          setBookingError(
-            "Unable to complete the booking. Please try again.",
-          );
-
-          setIsBooking(
-            false,
-          );
-
-          return;
-        }
-
-        const bookingId =
-          `bk-${Date.now()}`;
-
-        const patientName =
-          session.name ??
-          "Guest Patient";
-
-        addBooking({
-          id:
-            bookingId,
-
-          doctorId,
-
-          slotId:
-            bookedSlot.id,
-
-          patientId:
-            session.id,
-
-          patientName,
-
-          date:
-            bookedSlot.date,
-
-          time:
-            bookedSlot.time,
-
-          status:
-            "pending",
-
-          createdAt:
-            new Date().toISOString(),
-        });
-
-        createDoctorNotification(
+        const appointment =
           {
-            userId:
-              doctorId,
-
-            title:
-              "New appointment request",
-
-            message:
-              `${patientName} requested an appointment for ${bookedSlot.date} at ${bookedSlot.time}.`,
-
-            type:
-              "appointment",
-
-            appointmentId:
+            id:
               bookingId,
-          },
+
+            doctorId,
+
+            slotId:
+              bookedSlot.id,
+
+            patientId:
+              user.id,
+
+            patientName:
+              user.name,
+
+            date:
+              bookedSlot.date,
+
+            time:
+              bookedSlot.time,
+
+            status:
+              "pending" as const,
+
+            createdAt:
+              new Date().toISOString(),
+          };
+
+        dispatch(
+          addAppointment(
+            appointment,
+          ),
         );
 
-        setSlots(
-          updatedSlots,
+        const notification =
+          createDoctorNotification(
+            {
+              userId:
+                doctorId,
+
+              title:
+                "New appointment request",
+
+              message:
+                `${user.name} requested an appointment for ${bookedSlot.date} at ${bookedSlot.time}.`,
+
+              type:
+                "appointment",
+
+              appointmentId:
+                bookingId,
+            },
+          );
+
+        dispatch(
+          addNotification(
+            notification,
+          ),
         );
 
         setSelectedSlotId(
@@ -423,7 +471,7 @@ export default function BookingPanel({
       </div>
 
       <div className="mt-5 flex flex-col gap-5">
-        {isLoading ? (
+        {!slotsInitialized ? (
           <p className="text-sm text-[var(--muted)]">
             Loading availability...
           </p>

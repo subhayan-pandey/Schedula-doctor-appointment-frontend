@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+﻿﻿import type { Metadata } from "next";
 import Script from "next/script";
 
 import {
@@ -13,6 +13,8 @@ import ChatbotProvider from "@/app/ChatbotProvider";
 import {
   ThemeProvider,
 } from "@/context/ThemeContext";
+
+import ReduxProvider from "@/store/provider";
 
 import "./globals.css";
 
@@ -93,17 +95,19 @@ export default function RootLayout({
           {themeInitializationScript}
         </Script>
 
-        <ThemeProvider>
-          <Navbar />
+        <ReduxProvider>
+          <ThemeProvider>
+            <Navbar />
 
-          <div className="flex-1">
-            {children}
-          </div>
+            <div className="flex-1">
+              {children}
+            </div>
 
-          <Footer />
+            <Footer />
 
-          <ChatbotProvider />
-        </ThemeProvider>
+            <ChatbotProvider />
+          </ThemeProvider>
+        </ReduxProvider>
       </body>
     </html>
   );

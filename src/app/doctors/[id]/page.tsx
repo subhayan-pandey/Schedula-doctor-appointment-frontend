@@ -1,24 +1,52 @@
 "use client";
 
 import { notFound, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { getDoctorById } from "@/lib/doctors-store";
+import { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
 import DoctorProfileCard from "@/features/doctors/components/DoctorProfileCard";
 import BookingPanel from "@/features/booking/components/BookingPanel";
-import type { Doctor } from "@/types/doctor";
+
+import {
+  initializeDoctors,
+} from "@/store/slices/doctorsSlice";
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 export default function DoctorProfilePage() {
-  const { id } = useParams<{ id: string }>();
-  const [doctor, setDoctor] = useState<Doctor | null | undefined>(undefined);
+  const { id } =
+    useParams<{ id: string }>();
 
-  // The doctor catalog lives in localStorage (see lib/doctors-store.ts), so
-  // it can only be read in the browser — this page is a client component
-  // for that reason, unlike a typical Next.js detail page.
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const doctor = useSelector(
+    (state: RootState) =>
+      state.doctors.doctors.find(
+        (item) => item.id === id,
+      ) ?? null,
+  );
+
+  const initialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
   useEffect(() => {
-    Promise.resolve().then(() => setDoctor(getDoctorById(id) ?? null));
-  }, [id]);
+    if (!initialized) {
+      dispatch(
+        initializeDoctors(),
+      );
+    }
+  }, [
+    dispatch,
+    initialized,
+  ]);
 
-  if (doctor === undefined) {
+  if (!initialized) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-[var(--muted)]">
         Loading doctor…
@@ -26,15 +54,20 @@ export default function DoctorProfilePage() {
     );
   }
 
-  if (doctor === null) {
+  if (!doctor) {
     notFound();
   }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-8">
       <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-start">
-        <DoctorProfileCard doctor={doctor} />
-        <BookingPanel doctorId={doctor.id} />
+        <DoctorProfileCard
+          doctor={doctor}
+        />
+
+        <BookingPanel
+          doctorId={doctor.id}
+        />
       </div>
     </div>
   );

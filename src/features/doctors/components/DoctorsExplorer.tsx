@@ -5,13 +5,21 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 import DoctorFilters, {
   type DoctorFiltersValue,
 } from "@/features/doctors/components/DoctorFilters";
 import DoctorList from "@/features/doctors/components/DoctorList";
 
-import { getAllDoctors } from "@/lib/doctors-store";
+import {
+  initializeDoctors,
+} from "@/store/slices/doctorsSlice";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 import type {
   Doctor,
@@ -276,15 +284,20 @@ export default function DoctorsExplorer({
   initialQuery?: string;
   initialSpecialty?: Specialty | "All";
 }) {
-  const [
-    doctors,
-    setDoctors,
-  ] = useState<Doctor[]>([]);
+  const dispatch =
+    useDispatch<AppDispatch>();
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const initialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
 
   const [
     filters,
@@ -298,13 +311,18 @@ export default function DoctorsExplorer({
     });
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      setDoctors(
-        getAllDoctors(),
+    if (!initialized) {
+      dispatch(
+        initializeDoctors(),
       );
-      setIsLoading(false);
-    });
-  }, []);
+    }
+  }, [
+    dispatch,
+    initialized,
+  ]);
+
+  const isLoading =
+    !initialized;
 
   const filteredDoctors =
     useMemo(

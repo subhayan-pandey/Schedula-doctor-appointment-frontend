@@ -6,6 +6,7 @@ import {
   useState,
   type FormEvent,
 } from "react";
+import { useDispatch } from "react-redux";
 
 import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
@@ -15,8 +16,13 @@ import DoctorLoginForm from "@/features/doctor-auth/components/DoctorLoginForm";
 import {
   getPatientAccount,
   savePatientAccount,
-  setSession,
 } from "@/lib/storage";
+
+import {
+  login,
+} from "@/store/slices/authSlice";
+
+import type { AppDispatch } from "@/store";
 
 import {
   isValidEmailOrMobile,
@@ -34,6 +40,8 @@ type Mode = "login" | "forgot";
 
 export default function LoginForm() {
   const router = useRouter();
+  const dispatch =
+    useDispatch<AppDispatch>();
 
   const [role, setRole] =
     useState<Role>("patient");
@@ -196,13 +204,15 @@ export default function LoginForm() {
         });
       }
 
-      setSession({
-        id: accountId,
-        name,
-        emailOrMobile:
-          normalizedIdentifier,
-        role: "patient",
-      });
+      dispatch(
+        login({
+          id: accountId,
+          name,
+          emailOrMobile:
+            normalizedIdentifier,
+          role: "patient",
+        }),
+      );
 
       setIsSubmitting(false);
 
