@@ -264,6 +264,19 @@ export default function ProfileMenu({
                 >
                   Find Doctors
                 </Link>
+
+                <Link
+                  href="/medical-documents"
+                  role="menuitem"
+                  onClick={() =>
+                    setIsOpen(
+                      false,
+                    )
+                  }
+                  className="block rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--ink)] hover:bg-[var(--canvas)]"
+                >
+                  Medical Documents
+                </Link>
               </>
             )}
 
