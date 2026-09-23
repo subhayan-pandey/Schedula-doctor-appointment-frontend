@@ -9,6 +9,8 @@ import { useParams } from "next/navigation";
 
 import Button from "@/components/ui/Button";
 
+import PreConsultationIntakeForm from "@/features/appointment/components/PreConsultationIntakeForm";
+
 import {
   getBookingById,
   updateBookingStatus,
@@ -448,10 +450,6 @@ export default function AppointmentConfirmationPage() {
       );
 
     if (!updatedBooking) {
-      /*
-       * Restore the slot when the
-       * booking mutation fails.
-       */
       const restoredSlots =
         getSlotsForDoctor(
           currentBooking.doctorId,
@@ -469,12 +467,6 @@ export default function AppointmentConfirmationPage() {
         restoredSlot.status ===
           "available"
       ) {
-        /*
-         * Re-booking through the
-         * existing store restores
-         * ownership without changing
-         * the booking record.
-         */
         const restored =
           restoredSlots.map(
             (slot) =>
@@ -734,6 +726,17 @@ export default function AppointmentConfirmationPage() {
             missed.
           </div>
         )}
+      </div>
+
+      <div className="mt-6">
+        <PreConsultationIntakeForm
+          appointmentId={
+            currentBooking.id
+          }
+          patientId={
+            currentBooking.patientId
+          }
+        />
       </div>
 
       {isDeclined ? (
