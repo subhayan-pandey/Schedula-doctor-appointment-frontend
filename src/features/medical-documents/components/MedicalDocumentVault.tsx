@@ -20,6 +20,14 @@ import {
 } from "@/lib/medical-document-store";
 
 import {
+  getPrescriptionsByPatientId,
+} from "@/lib/prescriptions-store";
+
+import type {
+  Prescription,
+} from "@/types/prescription";
+
+import {
   getSession,
 } from "@/lib/storage";
 
@@ -358,15 +366,42 @@ export default function MedicalDocumentVault() {
     MedicalDocument | null
   >(null);
 
+  const [
+    prescriptions,
+    setPrescriptions,
+  ] = useState<
+    Prescription[]
+  >(() =>
+    patientId
+      ? getPrescriptionsByPatientId(
+          patientId,
+        )
+      : [],
+  );
+
+  const [
+    viewingPrescription,
+    setViewingPrescription,
+  ] = useState<
+    Prescription | null
+  >(null);
+
   const loadDocuments =
     useCallback(() => {
       if (!patientId) {
         setDocuments([]);
+        setPrescriptions([]);
         return;
       }
 
       setDocuments(
         getMedicalDocumentsByPatientId(
+          patientId,
+        ),
+      );
+
+      setPrescriptions(
+        getPrescriptionsByPatientId(
           patientId,
         ),
       );
@@ -382,11 +417,19 @@ export default function MedicalDocumentVault() {
         loadDocuments();
       };
 
-    const eventName =
+    const documentEventName =
       getMedicalDocumentUpdatedEvent();
 
+    const prescriptionEventName =
+      "schedula:prescriptions-updated";
+
     window.addEventListener(
-      eventName,
+      documentEventName,
+      refresh,
+    );
+
+    window.addEventListener(
+      prescriptionEventName,
       refresh,
     );
 
@@ -397,7 +440,12 @@ export default function MedicalDocumentVault() {
 
     return () => {
       window.removeEventListener(
-        eventName,
+        documentEventName,
+        refresh,
+      );
+
+      window.removeEventListener(
+        prescriptionEventName,
         refresh,
       );
 
@@ -747,6 +795,154 @@ export default function MedicalDocumentVault() {
 
         <section className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
           <div className="border-b border-[var(--line)] px-5 py-4 sm:px-6">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-[var(--ink)]">
+                  Existing prescriptions
+                </h2>
+
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Prescriptions issued by your doctors are automatically available here.
+                </p>
+              </div>
+
+              <span className="text-xs font-medium text-[var(--muted)]">
+                {prescriptions.length}{" "}
+                {prescriptions.length === 1
+                  ? "prescription"
+                  : "prescriptions"}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            {prescriptions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--canvas)] px-5 py-6 text-center">
+                <div className="mx-auto grid size-10 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    className="size-5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M7 3.75h6.25L18 8.5v11.75H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13 3.75V9h5"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8.5 13h6.5M8.5 16h5"
+                    />
+                  </svg>
+                </div>
+
+                <p className="mt-3 text-sm font-medium text-[var(--ink)]">
+                  No prescriptions yet
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                  Prescriptions created by your doctor will appear here automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {prescriptions.map(
+                  (prescription) => (
+                    <article
+                      key={prescription.id}
+                      className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--brand)]/40"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            className="size-5"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M7 3.75h6.25L18 8.5v11.75H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M13 3.75V9h5"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M8.5 13h6.5M8.5 16h5"
+                            />
+                          </svg>
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="truncate text-sm font-semibold text-[var(--ink)]">
+                                {prescription.diagnosis ||
+                                  "Medical prescription"}
+                              </h3>
+
+                              <p className="mt-1 truncate text-xs text-[var(--muted)]">
+                                {prescription.medicines.length}{" "}
+                                {prescription.medicines.length === 1
+                                  ? "medicine"
+                                  : "medicines"}
+                              </p>
+                            </div>
+
+                            <span className="shrink-0 rounded-full bg-[var(--brand-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--brand-deep)]">
+                              Prescription
+                            </span>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[var(--muted)]">
+                            <span>
+                              Issued{" "}
+                              {formatDate(
+                                prescription.createdAt,
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="mt-4">
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                setViewingPrescription(
+                                  prescription,
+                                )
+                              }
+                            >
+                              View prescription
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-[var(--line)] bg-[var(--surface)]">
+          <div className="border-b border-[var(--line)] px-5 py-4 sm:px-6">
             <h2 className="text-base font-semibold text-[var(--ink)]">
               Add medical document
             </h2>
@@ -1045,6 +1241,164 @@ export default function MedicalDocumentVault() {
           </div>
         </section>
       </div>
+
+      {viewingPrescription && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Prescription details"
+          onClick={() =>
+            setViewingPrescription(
+              null,
+            )
+          }
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-[var(--line)] px-5 py-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--ink)]">
+                  {viewingPrescription.diagnosis ||
+                    "Medical prescription"}
+                </p>
+
+                <p className="mt-0.5 text-xs text-[var(--muted)]">
+                  Issued{" "}
+                  {formatDate(
+                    viewingPrescription.createdAt,
+                  )}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setViewingPrescription(
+                    null,
+                  )
+                }
+                className="grid size-9 shrink-0 place-items-center rounded-lg text-[var(--muted)] transition-colors hover:bg-[var(--canvas)] hover:text-[var(--ink)]"
+                aria-label="Close prescription"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  className="size-5"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    d="M6 6l12 12M18 6 6 18"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="min-h-0 overflow-auto bg-[var(--canvas)] p-4 sm:p-6">
+              <div className="space-y-4">
+                <section className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    Diagnosis
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-[var(--ink)]">
+                    {viewingPrescription.diagnosis ||
+                      "Not specified"}
+                  </p>
+                </section>
+
+                <section className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                  <h3 className="text-sm font-semibold text-[var(--ink)]">
+                    Medicines
+                  </h3>
+
+                  {viewingPrescription.medicines.length ===
+                  0 ? (
+                    <p className="mt-3 text-sm text-[var(--muted)]">
+                      No medicines listed.
+                    </p>
+                  ) : (
+                    <div className="mt-3 divide-y divide-[var(--line)]">
+                      {viewingPrescription.medicines.map(
+                        (medicine) => (
+                          <div
+                            key={
+                              medicine.id
+                            }
+                            className="py-3 first:pt-0 last:pb-0"
+                          >
+                            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                              <p className="text-sm font-medium text-[var(--ink)]">
+                                {medicine.name}
+                              </p>
+
+                              <span className="text-xs text-[var(--muted)]">
+                                {medicine.dosage}
+                              </span>
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--muted)]">
+                              {medicine.duration && (
+                                <span>
+                                  Duration:{" "}
+                                  {
+                                    medicine.duration
+                                  }
+                                </span>
+                              )}
+
+                              {medicine.instructions && (
+                                <span>
+                                  {
+                                    medicine.instructions
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                {viewingPrescription.instructions && (
+                  <section className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      Doctor&apos;s instructions
+                    </p>
+
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--ink)]">
+                      {
+                        viewingPrescription.instructions
+                      }
+                    </p>
+                  </section>
+                )}
+
+                <section className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    Appointment
+                  </p>
+
+                  <p className="mt-1 break-all text-xs text-[var(--muted)]">
+                    {
+                      viewingPrescription.appointmentId
+                    }
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {viewingDocument && (
         <div
