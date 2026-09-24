@@ -3,8 +3,11 @@
 import Link from "next/link";
 
 import {
+  useEffect,
   useMemo,
 } from "react";
+
+import { useDispatch, useSelector } from "react-redux";
 
 import Button from "@/components/ui/Button";
 
@@ -14,12 +17,21 @@ import {
 } from "@/lib/appointment-intelligence";
 
 import {
-  getDoctorById,
+  getAllDoctors,
 } from "@/lib/doctors-store";
 
 import type {
   Booking,
 } from "@/types/booking";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import {
+  setDoctors,
+} from "@/store/slices/doctorsSlice";
 
 function CalendarIcon() {
   return (
@@ -157,6 +169,34 @@ export default function AppointmentIntelligence({
 }: {
   bookings: Booking[];
 }) {
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
+  useEffect(() => {
+    if (!doctorsInitialized) {
+      dispatch(
+        setDoctors(
+          getAllDoctors(),
+        ),
+      );
+    }
+  }, [
+    dispatch,
+    doctorsInitialized,
+  ]);
+
   const summary =
     useMemo(
       () =>
@@ -183,12 +223,17 @@ export default function AppointmentIntelligence({
         return null;
       }
 
-      return getDoctorById(
-        nextAppointment
-          .booking
-          .doctorId,
+      return (
+        doctors.find(
+          (doctor) =>
+            doctor.id ===
+            nextAppointment
+              .booking
+              .doctorId,
+        ) ?? null
       );
     }, [
+      doctors,
       nextAppointment,
     ]);
 

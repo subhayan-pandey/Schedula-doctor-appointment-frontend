@@ -25,7 +25,9 @@ const initialState: AuthState = {
 
 const authSlice = createSlice({
   name: "auth",
+
   initialState,
+
   reducers: {
     initializeAuth(state) {
       const user = getSession();
@@ -35,7 +37,10 @@ const authSlice = createSlice({
       state.initialized = true;
     },
 
-    login(state, action: PayloadAction<User>) {
+    login(
+      state,
+      action: PayloadAction<User>,
+    ) {
       setSession(action.payload);
 
       state.user = action.payload;
@@ -51,7 +56,10 @@ const authSlice = createSlice({
       state.initialized = true;
     },
 
-    setUser(state, action: PayloadAction<User | null>) {
+    setUser(
+      state,
+      action: PayloadAction<User | null>,
+    ) {
       if (action.payload) {
         setSession(action.payload);
       } else {
@@ -59,7 +67,8 @@ const authSlice = createSlice({
       }
 
       state.user = action.payload;
-      state.isAuthenticated = Boolean(action.payload);
+      state.isAuthenticated =
+        Boolean(action.payload);
       state.initialized = true;
     },
   },

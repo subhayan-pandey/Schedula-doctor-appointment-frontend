@@ -249,14 +249,6 @@ export function createNotification({
         new Date().toISOString(),
     };
 
-  /*
-   * Notification preferences control
-   * whether a notification is persisted.
-   *
-   * The notification object is still
-   * returned so existing callers do not
-   * need to change their contracts.
-   */
   if (
     !isNotificationPreferenceEnabled(
       userId,
@@ -289,16 +281,11 @@ export function createPatientNotification({
 }): AppNotification {
   return createNotification({
     userId,
-
     recipientRole:
       "patient",
-
     title,
-
     message,
-
     type,
-
     appointmentId,
   });
 }
@@ -318,16 +305,11 @@ export function createDoctorNotification({
 }): AppNotification {
   return createNotification({
     userId,
-
     recipientRole:
       "doctor",
-
     title,
-
     message,
-
     type,
-
     appointmentId,
   });
 }
@@ -368,15 +350,10 @@ export function createNotificationOnce({
 
   return createNotification({
     userId,
-
     recipientRole,
-
     title,
-
     message,
-
     type,
-
     appointmentId,
   });
 }

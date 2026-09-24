@@ -3,13 +3,6 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 
-import {
-  addBooking,
-  getAllBookings,
-  updateBooking,
-  updateBookingStatus,
-} from "@/lib/bookings-store";
-
 import type {
   Booking,
   BookingStatus,
@@ -28,12 +21,16 @@ const initialState: AppointmentsState = {
 const appointmentsSlice =
   createSlice({
     name: "appointments",
+
     initialState,
 
     reducers: {
-      initializeAppointments(state) {
+      initializeAppointments(
+        state,
+        action: PayloadAction<Booking[]>,
+      ) {
         state.appointments =
-          getAllBookings();
+          action.payload;
 
         state.initialized = true;
       },
@@ -53,22 +50,25 @@ const appointmentsSlice =
         action: PayloadAction<Booking>,
       ) {
         const appointment =
-          addBooking(
-            action.payload,
-          );
+          action.payload;
 
-        const exists =
-          state.appointments.some(
+        const existingIndex =
+          state.appointments.findIndex(
             (booking) =>
               booking.id ===
               appointment.id,
           );
 
-        if (!exists) {
-          state.appointments.push(
-            appointment,
-          );
+        if (existingIndex >= 0) {
+          state.appointments[
+            existingIndex
+          ] = appointment;
+          return;
         }
+
+        state.appointments.push(
+          appointment,
+        );
       },
 
       updateAppointment(
@@ -88,23 +88,28 @@ const appointmentsSlice =
           >;
         }>,
       ) {
-        const updated =
-          updateBooking(
-            action.payload.bookingId,
-            action.payload.updates,
+        const {
+          bookingId,
+          updates,
+        } = action.payload;
+
+        const index =
+          state.appointments.findIndex(
+            (booking) =>
+              booking.id ===
+              bookingId,
           );
 
-        if (!updated) {
+        if (index === -1) {
           return;
         }
 
-        state.appointments =
-          state.appointments.map(
-            (booking) =>
-              booking.id === updated.id
-                ? updated
-                : booking,
-          );
+        state.appointments[index] = {
+          ...state.appointments[index],
+          ...updates,
+          updatedAt:
+            new Date().toISOString(),
+        };
       },
 
       updateAppointmentStatus(
@@ -115,24 +120,38 @@ const appointmentsSlice =
           actionReason?: string;
         }>,
       ) {
-        const updated =
-          updateBookingStatus(
-            action.payload.bookingId,
-            action.payload.status,
-            action.payload.actionReason,
+        const {
+          bookingId,
+          status,
+          actionReason,
+        } = action.payload;
+
+        const index =
+          state.appointments.findIndex(
+            (booking) =>
+              booking.id ===
+              bookingId,
           );
 
-        if (!updated) {
+        if (index === -1) {
           return;
         }
 
-        state.appointments =
-          state.appointments.map(
-            (booking) =>
-              booking.id === updated.id
-                ? updated
-                : booking,
-          );
+        const current =
+          state.appointments[index];
+
+        state.appointments[index] = {
+          ...current,
+          status,
+          updatedAt:
+            new Date().toISOString(),
+          ...(actionReason !==
+          undefined
+            ? {
+                actionReason,
+              }
+            : {}),
+        };
       },
     },
   });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useCallback,
   useEffect,
@@ -28,8 +29,20 @@ import {
 } from "@/lib/bookings-store";
 
 import {
+  getAllBookings,
+} from "@/lib/bookings-store";
+
+import {
   createDoctorNotification,
 } from "@/lib/notifications-store";
+
+import {
+  getAllDoctors,
+} from "@/lib/doctors-store";
+
+import {
+  getSlotsForDoctor,
+} from "@/lib/slots-store";
 
 import {
   getNextDays,
@@ -119,18 +132,6 @@ export default function RescheduleAppointmentPage() {
     string | null
   >(null);
 
-  const appointmentsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.appointments.initialized,
-    );
-
-  const doctorsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.doctors.initialized,
-    );
-
   const user =
     useSelector(
       (state: RootState) =>
@@ -143,15 +144,45 @@ export default function RescheduleAppointmentPage() {
         state.auth.initialized,
     );
 
-  const booking =
+  const appointments =
     useSelector(
       (state: RootState) =>
-        state.appointments.appointments.find(
-          (appointment) =>
-            appointment.id ===
-            bookingId,
-        ) ?? null,
+        state.appointments.appointments,
     );
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
+  const booking =
+    appointments.find(
+      (appointment) =>
+        appointment.id ===
+        bookingId,
+    ) ?? null;
+
+  const doctor =
+    booking
+      ? doctors.find(
+          (item) =>
+            item.id ===
+            booking.doctorId,
+        ) ?? null
+      : null;
 
   const slots =
     useSelector(
@@ -173,22 +204,12 @@ export default function RescheduleAppointmentPage() {
           : false,
     );
 
-  const doctor =
-    useSelector(
-      (state: RootState) =>
-        booking
-          ? state.doctors.doctors.find(
-              (item) =>
-                item.id ===
-                booking.doctorId,
-            ) ?? null
-          : null,
-    );
-
   useEffect(() => {
     if (!appointmentsInitialized) {
       dispatch(
-        initializeAppointments(),
+        initializeAppointments(
+          getAllBookings(),
+        ),
       );
     }
   }, [
@@ -199,7 +220,9 @@ export default function RescheduleAppointmentPage() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(),
+        initializeDoctors(
+          getAllDoctors(),
+        ),
       );
     }
   }, [
@@ -209,7 +232,8 @@ export default function RescheduleAppointmentPage() {
 
   const pageStatus: PageStatus =
     !authInitialized ||
-    !appointmentsInitialized
+    !appointmentsInitialized ||
+    !doctorsInitialized
       ? "loading"
       : !user ||
           user.role !== "patient"
@@ -240,10 +264,17 @@ export default function RescheduleAppointmentPage() {
     }
 
     if (!slotsInitialized) {
+      const doctorId =
+        booking.doctorId;
+
       dispatch(
-        initializeDoctorSlots(
-          booking.doctorId,
-        ),
+        initializeDoctorSlots({
+          doctorId,
+          slots:
+            getSlotsForDoctor(
+              doctorId,
+            ),
+        }),
       );
     }
   }, [
@@ -302,9 +333,13 @@ export default function RescheduleAppointmentPage() {
       }
 
       dispatch(
-        initializeDoctorSlots(
+        initializeDoctorSlots({
           doctorId,
-        ),
+          slots:
+            getSlotsForDoctor(
+              doctorId,
+            ),
+        }),
       );
     }
 
@@ -331,10 +366,17 @@ export default function RescheduleAppointmentPage() {
         return;
       }
 
+      const doctorId =
+        booking.doctorId;
+
       dispatch(
-        initializeDoctorSlots(
-          booking.doctorId,
-        ),
+        initializeDoctorSlots({
+          doctorId,
+          slots:
+            getSlotsForDoctor(
+              doctorId,
+            ),
+        }),
       );
 
       setSelectedSlotId(
@@ -480,14 +522,14 @@ export default function RescheduleAppointmentPage() {
       return;
     }
 
-    const canReschedule =
+    const allowed =
       canRescheduleBooking(
         booking,
       ) ||
       booking.status ===
         "cancelled";
 
-    if (!canReschedule) {
+    if (!allowed) {
       setError(
         "This appointment cannot be rescheduled in its current status.",
       );

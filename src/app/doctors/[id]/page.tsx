@@ -1,15 +1,31 @@
 "use client";
 
-import { notFound, useParams } from "next/navigation";
-import { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import {
+  notFound,
+  useParams,
+} from "next/navigation";
+
+import {
+  useEffect,
+} from "react";
+
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import DoctorProfileCard from "@/features/doctors/components/DoctorProfileCard";
+
 import BookingPanel from "@/features/booking/components/BookingPanel";
+
+import {
+  getAllDoctors,
+} from "@/lib/doctors-store";
 
 import {
   initializeDoctors,
 } from "@/store/slices/doctorsSlice";
+
 import type {
   AppDispatch,
   RootState,
@@ -17,17 +33,21 @@ import type {
 
 export default function DoctorProfilePage() {
   const { id } =
-    useParams<{ id: string }>();
+    useParams<{
+      id: string;
+    }>();
 
   const dispatch =
     useDispatch<AppDispatch>();
 
-  const doctor = useSelector(
-    (state: RootState) =>
-      state.doctors.doctors.find(
-        (item) => item.id === id,
-      ) ?? null,
-  );
+  const doctor =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors.find(
+          (item) =>
+            item.id === id,
+        ) ?? null,
+    );
 
   const initialized =
     useSelector(
@@ -38,7 +58,9 @@ export default function DoctorProfilePage() {
   useEffect(() => {
     if (!initialized) {
       dispatch(
-        initializeDoctors(),
+        initializeDoctors(
+          getAllDoctors(),
+        ),
       );
     }
   }, [

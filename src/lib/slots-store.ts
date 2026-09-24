@@ -1,6 +1,4 @@
-import type {
-  Slot,
-} from "@/types/slot";
+import type { Slot } from "@/types/slot";
 
 import {
   buildSeedSlots,
@@ -106,7 +104,8 @@ function readSlots(
     KEY_PREFIX +
     doctorId;
 
-  let raw: string | null = null;
+  let raw: string | null =
+    null;
 
   try {
     raw =
@@ -145,10 +144,7 @@ function readSlots(
           );
       }
     } catch {
-      /*
-       * Invalid stored data falls
-       * through to the seed data.
-       */
+      // Fall through to seed data.
     }
   }
 
@@ -181,10 +177,7 @@ function readSlots(
       ),
     );
   } catch {
-    /*
-     * Keep the in-memory seed result
-     * usable even if storage fails.
-     */
+    // Keep the in-memory seed result usable.
   }
 
   return normalizedSeeded;
@@ -248,8 +241,7 @@ export function bookSlot(
   const target =
     slots.find(
       (slot) =>
-        slot.id ===
-        slotId,
+        slot.id === slotId,
     );
 
   if (
@@ -286,19 +278,6 @@ export function bookSlot(
   return updated;
 }
 
-/**
- * Changes slot ownership in one
- * persisted update:
- *
- * current slot:
- *   booked -> available
- *
- * new slot:
- *   available -> booked
- *
- * Both slots must belong to the
- * same doctor.
- */
 export function rescheduleSlot(
   doctorId: string,
   currentSlotId: string,
@@ -445,14 +424,10 @@ export function createSlot(
       .toString(36)
       .slice(2, 7)}`,
     doctorId,
-    date:
-      slot.date,
-    time:
-      slot.time,
-    period:
-      slot.period,
-    status:
-      "available",
+    date: slot.date,
+    time: slot.time,
+    period: slot.period,
+    status: "available",
   };
 
   const updated: Slot[] = [
@@ -484,8 +459,7 @@ export function removeSlot(
   const target =
     slots.find(
       (slot) =>
-        slot.id ===
-        slotId,
+        slot.id === slotId,
     );
 
   if (
@@ -506,8 +480,7 @@ export function removeSlot(
   const updated: Slot[] =
     slots.filter(
       (slot) =>
-        slot.id !==
-        slotId,
+        slot.id !== slotId,
     );
 
   if (
@@ -534,8 +507,7 @@ export function toggleSlotAvailability(
   const target =
     slots.find(
       (slot) =>
-        slot.id ===
-        slotId,
+        slot.id === slotId,
     );
 
   if (
@@ -578,16 +550,6 @@ export function toggleSlotAvailability(
   return updated;
 }
 
-/**
- * Releases a booked slot.
- *
- * Used when:
- * - a patient cancels
- * - a doctor cancels
- * - a doctor declines an appointment
- * - a reschedule operation needs
- *   to restore the previous slot
- */
 export function releaseSlot(
   doctorId: string,
   slotId: string,
@@ -600,8 +562,7 @@ export function releaseSlot(
   const target =
     slots.find(
       (slot) =>
-        slot.id ===
-        slotId,
+        slot.id === slotId,
     );
 
   if (

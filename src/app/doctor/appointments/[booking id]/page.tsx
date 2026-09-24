@@ -9,12 +9,20 @@ import {
 
 import { useParams } from "next/navigation";
 
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 
 import {
-  getBookingById,
-  updateBookingStatus,
+  getAllBookings,
 } from "@/lib/bookings-store";
+
+import {
+  getAllDoctors,
+} from "@/lib/doctors-store";
 
 import {
   getConsultationCountdown,
@@ -25,27 +33,36 @@ import {
 } from "@/lib/consultation";
 
 import {
-  getDoctorById,
-} from "@/lib/doctors-store";
-
-import {
   createNotification,
 } from "@/lib/notifications-store";
-
-import {
-  releaseSlot,
-} from "@/lib/slots-store";
-
-import {
-  getSession,
-} from "@/lib/storage";
 
 import {
   formatLongDate,
 } from "@/lib/utils/date";
 
+import {
+  initializeAppointments,
+  updateAppointmentStatus,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  initializeDoctors,
+} from "@/store/slices/doctorsSlice";
+
+import {
+  addNotification,
+} from "@/store/slices/notificationsSlice";
+
+import {
+  releaseDoctorSlot,
+} from "@/store/slices/slotsSlice";
+
 import type {
-  Booking,
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import type {
   BookingStatus,
 } from "@/types/booking";
 
@@ -294,34 +311,70 @@ function XIcon() {
 export default function DoctorAppointmentDetailsPage() {
   const params =
     useParams<{
-      bookingId: string;
+      "booking id": string;
     }>();
 
   const bookingId =
-    params.bookingId;
+    params["booking id"];
 
-  const [
-    booking,
-    setBooking,
-  ] = useState<
-    Booking | null | undefined
-  >(undefined);
+  const dispatch =
+    useDispatch<AppDispatch>();
 
-  const [
-    doctorId,
-    setDoctorId,
-  ] = useState<string | null>(
-    null,
-  );
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
+
+  const appointments =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments,
+    );
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
+  const booking =
+    appointments.find(
+      (appointment) =>
+        appointment.id ===
+        bookingId,
+    ) ?? null;
+
+  const doctor =
+    booking
+      ? doctors.find(
+          (item) =>
+            item.id ===
+            booking.doctorId,
+        ) ?? null
+      : null;
 
   const [
     isProcessing,
     setIsProcessing,
-  ] = useState(false);
-
-  const [
-    accessDenied,
-    setAccessDenied,
   ] = useState(false);
 
   const [
@@ -330,45 +383,32 @@ export default function DoctorAppointmentDetailsPage() {
   ] = useState(0);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session =
-        getSession();
-
-      if (
-        !session ||
-        session.role !== "doctor"
-      ) {
-        setAccessDenied(true);
-        return;
-      }
-
-      setDoctorId(
-        session.id,
+    if (
+      !appointmentsInitialized
+    ) {
+      dispatch(
+        initializeAppointments(
+          getAllBookings(),
+        ),
       );
+    }
+  }, [
+    dispatch,
+    appointmentsInitialized,
+  ]);
 
-      const foundBooking =
-        getBookingById(
-          bookingId,
-        );
-
-      if (!foundBooking) {
-        setBooking(null);
-        return;
-      }
-
-      if (
-        foundBooking.doctorId !==
-        session.id
-      ) {
-        setAccessDenied(true);
-        return;
-      }
-
-      setBooking(
-        foundBooking,
+  useEffect(() => {
+    if (!doctorsInitialized) {
+      dispatch(
+        initializeDoctors(
+          getAllDoctors(),
+        ),
       );
-    });
-  }, [bookingId]);
+    }
+  }, [
+    dispatch,
+    doctorsInitialized,
+  ]);
 
   useEffect(() => {
     if (
@@ -404,19 +444,10 @@ export default function DoctorAppointmentDetailsPage() {
     };
   }, [booking]);
 
-  function refreshBooking() {
-    const updated =
-      getBookingById(
-        bookingId,
-      );
-
-    setBooking(
-      updated ?? null,
-    );
-  }
-
   function notifyPatient(
-    currentBooking: Booking,
+    currentBooking: NonNullable<
+      typeof booking
+    >,
     title: string,
     message: string,
     type:
@@ -430,15 +461,22 @@ export default function DoctorAppointmentDetailsPage() {
       return;
     }
 
-    createNotification({
-      userId:
-        currentBooking.patientId,
-      title,
-      message,
-      type,
-      appointmentId:
-        currentBooking.id,
-    });
+    const notification =
+      createNotification({
+        userId:
+          currentBooking.patientId,
+        title,
+        message,
+        type,
+        appointmentId:
+          currentBooking.id,
+      });
+
+    dispatch(
+      addNotification(
+        notification,
+      ),
+    );
   }
 
   function handleConfirm() {
@@ -452,9 +490,12 @@ export default function DoctorAppointmentDetailsPage() {
 
     setIsProcessing(true);
 
-    updateBookingStatus(
-      booking.id,
-      "upcoming",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          booking.id,
+        status: "upcoming",
+      }),
     );
 
     notifyPatient(
@@ -468,15 +509,14 @@ export default function DoctorAppointmentDetailsPage() {
       "confirmation",
     );
 
-    refreshBooking();
-
     setIsProcessing(false);
   }
 
   function handleDecline() {
     if (
       !booking ||
-      !doctorId ||
+      !user ||
+      user.role !== "doctor" ||
       booking.status !==
         "pending"
     ) {
@@ -485,14 +525,21 @@ export default function DoctorAppointmentDetailsPage() {
 
     setIsProcessing(true);
 
-    updateBookingStatus(
-      booking.id,
-      "declined",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          booking.id,
+        status: "declined",
+      }),
     );
 
-    releaseSlot(
-      doctorId,
-      booking.slotId,
+    dispatch(
+      releaseDoctorSlot({
+        doctorId:
+          booking.doctorId,
+        slotId:
+          booking.slotId,
+      }),
     );
 
     notifyPatient(
@@ -505,8 +552,6 @@ export default function DoctorAppointmentDetailsPage() {
       } was declined by the doctor. You can book another available slot.`,
       "appointment",
     );
-
-    refreshBooking();
 
     setIsProcessing(false);
   }
@@ -522,9 +567,12 @@ export default function DoctorAppointmentDetailsPage() {
 
     setIsProcessing(true);
 
-    updateBookingStatus(
-      booking.id,
-      "upcoming",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          booking.id,
+        status: "upcoming",
+      }),
     );
 
     notifyPatient(
@@ -537,8 +585,6 @@ export default function DoctorAppointmentDetailsPage() {
       } is now upcoming.`,
       "appointment",
     );
-
-    refreshBooking();
 
     setIsProcessing(false);
   }
@@ -554,9 +600,12 @@ export default function DoctorAppointmentDetailsPage() {
 
     setIsProcessing(true);
 
-    updateBookingStatus(
-      booking.id,
-      "completed",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          booking.id,
+        status: "completed",
+      }),
     );
 
     notifyPatient(
@@ -565,8 +614,6 @@ export default function DoctorAppointmentDetailsPage() {
       "Your appointment has been marked as completed. You can now review your doctor and access your prescription when available.",
       "appointment",
     );
-
-    refreshBooking();
 
     setIsProcessing(false);
   }
@@ -582,9 +629,12 @@ export default function DoctorAppointmentDetailsPage() {
 
     setIsProcessing(true);
 
-    updateBookingStatus(
-      booking.id,
-      "missed",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          booking.id,
+        status: "missed",
+      }),
     );
 
     notifyPatient(
@@ -598,15 +648,14 @@ export default function DoctorAppointmentDetailsPage() {
       "appointment",
     );
 
-    refreshBooking();
-
     setIsProcessing(false);
   }
 
   function handleCancel() {
     if (
       !booking ||
-      !doctorId ||
+      !user ||
+      user.role !== "doctor" ||
       (
         booking.status !==
           "confirmed" &&
@@ -619,14 +668,21 @@ export default function DoctorAppointmentDetailsPage() {
 
     setIsProcessing(true);
 
-    releaseSlot(
-      doctorId,
-      booking.slotId,
+    dispatch(
+      releaseDoctorSlot({
+        doctorId:
+          booking.doctorId,
+        slotId:
+          booking.slotId,
+      }),
     );
 
-    updateBookingStatus(
-      booking.id,
-      "cancelled",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId:
+          booking.id,
+        status: "cancelled",
+      }),
     );
 
     notifyPatient(
@@ -639,8 +695,6 @@ export default function DoctorAppointmentDetailsPage() {
       } has been cancelled. The appointment slot is available again.`,
       "cancellation",
     );
-
-    refreshBooking();
 
     setIsProcessing(false);
   }
@@ -803,7 +857,20 @@ export default function DoctorAppointmentDetailsPage() {
   }
 
   if (
-    accessDenied
+    !authInitialized ||
+    !appointmentsInitialized ||
+    !doctorsInitialized
+  ) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
+        Loading appointment…
+      </div>
+    );
+  }
+
+  if (
+    !user ||
+    user.role !== "doctor"
   ) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
@@ -835,19 +902,7 @@ export default function DoctorAppointmentDetailsPage() {
     );
   }
 
-  if (
-    booking === undefined
-  ) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
-        Loading appointment…
-      </div>
-    );
-  }
-
-  if (
-    booking === null
-  ) {
+  if (!booking) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
@@ -872,10 +927,39 @@ export default function DoctorAppointmentDetailsPage() {
     );
   }
 
-  const doctor =
-    getDoctorById(
-      booking.doctorId,
+  if (
+    booking.doctorId !==
+    user.id
+  ) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
+          <div className="mx-auto grid size-12 place-items-center rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+            <UserIcon />
+          </div>
+
+          <h1 className="mt-4 text-xl font-semibold text-[var(--ink)]">
+            Doctor access required
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            You must be logged in as
+            the doctor associated with
+            this appointment.
+          </p>
+
+          <Link
+            href="/doctor/login"
+            className="mt-6 inline-block"
+          >
+            <Button>
+              Doctor login
+            </Button>
+          </Link>
+        </div>
+      </div>
     );
+  }
 
   const isOnline =
     booking.consultationType ===

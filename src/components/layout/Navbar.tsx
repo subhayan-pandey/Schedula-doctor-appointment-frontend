@@ -1,26 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import {
+  usePathname,
+  useRouter,
+} from "next/navigation";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import { useDispatch, useSelector } from "react-redux";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import NotificationBell from "@/components/ui/NotificationBell";
 
-import { logout } from "@/store/slices/authSlice";
-import type { AppDispatch, RootState } from "@/store";
+import {
+  logout,
+} from "@/store/slices/authSlice";
 
-type ThemeChoice = "light" | "dark" | "system";
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+type ThemeChoice =
+  | "light"
+  | "dark"
+  | "system";
 
 type NavItem = {
   href: string;
   label: string;
 };
 
-const THEME_STORAGE_KEY = "schedula:theme";
+const THEME_STORAGE_KEY =
+  "schedula:theme";
 
-const LIGHT_THEME_VARIABLES: Record<string, string> = {
+const LIGHT_THEME_VARIABLES: Record<
+  string,
+  string
+> = {
   "--canvas": "#f7fafb",
   "--surface": "#ffffff",
   "--ink": "#12242b",
@@ -42,7 +65,10 @@ const LIGHT_THEME_VARIABLES: Record<string, string> = {
   "--warning-soft": "#fdf6e3",
 };
 
-const DARK_THEME_VARIABLES: Record<string, string> = {
+const DARK_THEME_VARIABLES: Record<
+  string,
+  string
+> = {
   "--canvas": "#0f1b20",
   "--surface": "#14262d",
   "--ink": "#f2f8f9",
@@ -65,8 +91,12 @@ const DARK_THEME_VARIABLES: Record<string, string> = {
 };
 
 const THEME_VARIABLE_KEYS = [
-  ...Object.keys(LIGHT_THEME_VARIABLES),
-  ...Object.keys(DARK_THEME_VARIABLES),
+  ...Object.keys(
+    LIGHT_THEME_VARIABLES,
+  ),
+  ...Object.keys(
+    DARK_THEME_VARIABLES,
+  ),
 ].filter(
   (value, index, array) =>
     array.indexOf(value) === index,
@@ -120,7 +150,9 @@ const DOCTOR_ACCOUNT_NAV: NavItem[] = [
   },
 ];
 
-function getInitials(name: string) {
+function getInitials(
+  name: string,
+) {
   const parts = name
     .trim()
     .split(/\s+/)
@@ -149,12 +181,17 @@ function isNavItemActive(
 
   return (
     pathname === href ||
-    pathname.startsWith(`${href}/`)
+    pathname.startsWith(
+      `${href}/`,
+    )
   );
 }
 
 function getStoredTheme(): ThemeChoice {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return "system";
   }
 
@@ -175,9 +212,15 @@ function getStoredTheme(): ThemeChoice {
 }
 
 function setThemeVariables(
-  variables: Record<string, string>,
+  variables: Record<
+    string,
+    string
+  >,
 ) {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return;
   }
 
@@ -192,7 +235,9 @@ function setThemeVariables(
     },
   );
 
-  Object.entries(variables).forEach(
+  Object.entries(
+    variables,
+  ).forEach(
     ([property, value]) => {
       root.style.setProperty(
         property,
@@ -205,7 +250,10 @@ function setThemeVariables(
 function applyTheme(
   theme: ThemeChoice,
 ) {
-  if (typeof window === "undefined") {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
     return;
   }
 
@@ -224,7 +272,10 @@ function applyTheme(
         : "light"
       : theme;
 
-  if (effectiveTheme === "dark") {
+  if (
+    effectiveTheme ===
+    "dark"
+  ) {
     setThemeVariables(
       DARK_THEME_VARIABLES,
     );
@@ -391,11 +442,13 @@ export default function Navbar() {
     );
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      setTheme(
-        getStoredTheme(),
-      );
-    });
+    Promise.resolve().then(
+      () => {
+        setTheme(
+          getStoredTheme(),
+        );
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -958,7 +1011,9 @@ export default function Navbar() {
                   <div className="p-3">
                     <button
                       type="button"
-                      onClick={handleLogout}
+                      onClick={
+                        handleLogout
+                      }
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-[var(--urgent-deep)] hover:bg-[var(--urgent-soft)]"
                     >
                       <svg
@@ -1179,7 +1234,9 @@ export default function Navbar() {
 
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={
+                  handleLogout
+                }
                 className="mt-3 flex w-full items-center rounded-lg px-3 py-3 text-sm font-semibold text-[var(--urgent-deep)] hover:bg-[var(--urgent-soft)]"
               >
                 Log out

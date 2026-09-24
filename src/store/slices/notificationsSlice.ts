@@ -3,16 +3,6 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 
-import {
-  getAllNotifications,
-  getDoctorNotifications,
-  getPatientNotifications,
-  getNotificationsByUserAndRole,
-  markAllNotificationsAsRead,
-  markNotificationAsRead,
-  deleteNotification,
-} from "@/lib/notifications-store";
-
 import type {
   AppNotification,
   NotificationRecipientRole,
@@ -28,178 +18,169 @@ const initialState: NotificationsState = {
   initialized: false,
 };
 
-const notificationsSlice = createSlice({
-  name: "notifications",
-  initialState,
+const notificationsSlice =
+  createSlice({
+    name: "notifications",
 
-  reducers: {
-    initializeNotifications(
-      state,
-      action: PayloadAction<{
-        userId: string;
-        recipientRole: NotificationRecipientRole;
-      }>,
-    ) {
-      const {
-        userId,
-        recipientRole,
-      } = action.payload;
+    initialState,
 
-      if (recipientRole === "patient") {
+    reducers: {
+      initializeNotifications(
+        state,
+        action: PayloadAction<{
+          userId: string;
+          recipientRole: NotificationRecipientRole;
+          notifications: AppNotification[];
+        }>,
+      ) {
         state.notifications =
-          getPatientNotifications(userId);
-      } else {
+          action.payload.notifications;
+
+        state.initialized = true;
+      },
+
+      setNotifications(
+        state,
+        action: PayloadAction<
+          AppNotification[]
+        >,
+      ) {
         state.notifications =
-          getDoctorNotifications(userId);
-      }
+          action.payload;
 
-      state.initialized = true;
-    },
+        state.initialized = true;
+      },
 
-    setNotifications(
-      state,
-      action: PayloadAction<AppNotification[]>,
-    ) {
-      state.notifications =
-        action.payload;
+      refreshNotifications(
+        state,
+        action: PayloadAction<
+          AppNotification[]
+        >,
+      ) {
+        state.notifications =
+          action.payload;
 
-      state.initialized = true;
-    },
+        state.initialized = true;
+      },
 
-    refreshNotifications(
-      state,
-      action: PayloadAction<{
-        userId: string;
-        recipientRole: NotificationRecipientRole;
-      }>,
-    ) {
-      const {
-        userId,
-        recipientRole,
-      } = action.payload;
+      addNotification(
+        state,
+        action: PayloadAction<AppNotification>,
+      ) {
+        const notification =
+          action.payload;
 
-      state.notifications =
-        getNotificationsByUserAndRole(
+        const exists =
+          state.notifications.some(
+            (item) =>
+              item.id ===
+              notification.id,
+          );
+
+        if (exists) {
+          return;
+        }
+
+        state.notifications.unshift(
+          notification,
+        );
+      },
+
+      markAsRead(
+        state,
+        action: PayloadAction<string>,
+      ) {
+        const notificationId =
+          action.payload;
+
+        state.notifications =
+          state.notifications.map(
+            (notification) =>
+              notification.id ===
+              notificationId
+                ? {
+                    ...notification,
+                    isRead: true,
+                  }
+                : notification,
+          );
+      },
+
+      markAllAsRead(
+        state,
+        action: PayloadAction<{
+          userId: string;
+          recipientRole?: NotificationRecipientRole;
+        }>,
+      ) {
+        const {
           userId,
           recipientRole,
-        );
+        } = action.payload;
 
-      state.initialized = true;
-    },
+        state.notifications =
+          state.notifications.map(
+            (notification) => {
+              const sameUser =
+                notification.userId ===
+                userId;
 
-    addNotification(
-      state,
-      action: PayloadAction<AppNotification>,
-    ) {
-      const exists =
-        state.notifications.some(
-          (notification) =>
-            notification.id ===
-            action.payload.id,
-        );
+              const sameRole =
+                recipientRole
+                  ? notification.recipientRole ===
+                    recipientRole
+                  : true;
 
-      if (exists) {
-        return;
-      }
-
-      state.notifications.unshift(
-        action.payload,
-      );
-    },
-
-    markAsRead(
-      state,
-      action: PayloadAction<string>,
-    ) {
-      markNotificationAsRead(
-        action.payload,
-      );
-
-      state.notifications =
-        state.notifications.map(
-          (notification) =>
-            notification.id ===
-            action.payload
-              ? {
+              if (
+                sameUser &&
+                sameRole
+              ) {
+                return {
                   ...notification,
                   isRead: true,
-                }
-              : notification,
-        );
+                };
+              }
+
+              return notification;
+            },
+          );
+      },
+
+      removeNotification(
+        state,
+        action: PayloadAction<string>,
+      ) {
+        const notificationId =
+          action.payload;
+
+        state.notifications =
+          state.notifications.filter(
+            (notification) =>
+              notification.id !==
+              notificationId,
+          );
+      },
+
+      clearNotifications(
+        state,
+      ) {
+        state.notifications = [];
+        state.initialized = true;
+      },
+
+      syncNotifications(
+        state,
+        action: PayloadAction<
+          AppNotification[]
+        >,
+      ) {
+        state.notifications =
+          action.payload;
+
+        state.initialized = true;
+      },
     },
-
-    markAllAsRead(
-      state,
-      action: PayloadAction<{
-        userId: string;
-        recipientRole?: NotificationRecipientRole;
-      }>,
-    ) {
-      const {
-        userId,
-        recipientRole,
-      } = action.payload;
-
-      markAllNotificationsAsRead(
-        userId,
-        recipientRole,
-      );
-
-      state.notifications =
-        state.notifications.map(
-          (notification) => {
-            const sameUser =
-              notification.userId ===
-              userId;
-
-            const sameRole =
-              recipientRole
-                ? notification.recipientRole ===
-                  recipientRole
-                : true;
-
-            if (
-              sameUser &&
-              sameRole
-            ) {
-              return {
-                ...notification,
-                isRead: true,
-              };
-            }
-
-            return notification;
-          },
-        );
-    },
-
-    removeNotification(
-      state,
-      action: PayloadAction<string>,
-    ) {
-      deleteNotification(
-        action.payload,
-      );
-
-      state.notifications =
-        state.notifications.filter(
-          (notification) =>
-            notification.id !==
-            action.payload,
-        );
-    },
-
-    clearNotifications(state) {
-      state.notifications = [];
-      state.initialized = true;
-    },
-
-    syncNotifications(state) {
-      state.notifications =
-        getAllNotifications();
-    },
-  },
-});
+  });
 
 export const {
   initializeNotifications,
@@ -211,6 +192,7 @@ export const {
   removeNotification,
   clearNotifications,
   syncNotifications,
-} = notificationsSlice.actions;
+} =
+  notificationsSlice.actions;
 
 export default notificationsSlice.reducer;

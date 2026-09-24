@@ -29,16 +29,20 @@ function normalizeBooking(
 ): Booking {
   return {
     ...booking,
-    patientId: booking.patientId ?? "",
+    patientId:
+      booking.patientId ?? "",
     consultationType:
-      booking.consultationType ?? "in-person",
+      booking.consultationType ??
+      "in-person",
     createdAt:
       booking.createdAt ??
       new Date().toISOString(),
-    updatedAt: booking.updatedAt,
+    updatedAt:
+      booking.updatedAt,
     rescheduleCount:
       booking.rescheduleCount ?? 0,
-    actionReason: booking.actionReason,
+    actionReason:
+      booking.actionReason,
   };
 }
 
@@ -49,19 +53,24 @@ function readBookings(): Booking[] {
 
   try {
     const raw =
-      window.localStorage.getItem(KEY);
+      window.localStorage.getItem(
+        KEY,
+      );
 
     if (!raw) {
       return [];
     }
 
-    const parsed = JSON.parse(raw);
+    const parsed =
+      JSON.parse(raw);
 
     if (!Array.isArray(parsed)) {
       return [];
     }
 
-    return parsed.map(normalizeBooking);
+    return parsed.map(
+      normalizeBooking,
+    );
   } catch {
     return [];
   }
@@ -95,7 +104,8 @@ export function getBookingById(
 ): Booking | null {
   return (
     readBookings().find(
-      (booking) => booking.id === id,
+      (booking) =>
+        booking.id === id,
     ) ?? null
   );
 }
@@ -105,7 +115,8 @@ export function getBookingsByPatientId(
 ): Booking[] {
   return readBookings().filter(
     (booking) =>
-      booking.patientId === patientId,
+      booking.patientId ===
+      patientId,
   );
 }
 
@@ -114,14 +125,16 @@ export function getBookingsByDoctorId(
 ): Booking[] {
   return readBookings().filter(
     (booking) =>
-      booking.doctorId === doctorId,
+      booking.doctorId ===
+      doctorId,
   );
 }
 
 export function addBooking(
   booking: Booking,
 ): Booking {
-  const bookings = readBookings();
+  const bookings =
+    readBookings();
 
   const normalizedBooking =
     normalizeBooking(booking);
@@ -129,14 +142,17 @@ export function addBooking(
   const existingIndex =
     bookings.findIndex(
       (item) =>
-        item.id === normalizedBooking.id,
+        item.id ===
+        normalizedBooking.id,
     );
 
   if (existingIndex >= 0) {
     bookings[existingIndex] =
       normalizedBooking;
   } else {
-    bookings.push(normalizedBooking);
+    bookings.push(
+      normalizedBooking,
+    );
   }
 
   writeBookings(bookings);
@@ -149,28 +165,36 @@ export function updateBookingStatus(
   status: BookingStatus,
   actionReason?: string,
 ): Booking | null {
-  const bookings = readBookings();
+  const bookings =
+    readBookings();
 
-  const index = bookings.findIndex(
-    (booking) =>
-      booking.id === bookingId,
-  );
+  const index =
+    bookings.findIndex(
+      (booking) =>
+        booking.id ===
+        bookingId,
+    );
 
   if (index === -1) {
     return null;
   }
 
-  const updatedBooking: Booking = {
-    ...bookings[index],
-    status,
-    updatedAt:
-      new Date().toISOString(),
-    ...(actionReason !== undefined
-      ? { actionReason }
-      : {}),
-  };
+  const updatedBooking: Booking =
+    {
+      ...bookings[index],
+      status,
+      updatedAt:
+        new Date().toISOString(),
+      ...(actionReason !==
+      undefined
+        ? {
+            actionReason,
+          }
+        : {}),
+    };
 
-  bookings[index] = updatedBooking;
+  bookings[index] =
+    updatedBooking;
 
   writeBookings(bookings);
 
@@ -191,25 +215,30 @@ export function updateBooking(
     >
   >,
 ): Booking | null {
-  const bookings = readBookings();
+  const bookings =
+    readBookings();
 
-  const index = bookings.findIndex(
-    (booking) =>
-      booking.id === bookingId,
-  );
+  const index =
+    bookings.findIndex(
+      (booking) =>
+        booking.id ===
+        bookingId,
+    );
 
   if (index === -1) {
     return null;
   }
 
-  const updatedBooking: Booking = {
-    ...bookings[index],
-    ...updates,
-    updatedAt:
-      new Date().toISOString(),
-  };
+  const updatedBooking: Booking =
+    {
+      ...bookings[index],
+      ...updates,
+      updatedAt:
+        new Date().toISOString(),
+    };
 
-  bookings[index] = updatedBooking;
+  bookings[index] =
+    updatedBooking;
 
   writeBookings(bookings);
 
@@ -223,17 +252,22 @@ export function rescheduleBooking(
   time: string,
 ): Booking | null {
   const booking =
-    getBookingById(bookingId);
+    getBookingById(
+      bookingId,
+    );
 
   if (!booking) {
     return null;
   }
 
-  return updateBooking(bookingId, {
-    slotId,
-    date,
-    time,
-  });
+  return updateBooking(
+    bookingId,
+    {
+      slotId,
+      date,
+      time,
+    },
+  );
 }
 
 export function confirmBooking(
@@ -253,7 +287,9 @@ export function canCancelBooking(
     "cancelled",
     "declined",
     "missed",
-  ].includes(booking.status);
+  ].includes(
+    booking.status,
+  );
 }
 
 export function canRescheduleBooking(
@@ -264,7 +300,9 @@ export function canRescheduleBooking(
     "cancelled",
     "declined",
     "missed",
-  ].includes(booking.status);
+  ].includes(
+    booking.status,
+  );
 }
 
 export function canCompleteBooking(
@@ -273,7 +311,9 @@ export function canCompleteBooking(
   return [
     "confirmed",
     "upcoming",
-  ].includes(booking.status);
+  ].includes(
+    booking.status,
+  );
 }
 
 export function canMarkMissed(
@@ -282,5 +322,7 @@ export function canMarkMissed(
   return [
     "confirmed",
     "upcoming",
-  ].includes(booking.status);
+  ].includes(
+    booking.status,
+  );
 }

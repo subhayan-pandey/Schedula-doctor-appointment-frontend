@@ -19,8 +19,20 @@ import Button from "@/components/ui/Button";
 import PreConsultationIntakeForm from "@/features/appointment/components/PreConsultationIntakeForm";
 
 import {
+  getAllBookings,
+} from "@/lib/bookings-store";
+
+import {
   createDoctorNotification,
 } from "@/lib/notifications-store";
+
+import {
+  getAllDoctors,
+} from "@/lib/doctors-store";
+
+import {
+  getSlotsForDoctor,
+} from "@/lib/slots-store";
 
 import {
   getConsultationCountdown,
@@ -385,7 +397,9 @@ export default function AppointmentConfirmationPage() {
       !appointmentsInitialized
     ) {
       dispatch(
-        initializeAppointments(),
+        initializeAppointments(
+          getAllBookings(),
+        ),
       );
     }
   }, [
@@ -396,7 +410,9 @@ export default function AppointmentConfirmationPage() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(),
+        initializeDoctors(
+          getAllDoctors(),
+        ),
       );
     }
   }, [
@@ -412,10 +428,17 @@ export default function AppointmentConfirmationPage() {
       return;
     }
 
+    const doctorId =
+      booking.doctorId;
+
     dispatch(
-      initializeDoctorSlots(
-        booking.doctorId,
-      ),
+      initializeDoctorSlots({
+        doctorId,
+        slots:
+          getSlotsForDoctor(
+            doctorId,
+          ),
+      }),
     );
   }, [
     dispatch,

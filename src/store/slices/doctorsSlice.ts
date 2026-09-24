@@ -3,11 +3,6 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 
-import {
-  addDoctor,
-  getAllDoctors,
-} from "@/lib/doctors-store";
-
 import type { Doctor } from "@/types/doctor";
 
 type DoctorsState = {
@@ -22,10 +17,17 @@ const initialState: DoctorsState = {
 
 const doctorsSlice = createSlice({
   name: "doctors",
+
   initialState,
+
   reducers: {
-    initializeDoctors(state) {
-      state.doctors = getAllDoctors();
+    initializeDoctors(
+      state,
+      action: PayloadAction<Doctor[]>,
+    ) {
+      state.doctors =
+        action.payload;
+
       state.initialized = true;
     },
 
@@ -33,7 +35,9 @@ const doctorsSlice = createSlice({
       state,
       action: PayloadAction<Doctor[]>,
     ) {
-      state.doctors = action.payload;
+      state.doctors =
+        action.payload;
+
       state.initialized = true;
     },
 
@@ -41,29 +45,47 @@ const doctorsSlice = createSlice({
       state,
       action: PayloadAction<Doctor>,
     ) {
-      addDoctor(action.payload);
+      const doctor =
+        action.payload;
 
-      state.doctors = [
-        ...state.doctors.filter(
-          (doctor) =>
-            doctor.id !== action.payload.id,
-        ),
-        action.payload,
-      ];
+      const existingIndex =
+        state.doctors.findIndex(
+          (item) =>
+            item.id === doctor.id,
+        );
+
+      if (existingIndex >= 0) {
+        state.doctors[
+          existingIndex
+        ] = doctor;
+        return;
+      }
+
+      state.doctors.push(doctor);
     },
 
     updateDoctor(
       state,
       action: PayloadAction<Doctor>,
     ) {
-      addDoctor(action.payload);
+      const doctor =
+        action.payload;
 
-      state.doctors = state.doctors.map(
-        (doctor) =>
-          doctor.id === action.payload.id
-            ? action.payload
-            : doctor,
-      );
+      const index =
+        state.doctors.findIndex(
+          (item) =>
+            item.id === doctor.id,
+        );
+
+      if (index === -1) {
+        state.doctors.push(
+          doctor,
+        );
+        return;
+      }
+
+      state.doctors[index] =
+        doctor;
     },
   },
 });

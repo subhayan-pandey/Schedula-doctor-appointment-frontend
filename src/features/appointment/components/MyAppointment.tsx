@@ -9,6 +9,11 @@ import {
   type ReactNode,
 } from "react";
 
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
@@ -16,12 +21,11 @@ import AppointmentIntelligence from "@/features/appointment/components/Appointme
 import AppointmentTimeline from "@/features/appointment/components/AppointmentTimeline";
 
 import {
-  getBookingsByPatientId,
-  updateBookingStatus,
+  getAllBookings,
 } from "@/lib/bookings-store";
 
 import {
-  getDoctorById,
+  getAllDoctors,
 } from "@/lib/doctors-store";
 
 import {
@@ -34,10 +38,6 @@ import {
 } from "@/lib/reviews-store";
 
 import {
-  getSession,
-} from "@/lib/storage";
-
-import {
   formatLongDate,
 } from "@/lib/utils/date";
 
@@ -48,6 +48,20 @@ import {
   getConsultationStatusLabel,
   isConsultationJoinable,
 } from "@/lib/consultation";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import {
+  setAppointments,
+  updateAppointmentStatus,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  setDoctors,
+} from "@/store/slices/doctorsSlice";
 
 import type {
   Booking,
@@ -669,12 +683,42 @@ function ReviewModal({
 }
 
 export default function MyAppointment() {
-  const session =
-    getSession();
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const appointments =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments,
+    );
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
 
   const patientId =
-    session?.role === "patient"
-      ? session.id
+    user?.role === "patient"
+      ? user.id
       : undefined;
 
   const [
@@ -682,13 +726,6 @@ export default function MyAppointment() {
     setActiveStatus,
   ] = useState<BookingStatus>(
     "upcoming",
-  );
-
-  const [
-    bookings,
-    setBookings,
-  ] = useState<Booking[]>(
-    [],
   );
 
   const [
@@ -710,34 +747,30 @@ export default function MyAppointment() {
     Booking | null
   >(null);
 
-  const [
-    refreshKey,
-    setRefreshKey,
-  ] = useState(0);
+  useEffect(() => {
+    if (!appointmentsInitialized) {
+      dispatch(
+        setAppointments(
+          getAllBookings(),
+        ),
+      );
+    }
+  }, [
+    dispatch,
+    appointmentsInitialized,
+  ]);
 
   useEffect(() => {
-    const loadBookings =
-      window.setTimeout(() => {
-        if (!patientId) {
-          setBookings([]);
-          return;
-        }
-
-        setBookings(
-          getBookingsByPatientId(
-            patientId,
-          ),
-        );
-      }, 0);
-
-    return () => {
-      window.clearTimeout(
-        loadBookings,
+    if (!doctorsInitialized) {
+      dispatch(
+        setDoctors(
+          getAllDoctors(),
+        ),
       );
-    };
+    }
   }, [
-    patientId,
-    refreshKey,
+    dispatch,
+    doctorsInitialized,
   ]);
 
   useEffect(() => {
@@ -766,6 +799,22 @@ export default function MyAppointment() {
     };
   }, []);
 
+  const bookings =
+    useMemo(
+      () =>
+        patientId
+          ? appointments.filter(
+              (booking) =>
+                booking.patientId ===
+                patientId,
+            )
+          : [],
+      [
+        appointments,
+        patientId,
+      ],
+    );
+
   const filteredBookings =
     useMemo(
       () =>
@@ -784,12 +833,6 @@ export default function MyAppointment() {
     status: BookingStatus,
   ) {
     setActiveStatus(status);
-  }
-
-  function handleRefresh() {
-    setRefreshKey(
-      (value) => value + 1,
-    );
   }
 
   function handleCancel(
@@ -813,13 +856,14 @@ export default function MyAppointment() {
       return;
     }
 
-    updateBookingStatus(
-      bookingId,
-      "cancelled",
-      "Appointment cancelled by patient",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId,
+        status: "cancelled",
+        actionReason:
+          "Appointment cancelled by patient",
+      }),
     );
-
-    handleRefresh();
   }
 
   function handleMarkMissed(
@@ -854,13 +898,14 @@ export default function MyAppointment() {
       return;
     }
 
-    updateBookingStatus(
-      bookingId,
-      "missed",
-      "Appointment marked as missed after scheduled time",
+    dispatch(
+      updateAppointmentStatus({
+        bookingId,
+        status: "missed",
+        actionReason:
+          "Appointment marked as missed after scheduled time",
+      }),
     );
-
-    handleRefresh();
   }
 
   if (!patientId) {
@@ -960,8 +1005,10 @@ export default function MyAppointment() {
               {filteredBookings.map(
                 (booking) => {
                   const doctor =
-                    getDoctorById(
-                      booking.doctorId,
+                    doctors.find(
+                      (item) =>
+                        item.id ===
+                        booking.doctorId,
                     );
 
                   const consultationStatus =
@@ -1354,13 +1401,11 @@ export default function MyAppointment() {
               null,
             )
           }
-          onSaved={() => {
+          onSaved={() =>
             setReviewBooking(
               null,
-            );
-
-            handleRefresh();
-          }}
+            )
+          }
         />
       )}
     </>

@@ -73,6 +73,7 @@ export default function DoctorsPage() {
         <main className="bg-[var(--canvas)]">
           <div className="mx-auto max-w-7xl px-4 py-10 sm:px-8">
             <div className="h-8 w-48 animate-pulse rounded-lg bg-[var(--line)]" />
+
             <div className="mt-2 h-5 w-80 max-w-full animate-pulse rounded bg-[var(--line)]" />
           </div>
         </main>

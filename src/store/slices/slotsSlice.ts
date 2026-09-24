@@ -3,19 +3,7 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 
-import {
-  bookSlot,
-  createSlot,
-  getSlotsForDoctor,
-  releaseSlot,
-  removeSlot,
-  rescheduleSlot,
-  toggleSlotAvailability,
-} from "@/lib/slots-store";
-
-import type {
-  Slot,
-} from "@/types/slot";
+import type { Slot } from "@/types/slot";
 
 type SlotsState = {
   slotsByDoctor: Record<
@@ -38,10 +26,15 @@ const slotsSlice = createSlice({
   reducers: {
     initializeDoctorSlots(
       state,
-      action: PayloadAction<string>,
+      action: PayloadAction<{
+        doctorId: string;
+        slots: Slot[];
+      }>,
     ) {
-      const doctorId =
-        action.payload;
+      const {
+        doctorId,
+        slots,
+      } = action.payload;
 
       if (!doctorId) {
         return;
@@ -49,10 +42,7 @@ const slotsSlice = createSlice({
 
       state.slotsByDoctor[
         doctorId
-      ] =
-        getSlotsForDoctor(
-          doctorId,
-        );
+      ] = slots;
 
       if (
         !state.initializedDoctors.includes(
@@ -76,6 +66,10 @@ const slotsSlice = createSlice({
         doctorId,
         slots,
       } = action.payload;
+
+      if (!doctorId) {
+        return;
+      }
 
       state.slotsByDoctor[
         doctorId
@@ -104,19 +98,41 @@ const slotsSlice = createSlice({
         slotId,
       } = action.payload;
 
-      const updated =
-        bookSlot(
-          doctorId,
-          slotId,
+      const slots =
+        state.slotsByDoctor[
+          doctorId
+        ];
+
+      if (!slots) {
+        return;
+      }
+
+      const target =
+        slots.find(
+          (slot) =>
+            slot.id === slotId,
         );
 
-      if (!updated) {
+      if (
+        !target ||
+        target.status !==
+          "available"
+      ) {
         return;
       }
 
       state.slotsByDoctor[
         doctorId
-      ] = updated;
+      ] = slots.map(
+        (slot): Slot =>
+          slot.id === slotId
+            ? {
+                ...slot,
+                status:
+                  "booked",
+              }
+            : slot,
+      );
     },
 
     rescheduleDoctorSlot(
@@ -133,20 +149,81 @@ const slotsSlice = createSlice({
         newSlotId,
       } = action.payload;
 
-      const updated =
-        rescheduleSlot(
-          doctorId,
-          currentSlotId,
-          newSlotId,
+      if (
+        currentSlotId ===
+        newSlotId
+      ) {
+        return;
+      }
+
+      const slots =
+        state.slotsByDoctor[
+          doctorId
+        ];
+
+      if (!slots) {
+        return;
+      }
+
+      const currentSlot =
+        slots.find(
+          (slot) =>
+            slot.id ===
+            currentSlotId,
         );
 
-      if (!updated) {
+      const newSlot =
+        slots.find(
+          (slot) =>
+            slot.id ===
+            newSlotId,
+        );
+
+      if (
+        !currentSlot ||
+        !newSlot
+      ) {
+        return;
+      }
+
+      if (
+        currentSlot.status !==
+        "booked" ||
+        newSlot.status !==
+        "available"
+      ) {
         return;
       }
 
       state.slotsByDoctor[
         doctorId
-      ] = updated;
+      ] = slots.map(
+        (slot): Slot => {
+          if (
+            slot.id ===
+            currentSlotId
+          ) {
+            return {
+              ...slot,
+              status:
+                "available",
+            };
+          }
+
+          if (
+            slot.id ===
+            newSlotId
+          ) {
+            return {
+              ...slot,
+              status:
+                "booked",
+            };
+          }
+
+          return slot;
+        },
+      );
     },
 
     releaseDoctorSlot(
@@ -161,11 +238,27 @@ const slotsSlice = createSlice({
         slotId,
       } = action.payload;
 
+      const slots =
+        state.slotsByDoctor[
+          doctorId
+        ];
+
+      if (!slots) {
+        return;
+      }
+
       state.slotsByDoctor[
         doctorId
-      ] = releaseSlot(
-        doctorId,
-        slotId,
+      ] = slots.map(
+        (slot): Slot =>
+          slot.id === slotId &&
+          slot.status === "booked"
+            ? {
+                ...slot,
+                status:
+                  "available",
+              }
+            : slot,
       );
     },
 
@@ -185,12 +278,59 @@ const slotsSlice = createSlice({
         slot,
       } = action.payload;
 
+      if (
+        !doctorId ||
+        !slot.date ||
+        !slot.time
+      ) {
+        return;
+      }
+
+      const existing =
+        state.slotsByDoctor[
+          doctorId
+        ] ?? [];
+
+      const duplicate =
+        existing.some(
+          (item) =>
+            item.date ===
+              slot.date &&
+            item.time ===
+              slot.time,
+        );
+
+      if (duplicate) {
+        return;
+      }
+
+      const newSlot: Slot = {
+        id: `${doctorId}-${slot.date}-${slot.period.toLowerCase()}-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 7)}`,
+        doctorId,
+        date: slot.date,
+        time: slot.time,
+        period: slot.period,
+        status: "available",
+      };
+
       state.slotsByDoctor[
         doctorId
-      ] = createSlot(
-        doctorId,
-        slot,
-      );
+      ] = [
+        ...existing,
+        newSlot,
+      ];
+
+      if (
+        !state.initializedDoctors.includes(
+          doctorId,
+        )
+      ) {
+        state.initializedDoctors.push(
+          doctorId,
+        );
+      }
     },
 
     removeDoctorSlot(
@@ -205,11 +345,34 @@ const slotsSlice = createSlice({
         slotId,
       } = action.payload;
 
+      const slots =
+        state.slotsByDoctor[
+          doctorId
+        ];
+
+      if (!slots) {
+        return;
+      }
+
+      const target =
+        slots.find(
+          (slot) =>
+            slot.id === slotId,
+        );
+
+      if (
+        !target ||
+        target.status ===
+          "booked"
+      ) {
+        return;
+      }
+
       state.slotsByDoctor[
         doctorId
-      ] = removeSlot(
-        doctorId,
-        slotId,
+      ] = slots.filter(
+        (slot) =>
+          slot.id !== slotId,
       );
     },
 
@@ -225,13 +388,38 @@ const slotsSlice = createSlice({
         slotId,
       } = action.payload;
 
+      const slots =
+        state.slotsByDoctor[
+          doctorId
+        ];
+
+      if (!slots) {
+        return;
+      }
+
       state.slotsByDoctor[
         doctorId
-      ] =
-        toggleSlotAvailability(
-          doctorId,
-          slotId,
-        );
+      ] = slots.map(
+        (slot): Slot => {
+          if (
+            slot.id !==
+              slotId ||
+            slot.status ===
+              "booked"
+          ) {
+            return slot;
+          }
+
+          return {
+            ...slot,
+            status:
+              slot.status ===
+              "available"
+                ? "unavailable"
+                : "available",
+          };
+        },
+      );
     },
   },
 });
@@ -245,6 +433,7 @@ export const {
   createDoctorSlot,
   removeDoctorSlot,
   toggleDoctorSlotAvailability,
-} = slotsSlice.actions;
+} =
+  slotsSlice.actions;
 
 export default slotsSlice.reducer;

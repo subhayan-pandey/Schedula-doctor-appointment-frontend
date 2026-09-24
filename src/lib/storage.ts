@@ -16,7 +16,7 @@ export type PatientAccount = {
   password: string;
 };
 
-function isBrowser() {
+function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
@@ -53,7 +53,9 @@ function readPatientAccounts(): PatientAccount[] {
 
     if (raw) {
       const parsed =
-        JSON.parse(raw) as unknown;
+        JSON.parse(
+          raw,
+        ) as unknown;
 
       if (Array.isArray(parsed)) {
         return parsed.filter(
@@ -66,17 +68,20 @@ function readPatientAccounts(): PatientAccount[] {
                   "object" &&
                 typeof (
                   item as PatientAccount
-                ).id === "string" &&
+                ).id ===
+                  "string" &&
                 typeof (
                   item as PatientAccount
-                ).name === "string" &&
+                ).name ===
+                  "string" &&
                 typeof (
                   item as PatientAccount
                 ).emailOrMobile ===
                   "string" &&
                 typeof (
                   item as PatientAccount
-                ).password === "string",
+                ).password ===
+                  "string",
             ),
         );
       }
@@ -127,13 +132,16 @@ function readPatientAccounts(): PatientAccount[] {
           name: account.name,
           emailOrMobile:
             account.emailOrMobile,
-          password: account.password,
+          password:
+            account.password,
         },
       ];
 
     window.localStorage.setItem(
       PATIENT_ACCOUNTS_KEY,
-      JSON.stringify(migrated),
+      JSON.stringify(
+        migrated,
+      ),
     );
 
     return migrated;
@@ -167,7 +175,9 @@ export function getSession(): User | null {
       );
 
     return raw
-      ? (JSON.parse(raw) as User)
+      ? (JSON.parse(
+          raw,
+        ) as User)
       : null;
   } catch {
     return null;
@@ -208,7 +218,9 @@ export function getPatientAccount(
     readPatientAccounts();
 
   if (!identifier) {
-    return accounts[0] ?? null;
+    return (
+      accounts[0] ?? null
+    );
   }
 
   const normalizedIdentifier =
@@ -221,7 +233,8 @@ export function getPatientAccount(
       (account) =>
         normalizeIdentifier(
           account.emailOrMobile,
-        ) === normalizedIdentifier,
+        ) ===
+        normalizedIdentifier,
     ) ?? null
   );
 }
@@ -246,7 +259,8 @@ export function savePatientAccount(
       (existing) =>
         normalizeIdentifier(
           existing.emailOrMobile,
-        ) === normalizedIdentifier,
+        ) ===
+        normalizedIdentifier,
     );
 
   if (existingIndex >= 0) {

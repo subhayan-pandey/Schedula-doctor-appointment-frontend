@@ -11,17 +11,14 @@ import {
   useParams,
 } from "next/navigation";
 
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 
 import MockConsultationScreen from "@/features/consultation/components/MockConsultationScreen";
-
-import {
-  getBookingById,
-} from "@/lib/bookings-store";
-
-import {
-  getDoctorById,
-} from "@/lib/doctors-store";
 
 import {
   getConsultationCountdown,
@@ -32,16 +29,29 @@ import {
 } from "@/lib/consultation";
 
 import {
-  getSession,
-} from "@/lib/storage";
+  getAllBookings,
+} from "@/lib/bookings-store";
+
+import {
+  getAllDoctors,
+} from "@/lib/doctors-store";
 
 import {
   formatLongDate,
 } from "@/lib/utils/date";
 
+import {
+  initializeAppointments,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  initializeDoctors,
+} from "@/store/slices/doctorsSlice";
+
 import type {
-  Booking,
-} from "@/types/booking";
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 import type {
   ConsultationStatus,
@@ -154,71 +164,91 @@ export default function DoctorConsultationPage() {
   const bookingId =
     params["booking id"];
 
-  const [
-    booking,
-    setBooking,
-  ] = useState<
-    Booking | null | undefined
-  >(undefined);
+  const dispatch =
+    useDispatch<AppDispatch>();
 
   const [
     currentTime,
     setCurrentTime,
   ] = useState(0);
 
-  const [
-    accessDenied,
-    setAccessDenied,
-  ] = useState(false);
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
+
+  const appointments =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments,
+    );
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
+  const booking =
+    appointments.find(
+      (appointment) =>
+        appointment.id ===
+        bookingId,
+    ) ?? null;
+
+  const doctor =
+    booking
+      ? doctors.find(
+          (item) =>
+            item.id ===
+            booking.doctorId,
+        ) ?? null
+      : null;
 
   useEffect(() => {
-    const loadBooking =
-      window.setTimeout(() => {
-        const session =
-          getSession();
-
-        if (
-          !session ||
-          session.role !== "doctor"
-        ) {
-          setAccessDenied(true);
-          return;
-        }
-
-        if (!bookingId) {
-          setBooking(null);
-          return;
-        }
-
-        const foundBooking =
-          getBookingById(
-            bookingId,
-          );
-
-        if (!foundBooking) {
-          setBooking(null);
-          return;
-        }
-
-        if (
-          foundBooking.doctorId !==
-          session.id
-        ) {
-          setAccessDenied(true);
-          return;
-        }
-
-        setBooking(
-          foundBooking,
-        );
-      }, 0);
-
-    return () => {
-      window.clearTimeout(
-        loadBooking,
+    if (!appointmentsInitialized) {
+      dispatch(
+        initializeAppointments(
+          getAllBookings(),
+        ),
       );
-    };
-  }, [bookingId]);
+    }
+  }, [
+    dispatch,
+    appointmentsInitialized,
+  ]);
+
+  useEffect(() => {
+    if (!doctorsInitialized) {
+      dispatch(
+        initializeDoctors(
+          getAllDoctors(),
+        ),
+      );
+    }
+  }, [
+    dispatch,
+    doctorsInitialized,
+  ]);
 
   useEffect(() => {
     const initialTick =
@@ -246,7 +276,22 @@ export default function DoctorConsultationPage() {
     };
   }, []);
 
-  if (accessDenied) {
+  if (
+    !authInitialized ||
+    !appointmentsInitialized ||
+    !doctorsInitialized
+  ) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
+        Loading consultation…
+      </div>
+    );
+  }
+
+  if (
+    !user ||
+    user.role !== "doctor"
+  ) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
@@ -259,9 +304,9 @@ export default function DoctorConsultationPage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            You must be logged in as the
-            doctor associated with this
-            appointment.
+            You must be logged in as a
+            doctor to access this
+            consultation.
           </p>
 
           <Link
@@ -277,19 +322,7 @@ export default function DoctorConsultationPage() {
     );
   }
 
-  if (
-    booking === undefined
-  ) {
-    return (
-      <div className="mx-auto max-w-lg px-4 py-16 text-center text-sm text-[var(--muted)]">
-        Loading consultation…
-      </div>
-    );
-  }
-
-  if (
-    booking === null
-  ) {
+  if (!booking) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
@@ -309,6 +342,36 @@ export default function DoctorConsultationPage() {
             Back to appointments
           </Button>
         </Link>
+      </div>
+    );
+  }
+
+  if (
+    booking.doctorId !==
+    user.id
+  ) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
+          <h1 className="text-xl font-semibold text-[var(--ink)]">
+            Access denied
+          </h1>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            This consultation does not
+            belong to your doctor
+            account.
+          </p>
+
+          <Link
+            href="/doctor/appointments"
+            className="mt-6 inline-block"
+          >
+            <Button>
+              Back to appointments
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -361,11 +424,6 @@ export default function DoctorConsultationPage() {
       booking.date,
       booking.time,
       currentTime,
-    );
-
-  const doctor =
-    getDoctorById(
-      booking.doctorId,
     );
 
   const validBookingStatus =
