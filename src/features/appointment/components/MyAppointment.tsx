@@ -94,7 +94,7 @@ const TABS: {
 
 function getStatusClasses(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "border-[#b8860b]/20 bg-[var(--warning-soft)] text-[var(--warning)]";
@@ -124,7 +124,7 @@ function getStatusClasses(
 
 function getStatusLabel(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "Pending";
@@ -363,7 +363,7 @@ function getConsultationTypeLabel(
     | "online"
     | "in-person"
     | undefined,
-) {
+): string {
   return consultationType === "online"
     ? "Online Consultation"
     : "In-Person Consultation";
@@ -795,9 +795,28 @@ export default function MyAppointment() {
   function handleCancel(
     bookingId: string,
   ) {
+    const booking =
+      bookings.find(
+        (item) =>
+          item.id === bookingId,
+      );
+
+    if (
+      !booking ||
+      (
+        booking.status !==
+          "confirmed" &&
+        booking.status !==
+          "upcoming"
+      )
+    ) {
+      return;
+    }
+
     updateBookingStatus(
       bookingId,
       "cancelled",
+      "Appointment cancelled by patient",
     );
 
     handleRefresh();
@@ -806,9 +825,39 @@ export default function MyAppointment() {
   function handleMarkMissed(
     bookingId: string,
   ) {
+    const booking =
+      bookings.find(
+        (item) =>
+          item.id === bookingId,
+      );
+
+    if (
+      !booking ||
+      booking.status !==
+        "confirmed"
+    ) {
+      return;
+    }
+
+    const appointmentTime =
+      new Date(
+        `${booking.date} ${booking.time}`,
+      ).getTime();
+
+    if (
+      Number.isNaN(
+        appointmentTime,
+      ) ||
+      currentTime <=
+        appointmentTime
+    ) {
+      return;
+    }
+
     updateBookingStatus(
       bookingId,
       "missed",
+      "Appointment marked as missed after scheduled time",
     );
 
     handleRefresh();
@@ -947,7 +996,8 @@ export default function MyAppointment() {
                         "confirmed" ||
                       booking.status ===
                         "upcoming"
-                    );
+                    ) &&
+                    currentTime > 0;
 
                   return (
                     <article

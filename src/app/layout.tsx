@@ -16,6 +16,12 @@ import {
 
 import ReduxProvider from "@/store/provider";
 
+import {
+  ToastContainer,
+} from "react-toastify";
+
+import "react-toastify/dist/ReactToastify.css";
+
 import "./globals.css";
 
 const geistSans =
@@ -106,6 +112,18 @@ export default function RootLayout({
             <Footer />
 
             <ChatbotProvider />
+
+            <ToastContainer
+              position="top-right"
+              autoClose={4000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
           </ThemeProvider>
         </ReduxProvider>
       </body>

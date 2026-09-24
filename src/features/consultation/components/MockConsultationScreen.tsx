@@ -324,11 +324,6 @@ export default function MockConsultationScreen({
         )
       : "scheduled");
 
-  /*
-   * A supplied initialStatus is useful when the parent page has already
-   * resolved the consultation state. Otherwise the room derives the state
-   * from the appointment date/time.
-   */
   const liveStatus =
     initialStatus ??
     calculatedStatus;
@@ -352,12 +347,6 @@ export default function MockConsultationScreen({
       currentTime,
     );
 
-  /*
-   * Entering the room from "starting-soon" must actually open the mock room.
-   * The previous implementation required liveStatus === "live", which meant
-   * clicking "Join Consultation"/"Start Consultation" during the
-   * starting-soon window did nothing.
-   */
   const roomActive =
     consultationStarted &&
     canEnterRoom;

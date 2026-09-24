@@ -1,5 +1,6 @@
 import type {
   ConsultationStatus,
+  ConsultationType,
 } from "@/types/consultation";
 
 const CONSULTATION_STARTING_WINDOW_MS =
@@ -309,9 +310,7 @@ export function formatConsultationDateTime(
 }
 
 export function getConsultationTypeLabel(
-  type:
-    | "online"
-    | "in-person",
+  type: ConsultationType,
 ): string {
   return type === "online"
     ? "Online Consultation"

@@ -1,4 +1,7 @@
-import type { Booking, BookingStatus } from "@/types/booking";
+import type {
+  Booking,
+  BookingStatus,
+} from "@/types/booking";
 
 const KEY = "schedula:bookings";
 
@@ -17,32 +20,46 @@ type StoredBooking = Omit<
   actionReason?: string;
 };
 
-function isBrowser() {
+function isBrowser(): boolean {
   return typeof window !== "undefined";
 }
 
-function normalizeBooking(booking: StoredBooking): Booking {
+function normalizeBooking(
+  booking: StoredBooking,
+): Booking {
   return {
     ...booking,
     patientId: booking.patientId ?? "",
-    consultationType: booking.consultationType ?? "in-person",
-    createdAt: booking.createdAt ?? new Date().toISOString(),
+    consultationType:
+      booking.consultationType ?? "in-person",
+    createdAt:
+      booking.createdAt ??
+      new Date().toISOString(),
     updatedAt: booking.updatedAt,
-    rescheduleCount: booking.rescheduleCount ?? 0,
+    rescheduleCount:
+      booking.rescheduleCount ?? 0,
     actionReason: booking.actionReason,
   };
 }
 
 function readBookings(): Booking[] {
-  if (!isBrowser()) return [];
+  if (!isBrowser()) {
+    return [];
+  }
 
   try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return [];
+    const raw =
+      window.localStorage.getItem(KEY);
+
+    if (!raw) {
+      return [];
+    }
 
     const parsed = JSON.parse(raw);
 
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
 
     return parsed.map(normalizeBooking);
   } catch {
@@ -50,45 +67,74 @@ function readBookings(): Booking[] {
   }
 }
 
-function writeBookings(bookings: Booking[]) {
-  if (!isBrowser()) return;
+function writeBookings(
+  bookings: Booking[],
+): void {
+  if (!isBrowser()) {
+    return;
+  }
 
-  window.localStorage.setItem(KEY, JSON.stringify(bookings));
+  window.localStorage.setItem(
+    KEY,
+    JSON.stringify(bookings),
+  );
 
-  window.dispatchEvent(new Event("schedula:bookings-updated"));
+  window.dispatchEvent(
+    new Event(
+      "schedula:bookings-updated",
+    ),
+  );
 }
 
 export function getAllBookings(): Booking[] {
   return readBookings();
 }
 
-export function getBookingById(id: string): Booking | null {
-  return readBookings().find((booking) => booking.id === id) ?? null;
-}
-
-export function getBookingsByPatientId(patientId: string): Booking[] {
-  return readBookings().filter(
-    (booking) => booking.patientId === patientId,
+export function getBookingById(
+  id: string,
+): Booking | null {
+  return (
+    readBookings().find(
+      (booking) => booking.id === id,
+    ) ?? null
   );
 }
 
-export function getBookingsByDoctorId(doctorId: string): Booking[] {
+export function getBookingsByPatientId(
+  patientId: string,
+): Booking[] {
   return readBookings().filter(
-    (booking) => booking.doctorId === doctorId,
+    (booking) =>
+      booking.patientId === patientId,
   );
 }
 
-export function addBooking(booking: Booking): Booking {
+export function getBookingsByDoctorId(
+  doctorId: string,
+): Booking[] {
+  return readBookings().filter(
+    (booking) =>
+      booking.doctorId === doctorId,
+  );
+}
+
+export function addBooking(
+  booking: Booking,
+): Booking {
   const bookings = readBookings();
 
-  const normalizedBooking = normalizeBooking(booking);
+  const normalizedBooking =
+    normalizeBooking(booking);
 
-  const existingIndex = bookings.findIndex(
-    (item) => item.id === normalizedBooking.id,
-  );
+  const existingIndex =
+    bookings.findIndex(
+      (item) =>
+        item.id === normalizedBooking.id,
+    );
 
   if (existingIndex >= 0) {
-    bookings[existingIndex] = normalizedBooking;
+    bookings[existingIndex] =
+      normalizedBooking;
   } else {
     bookings.push(normalizedBooking);
   }
@@ -106,16 +152,22 @@ export function updateBookingStatus(
   const bookings = readBookings();
 
   const index = bookings.findIndex(
-    (booking) => booking.id === bookingId,
+    (booking) =>
+      booking.id === bookingId,
   );
 
-  if (index === -1) return null;
+  if (index === -1) {
+    return null;
+  }
 
   const updatedBooking: Booking = {
     ...bookings[index],
     status,
-    updatedAt: new Date().toISOString(),
-    ...(actionReason !== undefined ? { actionReason } : {}),
+    updatedAt:
+      new Date().toISOString(),
+    ...(actionReason !== undefined
+      ? { actionReason }
+      : {}),
   };
 
   bookings[index] = updatedBooking;
@@ -142,15 +194,19 @@ export function updateBooking(
   const bookings = readBookings();
 
   const index = bookings.findIndex(
-    (booking) => booking.id === bookingId,
+    (booking) =>
+      booking.id === bookingId,
   );
 
-  if (index === -1) return null;
+  if (index === -1) {
+    return null;
+  }
 
   const updatedBooking: Booking = {
     ...bookings[index],
     ...updates,
-    updatedAt: new Date().toISOString(),
+    updatedAt:
+      new Date().toISOString(),
   };
 
   bookings[index] = updatedBooking;
@@ -166,9 +222,12 @@ export function rescheduleBooking(
   date: string,
   time: string,
 ): Booking | null {
-  const booking = getBookingById(bookingId);
+  const booking =
+    getBookingById(bookingId);
 
-  if (!booking) return null;
+  if (!booking) {
+    return null;
+  }
 
   return updateBooking(bookingId, {
     slotId,
@@ -180,33 +239,48 @@ export function rescheduleBooking(
 export function confirmBooking(
   bookingId: string,
 ): Booking | null {
-  return updateBookingStatus(bookingId, "confirmed");
+  return updateBookingStatus(
+    bookingId,
+    "confirmed",
+  );
 }
 
 export function canCancelBooking(
   booking: Booking,
 ): boolean {
-  return !["completed", "cancelled", "declined", "missed"].includes(
-    booking.status,
-  );
+  return ![
+    "completed",
+    "cancelled",
+    "declined",
+    "missed",
+  ].includes(booking.status);
 }
 
 export function canRescheduleBooking(
   booking: Booking,
 ): boolean {
-  return !["completed", "cancelled", "declined", "missed"].includes(
-    booking.status,
-  );
+  return ![
+    "completed",
+    "cancelled",
+    "declined",
+    "missed",
+  ].includes(booking.status);
 }
 
 export function canCompleteBooking(
   booking: Booking,
 ): boolean {
-  return ["confirmed", "upcoming"].includes(booking.status);
+  return [
+    "confirmed",
+    "upcoming",
+  ].includes(booking.status);
 }
 
 export function canMarkMissed(
   booking: Booking,
 ): boolean {
-  return ["confirmed", "upcoming"].includes(booking.status);
+  return [
+    "confirmed",
+    "upcoming",
+  ].includes(booking.status);
 }

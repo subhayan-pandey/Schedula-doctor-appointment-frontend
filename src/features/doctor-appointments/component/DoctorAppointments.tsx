@@ -1116,6 +1116,21 @@ export default function DoctorAppointments() {
               Mark completed
             </Button>
 
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={
+                isProcessing
+              }
+              onClick={() =>
+                handleMissed(
+                  booking,
+                )
+              }
+            >
+              Mark missed
+            </Button>
+
             <Link
               href={`/doctor/calendar?appointmentId=${encodeURIComponent(
                 booking.id,
@@ -1139,21 +1154,6 @@ export default function DoctorAppointments() {
                 isProcessing
               }
               onClick={() =>
-                handleMissed(
-                  booking,
-                )
-              }
-            >
-              Mark missed
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={
-                isProcessing
-              }
-              onClick={() =>
                 handleCancel(
                   booking,
                 )
@@ -1161,122 +1161,6 @@ export default function DoctorAppointments() {
             >
               Cancel
             </Button>
-          </div>
-        );
-
-      case "declined":
-        return (
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
-            <Link
-              href={`/doctor/calendar?appointmentId=${encodeURIComponent(
-                booking.id,
-              )}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                Reschedule
-              </Button>
-            </Link>
-
-            <Link
-              href={`/doctors/${booking.doctorId}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                View availability
-              </Button>
-            </Link>
-
-            <p className="text-xs leading-5 text-[var(--muted)]">
-              Rescheduling assigns a new
-              available slot and moves this
-              appointment to upcoming.
-            </p>
-          </div>
-        );
-
-      case "completed":
-        return (
-          <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
-            <Link
-              href={`/doctor/prescriptions?appointmentId=${encodeURIComponent(
-                booking.id,
-              )}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                Add / edit prescription
-              </Button>
-            </Link>
-
-            <Link
-              href={`/doctor/patients/${encodeURIComponent(
-                booking.patientId,
-              )}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                Patient history
-              </Button>
-            </Link>
-          </div>
-        );
-
-      case "cancelled":
-        return (
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
-            <Link
-              href={`/doctors/${booking.doctorId}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                View availability
-              </Button>
-            </Link>
-
-            <p className="text-xs leading-5 text-[var(--muted)]">
-              The appointment was cancelled
-              and its slot was released.
-            </p>
-          </div>
-        );
-
-      case "missed":
-        return (
-          <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
-            <Link
-              href={`/doctor/patients/${encodeURIComponent(
-                booking.patientId,
-              )}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                Patient history
-              </Button>
-            </Link>
-
-            <Link
-              href={`/doctors/${booking.doctorId}`}
-            >
-              <Button
-                size="sm"
-                variant="outline"
-              >
-                Book again
-              </Button>
-            </Link>
           </div>
         );
 
@@ -1290,8 +1174,12 @@ export default function DoctorAppointments() {
     "loading"
   ) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">
-        Loading appointments…
+      <div className="mx-auto max-w-5xl px-4 py-16 sm:px-8">
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
+          <p className="text-sm text-[var(--muted)]">
+            Loading appointments…
+          </p>
+        </div>
       </div>
     );
   }

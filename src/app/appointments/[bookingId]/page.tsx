@@ -63,7 +63,7 @@ import type {
 
 function getStatusLabel(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "Pending";
@@ -93,7 +93,7 @@ function getStatusLabel(
 
 function getStatusClasses(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "text-amber-700";
@@ -123,7 +123,7 @@ function getStatusClasses(
 
 function getStatusMessage(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "Your appointment request is waiting for doctor confirmation.";
@@ -153,7 +153,7 @@ function getStatusMessage(
 
 function getPageHeading(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "Appointment Request Sent";
@@ -183,7 +183,7 @@ function getPageHeading(
 
 function getStatusIcon(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "⏳";
@@ -213,7 +213,7 @@ function getStatusIcon(
 
 function getStatusIconClasses(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "declined":
     case "cancelled":
@@ -276,8 +276,7 @@ export default function AppointmentConfirmationPage() {
       (state: RootState) =>
         state.appointments.appointments.find(
           (appointment) =>
-            appointment.id ===
-            bookingId,
+            appointment.id === bookingId,
         ) ?? null,
     );
 
@@ -681,7 +680,7 @@ export default function AppointmentConfirmationPage() {
         title:
           "Declined appointment cancelled",
 
-        message: `${currentBooking.patientName} cancelled the declined appointment request for ${formatLongDate(
+        message: `${currentBooking.patientName} cancelled the declined appointment for ${formatLongDate(
           currentBooking.date,
         )} at ${currentBooking.time}.`,
 

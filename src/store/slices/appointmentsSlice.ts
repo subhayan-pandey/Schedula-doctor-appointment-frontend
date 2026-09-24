@@ -1,4 +1,7 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
 
 import {
   addBooking,
@@ -22,95 +25,117 @@ const initialState: AppointmentsState = {
   initialized: false,
 };
 
-const appointmentsSlice = createSlice({
-  name: "appointments",
-  initialState,
-  reducers: {
-    initializeAppointments(state) {
-      state.appointments = getAllBookings();
-      state.initialized = true;
+const appointmentsSlice =
+  createSlice({
+    name: "appointments",
+    initialState,
+
+    reducers: {
+      initializeAppointments(state) {
+        state.appointments =
+          getAllBookings();
+
+        state.initialized = true;
+      },
+
+      setAppointments(
+        state,
+        action: PayloadAction<Booking[]>,
+      ) {
+        state.appointments =
+          action.payload;
+
+        state.initialized = true;
+      },
+
+      addAppointment(
+        state,
+        action: PayloadAction<Booking>,
+      ) {
+        const appointment =
+          addBooking(
+            action.payload,
+          );
+
+        const exists =
+          state.appointments.some(
+            (booking) =>
+              booking.id ===
+              appointment.id,
+          );
+
+        if (!exists) {
+          state.appointments.push(
+            appointment,
+          );
+        }
+      },
+
+      updateAppointment(
+        state,
+        action: PayloadAction<{
+          bookingId: string;
+          updates: Partial<
+            Pick<
+              Booking,
+              | "slotId"
+              | "date"
+              | "time"
+              | "status"
+              | "actionReason"
+              | "consultationType"
+            >
+          >;
+        }>,
+      ) {
+        const updated =
+          updateBooking(
+            action.payload.bookingId,
+            action.payload.updates,
+          );
+
+        if (!updated) {
+          return;
+        }
+
+        state.appointments =
+          state.appointments.map(
+            (booking) =>
+              booking.id === updated.id
+                ? updated
+                : booking,
+          );
+      },
+
+      updateAppointmentStatus(
+        state,
+        action: PayloadAction<{
+          bookingId: string;
+          status: BookingStatus;
+          actionReason?: string;
+        }>,
+      ) {
+        const updated =
+          updateBookingStatus(
+            action.payload.bookingId,
+            action.payload.status,
+            action.payload.actionReason,
+          );
+
+        if (!updated) {
+          return;
+        }
+
+        state.appointments =
+          state.appointments.map(
+            (booking) =>
+              booking.id === updated.id
+                ? updated
+                : booking,
+          );
+      },
     },
-
-    setAppointments(
-      state,
-      action: PayloadAction<Booking[]>,
-    ) {
-      state.appointments = action.payload;
-      state.initialized = true;
-    },
-
-    addAppointment(
-      state,
-      action: PayloadAction<Booking>,
-    ) {
-      const appointment = addBooking(action.payload);
-
-      const exists = state.appointments.some(
-        (booking) => booking.id === appointment.id,
-      );
-
-      if (!exists) {
-        state.appointments.push(appointment);
-      }
-    },
-
-    updateAppointment(
-      state,
-      action: PayloadAction<{
-        bookingId: string;
-        updates: Partial<
-          Pick<
-            Booking,
-            | "slotId"
-            | "date"
-            | "time"
-            | "status"
-            | "actionReason"
-            | "consultationType"
-          >
-        >;
-      }>,
-    ) {
-      const updated = updateBooking(
-        action.payload.bookingId,
-        action.payload.updates,
-      );
-
-      if (!updated) return;
-
-      state.appointments = state.appointments.map(
-        (booking) =>
-          booking.id === updated.id
-            ? updated
-            : booking,
-      );
-    },
-
-    updateAppointmentStatus(
-      state,
-      action: PayloadAction<{
-        bookingId: string;
-        status: BookingStatus;
-        actionReason?: string;
-      }>,
-    ) {
-      const updated = updateBookingStatus(
-        action.payload.bookingId,
-        action.payload.status,
-        action.payload.actionReason,
-      );
-
-      if (!updated) return;
-
-      state.appointments = state.appointments.map(
-        (booking) =>
-          booking.id === updated.id
-            ? updated
-            : booking,
-      );
-    },
-  },
-});
+  });
 
 export const {
   initializeAppointments,
@@ -118,6 +143,7 @@ export const {
   addAppointment,
   updateAppointment,
   updateAppointmentStatus,
-} = appointmentsSlice.actions;
+} =
+  appointmentsSlice.actions;
 
 export default appointmentsSlice.reducer;

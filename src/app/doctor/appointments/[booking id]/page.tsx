@@ -51,7 +51,7 @@ import type {
 
 function getStatusLabel(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "Pending";
@@ -81,7 +81,7 @@ function getStatusLabel(
 
 function getStatusClasses(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "bg-[var(--warning-soft)] text-[var(--warning)]";
@@ -111,7 +111,7 @@ function getStatusClasses(
 
 function getStatusMessage(
   status: BookingStatus,
-) {
+): string {
   switch (status) {
     case "pending":
       return "This appointment request is waiting for your confirmation.";
@@ -141,7 +141,7 @@ function getStatusMessage(
 
 function getInitials(
   name: string,
-) {
+): string {
   const initials =
     name
       .trim()
