@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useEffect,
   useState,
@@ -14,6 +15,14 @@ import {
   getBookingById,
   updateBookingStatus,
 } from "@/lib/bookings-store";
+
+import {
+  getConsultationCountdown,
+  getConsultationStatus,
+  getConsultationStatusClasses,
+  getConsultationStatusLabel,
+  getConsultationTypeLabel,
+} from "@/lib/consultation";
 
 import {
   getDoctorById,
@@ -39,10 +48,6 @@ import type {
   Booking,
   BookingStatus,
 } from "@/types/booking";
-
-import type {
-  ConsultationStatus,
-} from "@/types/consultation";
 
 function getStatusLabel(
   status: BookingStatus,
@@ -134,220 +139,22 @@ function getStatusMessage(
   }
 }
 
-function getConsultationTypeLabel(
-  consultationType:
-    | "online"
-    | "in-person"
-    | undefined,
-) {
-  return consultationType === "online"
-    ? "Online Consultation"
-    : "In-Person Consultation";
-}
-
-function getAppointmentDate(
-  date: string,
-  time: string,
-) {
-  const appointmentDate =
-    new Date(`${date} ${time}`);
-
-  return Number.isNaN(
-    appointmentDate.getTime(),
-  )
-    ? null
-    : appointmentDate;
-}
-
-function getConsultationStatus(
-  date: string,
-  time: string,
-  currentTime: number,
-): ConsultationStatus {
-  const appointmentDate =
-    getAppointmentDate(
-      date,
-      time,
-    );
-
-  if (
-    !appointmentDate ||
-    currentTime <= 0
-  ) {
-    return "scheduled";
-  }
-
-  const start =
-    appointmentDate.getTime();
-
-  const fifteenMinutes =
-    15 * 60 * 1000;
-
-  const thirtyMinutes =
-    30 * 60 * 1000;
-
-  if (
-    currentTime >=
-    start + thirtyMinutes
-  ) {
-    return "ended";
-  }
-
-  if (currentTime >= start) {
-    return "live";
-  }
-
-  if (
-    start - currentTime <=
-    fifteenMinutes
-  ) {
-    return "starting-soon";
-  }
-
-  return "scheduled";
-}
-
-function getConsultationStatusLabel(
-  status: ConsultationStatus,
-) {
-  switch (status) {
-    case "scheduled":
-      return "Scheduled";
-
-    case "starting-soon":
-      return "Starting Soon";
-
-    case "live":
-      return "Live";
-
-    case "ended":
-      return "Ended";
-
-    default:
-      return "Scheduled";
-  }
-}
-
-function getConsultationStatusClasses(
-  status: ConsultationStatus,
-) {
-  switch (status) {
-    case "starting-soon":
-      return "bg-[var(--warning-soft)] text-[var(--warning)]";
-
-    case "live":
-      return "bg-[var(--success-soft)] text-[var(--success)]";
-
-    case "ended":
-      return "bg-slate-100 text-slate-600";
-
-    case "scheduled":
-    default:
-      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
-  }
-}
-
-function getCountdown(
-  date: string,
-  time: string,
-  currentTime: number,
-) {
-  const appointmentDate =
-    getAppointmentDate(
-      date,
-      time,
-    );
-
-  if (
-    !appointmentDate ||
-    currentTime <= 0
-  ) {
-    return null;
-  }
-
-  const difference =
-    appointmentDate.getTime() -
-    currentTime;
-
-  if (difference <= 0) {
-    return null;
-  }
-
-  const totalSeconds =
-    Math.floor(
-      difference / 1000,
-    );
-
-  const days =
-    Math.floor(
-      totalSeconds /
-        (24 * 60 * 60),
-    );
-
-  const hours =
-    Math.floor(
-      (totalSeconds %
-        (24 * 60 * 60)) /
-        (60 * 60),
-    );
-
-  const minutes =
-    Math.floor(
-      (totalSeconds %
-        (60 * 60)) /
-        60,
-    );
-
-  const seconds =
-    totalSeconds % 60;
-
-  if (days > 0) {
-    return `${days}d ${String(
-      hours,
-    ).padStart(
-      2,
-      "0",
-    )}h ${String(
-      minutes,
-    ).padStart(
-      2,
-      "0",
-    )}m`;
-  }
-
-  return `${String(
-    hours,
-  ).padStart(
-    2,
-    "0",
-  )}:${String(
-    minutes,
-  ).padStart(
-    2,
-    "0",
-  )}:${String(
-    seconds,
-  ).padStart(
-    2,
-    "0",
-  )}`;
-}
-
 function getInitials(
   name: string,
 ) {
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(
-      (part) =>
-        part
-          .charAt(0)
-          .toUpperCase(),
-    )
-    .join("");
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(
+        (part) =>
+          part
+            .charAt(0)
+            .toUpperCase(),
+      )
+      .join("");
 
   return initials || "PT";
 }
@@ -416,6 +223,31 @@ function ClockIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M12 7.5v5l3.25 1.75"
+      />
+    </svg>
+  );
+}
+
+function LocationIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-5"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 10.25c0 4.5-7 10.25-7 10.25S5 14.75 5 10.25a7 7 0 1 1 14 0Z"
+      />
+
+      <circle
+        cx="12"
+        cy="10.25"
+        r="2.25"
       />
     </svg>
   );
@@ -1045,9 +877,15 @@ export default function DoctorAppointmentDetailsPage() {
       booking.doctorId,
     );
 
-  const consultationStatus =
+  const isOnline =
     booking.consultationType ===
-    "online"
+    "online";
+
+  const isInPerson =
+    !isOnline;
+
+  const consultationStatus =
+    isOnline
       ? getConsultationStatus(
           booking.date,
           booking.time,
@@ -1056,9 +894,8 @@ export default function DoctorAppointmentDetailsPage() {
       : "scheduled";
 
   const countdown =
-    booking.consultationType ===
-    "online"
-      ? getCountdown(
+    isOnline
+      ? getConsultationCountdown(
           booking.date,
           booking.time,
           currentTime,
@@ -1066,8 +903,7 @@ export default function DoctorAppointmentDetailsPage() {
       : null;
 
   const canStartConsultation =
-    booking.consultationType ===
-      "online" &&
+    isOnline &&
     (
       consultationStatus ===
         "starting-soon" ||
@@ -1081,6 +917,21 @@ export default function DoctorAppointmentDetailsPage() {
         "upcoming"
     ) &&
     currentTime > 0;
+
+  const clinicName =
+    doctor?.clinic ??
+    "Clinic";
+
+  const clinicLocation =
+    doctor?.location ??
+    "";
+
+  const locationQuery =
+    `${clinicName}${
+      clinicLocation
+        ? `, ${clinicLocation}`
+        : ""
+    }`;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
@@ -1173,7 +1024,8 @@ export default function DoctorAppointmentDetailsPage() {
 
             <dd className="mt-1 text-sm font-semibold text-[var(--ink)]">
               {getConsultationTypeLabel(
-                booking.consultationType,
+                booking.consultationType ??
+                  "in-person",
               )}
             </dd>
           </div>
@@ -1219,8 +1071,79 @@ export default function DoctorAppointmentDetailsPage() {
           </div>
         )}
 
-        {booking.consultationType ===
-          "online" && (
+        {isInPerson && (
+          <div className="mt-5 rounded-xl border border-[var(--brand)]/15 bg-[var(--brand-soft)] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[var(--surface)] text-[var(--brand-deep)]">
+                <LocationIcon />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-[var(--muted)]">
+                  In-Person Consultation
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                  {clinicName}
+                </p>
+
+                {clinicLocation && (
+                  <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                    {clinicLocation}
+                  </p>
+                )}
+
+                <div className="mt-4 grid gap-3 border-t border-[var(--brand)]/10 pt-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-medium text-[var(--muted)]">
+                      Appointment time
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                      {formatLongDate(
+                        booking.date,
+                      )}
+                    </p>
+
+                    <p className="mt-0.5 text-sm text-[var(--muted)]">
+                      {booking.time}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium text-[var(--muted)]">
+                      Clinic
+                    </p>
+
+                    <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                      {clinicName}
+                    </p>
+
+                    {clinicLocation && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          locationQuery,
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-block"
+                      >
+                        <Button
+                          size="sm"
+                          variant="outline"
+                        >
+                          View Location
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isOnline && (
           <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4">
             <div className="flex items-center justify-between gap-3">
               <div>

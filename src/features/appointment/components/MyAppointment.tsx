@@ -10,11 +10,9 @@ import {
 } from "react";
 
 import Button from "@/components/ui/Button";
-
 import EmptyState from "@/components/ui/EmptyState";
 
 import AppointmentIntelligence from "@/features/appointment/components/AppointmentIntelligence";
-
 import AppointmentTimeline from "@/features/appointment/components/AppointmentTimeline";
 
 import {
@@ -43,6 +41,14 @@ import {
   formatLongDate,
 } from "@/lib/utils/date";
 
+import {
+  getConsultationCountdown,
+  getConsultationStatus,
+  getConsultationStatusClasses,
+  getConsultationStatusLabel,
+  isConsultationJoinable,
+} from "@/lib/consultation";
+
 import type {
   Booking,
   BookingStatus,
@@ -51,10 +57,6 @@ import type {
 import type {
   Prescription,
 } from "@/types/prescription";
-
-import type {
-  ConsultationStatus,
-} from "@/types/consultation";
 
 const TABS: {
   label: string;
@@ -367,196 +369,6 @@ function getConsultationTypeLabel(
     : "In-Person Consultation";
 }
 
-function getAppointmentDate(
-  date: string,
-  time: string,
-) {
-  const appointmentDate =
-    new Date(`${date} ${time}`);
-
-  return Number.isNaN(
-    appointmentDate.getTime(),
-  )
-    ? null
-    : appointmentDate;
-}
-
-function getConsultationStatus(
-  date: string,
-  time: string,
-  currentTime: number,
-): ConsultationStatus {
-  const appointmentDate =
-    getAppointmentDate(
-      date,
-      time,
-    );
-
-  if (
-    !appointmentDate ||
-    currentTime <= 0
-  ) {
-    return "scheduled";
-  }
-
-  const start =
-    appointmentDate.getTime();
-
-  const fifteenMinutes =
-    15 * 60 * 1000;
-
-  const thirtyMinutes =
-    30 * 60 * 1000;
-
-  if (
-    currentTime >=
-    start + thirtyMinutes
-  ) {
-    return "ended";
-  }
-
-  if (
-    currentTime >= start
-  ) {
-    return "live";
-  }
-
-  if (
-    start - currentTime <=
-    fifteenMinutes
-  ) {
-    return "starting-soon";
-  }
-
-  return "scheduled";
-}
-
-function getConsultationStatusLabel(
-  status: ConsultationStatus,
-) {
-  switch (status) {
-    case "scheduled":
-      return "Scheduled";
-
-    case "starting-soon":
-      return "Starting Soon";
-
-    case "live":
-      return "Live";
-
-    case "ended":
-      return "Ended";
-
-    default:
-      return "Scheduled";
-  }
-}
-
-function getConsultationStatusClasses(
-  status: ConsultationStatus,
-) {
-  switch (status) {
-    case "starting-soon":
-      return "bg-[var(--warning-soft)] text-[var(--warning)]";
-
-    case "live":
-      return "bg-[var(--success-soft)] text-[var(--success)]";
-
-    case "ended":
-      return "bg-slate-100 text-slate-600";
-
-    case "scheduled":
-    default:
-      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
-  }
-}
-
-function getConsultationCountdown(
-  date: string,
-  time: string,
-  currentTime: number,
-) {
-  const appointmentDate =
-    getAppointmentDate(
-      date,
-      time,
-    );
-
-  if (
-    !appointmentDate ||
-    currentTime <= 0
-  ) {
-    return null;
-  }
-
-  const difference =
-    appointmentDate.getTime() -
-    currentTime;
-
-  if (difference <= 0) {
-    return null;
-  }
-
-  const totalSeconds =
-    Math.floor(
-      difference / 1000,
-    );
-
-  const days =
-    Math.floor(
-      totalSeconds /
-        (24 * 60 * 60),
-    );
-
-  const hours =
-    Math.floor(
-      (totalSeconds %
-        (24 * 60 * 60)) /
-        (60 * 60),
-    );
-
-  const minutes =
-    Math.floor(
-      (totalSeconds %
-        (60 * 60)) /
-        60,
-    );
-
-  const seconds =
-    totalSeconds % 60;
-
-  if (days > 0) {
-    return `${days}d ${String(
-      hours,
-    ).padStart(
-      2,
-      "0",
-    )}h ${String(
-      minutes,
-    ).padStart(
-      2,
-      "0",
-    )}m`;
-  }
-
-  return `${String(
-    hours,
-  ).padStart(
-    2,
-    "0",
-  )}:${String(
-    minutes,
-  ).padStart(
-    2,
-    "0",
-  )}:${String(
-    seconds,
-  ).padStart(
-    2,
-    "0",
-  )}`;
-}
-
 function PrescriptionModal({
   prescription,
   onClose,
@@ -856,304 +668,33 @@ function ReviewModal({
   );
 }
 
-function escapePdfText(
-  value: string,
-): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)")
-    .replace(/[^\x20-\x7E]/g, "");
-}
+export default function MyAppointment() {
+  const session =
+    getSession();
 
-function wrapPdfText(
-  value: string,
-  maxLength = 78,
-): string[] {
-  const words =
-    value.trim().split(/\s+/);
-
-  if (
-    words.length === 0 ||
-    !value.trim()
-  ) {
-    return [""];
-  }
-
-  const lines: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    if (!current) {
-      current = word;
-      continue;
-    }
-
-    const candidate =
-      `${current} ${word}`;
-
-    if (
-      candidate.length <=
-      maxLength
-    ) {
-      current = candidate;
-    } else {
-      lines.push(current);
-      current = word;
-    }
-  }
-
-  if (current) {
-    lines.push(current);
-  }
-
-  return lines;
-}
-
-function buildPdfDocument(
-  lines: string[],
-): Blob {
-  const safeLines =
-    lines.flatMap((line) =>
-      line === ""
-        ? [""]
-        : wrapPdfText(line),
-    );
-
-  const contentLines = [
-    "BT",
-    "/F1 10 Tf",
-    "50 760 Td",
-    "14 TL",
-  ];
-
-  safeLines.forEach(
-    (line, index) => {
-      if (index > 0) {
-        contentLines.push(
-          "0 -14 Td",
-        );
-      }
-
-      contentLines.push(
-        `(${escapePdfText(
-          line,
-        )}) Tj`,
-      );
-    },
-  );
-
-  contentLines.push("ET");
-
-  const stream =
-    contentLines.join("\n");
-
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
-    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-  ];
-
-  let pdf =
-    "%PDF-1.4\n";
-
-  const offsets: number[] =
-    [0];
-
-  objects.forEach(
-    (object, index) => {
-      offsets[index + 1] =
-        pdf.length;
-
-      pdf +=
-        `${index + 1} 0 obj\n${object}\nendobj\n`;
-    },
-  );
-
-  const xrefOffset =
-    pdf.length;
-
-  pdf +=
-    `xref\n0 ${objects.length + 1}\n`;
-
-  pdf +=
-    "0000000000 65535 f \n";
-
-  for (
-    let index = 1;
-    index <= objects.length;
-    index += 1
-  ) {
-    pdf +=
-      `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
-  }
-
-  pdf +=
-    `trailer\n<< /Size ${
-      objects.length + 1
-    } /Root 1 0 R >>\n`;
-
-  pdf +=
-    `startxref\n${xrefOffset}\n%%EOF`;
-
-  return new Blob(
-    [pdf],
-    {
-      type: "application/pdf",
-    },
-  );
-}
-
-function downloadPrescription(
-  prescription: Prescription,
-  booking: Booking,
-) {
-  const doctor =
-    getDoctorById(
-      booking.doctorId,
-    );
-
-  const lines = [
-    "SCHEDULA PRESCRIPTION",
-    "",
-    `Doctor: ${
-      doctor?.name ?? "Doctor"
-    }`,
-    `Patient: ${booking.patientName}`,
-    `Date: ${formatLongDate(
-      booking.date,
-    )}`,
-    `Time: ${booking.time}`,
-    `Consultation: ${getConsultationTypeLabel(
-      booking.consultationType,
-    )}`,
-    "",
-    `Diagnosis: ${
-      prescription.diagnosis
-    }`,
-    "",
-    "Medicines:",
-  ];
-
-  prescription.medicines.forEach(
-    (medicine, index) => {
-      lines.push(
-        `${index + 1}. ${
-          medicine.name
-        }`,
-      );
-
-      lines.push(
-        `   Dosage: ${
-          medicine.dosage
-        }`,
-      );
-
-      lines.push(
-        `   Duration: ${
-          medicine.duration
-        }`,
-      );
-
-      if (
-        medicine.instructions
-      ) {
-        lines.push(
-          `   Instructions: ${
-            medicine.instructions
-          }`,
-        );
-      }
-
-      lines.push("");
-    },
-  );
-
-  if (
-    prescription.instructions
-  ) {
-    lines.push(
-      "General Instructions:",
-    );
-
-    lines.push(
-      prescription.instructions,
-    );
-
-    lines.push("");
-  }
-
-  lines.push(
-    `Created: ${new Date(
-      prescription.createdAt,
-    ).toLocaleDateString(
-      "en-IN",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      },
-    )}`,
-  );
-
-  lines.push(
-    `Updated: ${new Date(
-      prescription.updatedAt,
-    ).toLocaleDateString(
-      "en-IN",
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      },
-    )}`,
-  );
-
-  const blob =
-    buildPdfDocument(
-      lines,
-    );
-
-  const url =
-    URL.createObjectURL(
-      blob,
-    );
-
-  const anchor =
-    document.createElement(
-      "a",
-    );
-
-  anchor.href = url;
-
-  anchor.download =
-    `schedula-prescription-${booking.id}.pdf`;
-
-  document.body.appendChild(
-    anchor,
-  );
-
-  anchor.click();
-
-  anchor.remove();
-
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 1000);
-}
-
-export default function MyAppointments() {
-  const [bookings, setBookings] =
-    useState<Booking[]>([]);
+  const patientId =
+    session?.role === "patient"
+      ? session.id
+      : undefined;
 
   const [
     activeStatus,
     setActiveStatus,
   ] = useState<BookingStatus>(
-    "pending",
+    "upcoming",
   );
+
+  const [
+    bookings,
+    setBookings,
+  ] = useState<Booking[]>(
+    [],
+  );
+
+  const [
+    currentTime,
+    setCurrentTime,
+  ] = useState(0);
 
   const [
     selectedPrescription,
@@ -1165,119 +706,41 @@ export default function MyAppointments() {
   const [
     reviewBooking,
     setReviewBooking,
-  ] = useState<Booking | null>(
-    null,
-  );
+  ] = useState<
+    Booking | null
+  >(null);
 
   const [
-    reviewRefreshKey,
-    setReviewRefreshKey,
+    refreshKey,
+    setRefreshKey,
   ] = useState(0);
-
-  const [
-    prescriptionRefreshKey,
-    setPrescriptionRefreshKey,
-  ] = useState(0);
-
-  const [
-    processingBookingId,
-    setProcessingBookingId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    currentTime,
-    setCurrentTime,
-  ] = useState(0);
-
-  function refreshBookings() {
-    const session =
-      getSession();
-
-    if (
-      !session ||
-      session.role !== "patient" ||
-      !session.id
-    ) {
-      setBookings([]);
-      return;
-    }
-
-    setBookings(
-      getBookingsByPatientId(
-        session.id,
-      ),
-    );
-  }
 
   useEffect(() => {
-    Promise.resolve().then(
-      refreshBookings,
-    );
+    const loadBookings =
+      window.setTimeout(() => {
+        if (!patientId) {
+          setBookings([]);
+          return;
+        }
 
-    function handleBookingsUpdated() {
-      refreshBookings();
-    }
-
-    function handlePrescriptionsUpdated() {
-      setPrescriptionRefreshKey(
-        (value) =>
-          value + 1,
-      );
-    }
-
-    window.addEventListener(
-      "schedula:bookings-updated",
-      handleBookingsUpdated,
-    );
-
-    window.addEventListener(
-      "schedula:prescriptions-updated",
-      handlePrescriptionsUpdated,
-    );
-
-    window.addEventListener(
-      "storage",
-      handleBookingsUpdated,
-    );
+        setBookings(
+          getBookingsByPatientId(
+            patientId,
+          ),
+        );
+      }, 0);
 
     return () => {
-      window.removeEventListener(
-        "schedula:bookings-updated",
-        handleBookingsUpdated,
-      );
-
-      window.removeEventListener(
-        "schedula:prescriptions-updated",
-        handlePrescriptionsUpdated,
-      );
-
-      window.removeEventListener(
-        "storage",
-        handleBookingsUpdated,
+      window.clearTimeout(
+        loadBookings,
       );
     };
-  }, []);
+  }, [
+    patientId,
+    refreshKey,
+  ]);
 
   useEffect(() => {
-    const hasOnlineAppointments =
-      bookings.some(
-        (booking) =>
-          booking.consultationType ===
-            "online" &&
-          (
-            booking.status ===
-              "confirmed" ||
-            booking.status ===
-              "upcoming"
-          ),
-      );
-
-    if (!hasOnlineAppointments) {
-      return;
-    }
-
     const initialTick =
       window.setTimeout(() => {
         setCurrentTime(
@@ -1301,129 +764,63 @@ export default function MyAppointments() {
         interval,
       );
     };
-  }, [bookings]);
+  }, []);
 
-  const visibleBookings =
-    useMemo(() => {
-      return [...bookings]
-        .filter(
+  const filteredBookings =
+    useMemo(
+      () =>
+        bookings.filter(
           (booking) =>
             booking.status ===
             activeStatus,
-        )
-        .sort((a, b) => {
-          const first =
-            `${a.date} ${a.time}`;
-
-          const second =
-            `${b.date} ${b.time}`;
-
-          return first.localeCompare(
-            second,
-          );
-        });
-    }, [
-      bookings,
-      activeStatus,
-    ]);
-
-  const statusCounts =
-    useMemo(() => {
-      return TABS.reduce(
-        (counts, tab) => {
-          counts[tab.status] =
-            bookings.filter(
-              (booking) =>
-                booking.status ===
-                tab.status,
-            ).length;
-
-          return counts;
-        },
-        {} as Record<
-          BookingStatus,
-          number
-        >,
-      );
-    }, [bookings]);
-
-  function handleCancelDeclined(
-    booking: Booking,
-  ) {
-    if (
-      processingBookingId ===
-      booking.id
-    ) {
-      return;
-    }
-
-    setProcessingBookingId(
-      booking.id,
+        ),
+      [
+        activeStatus,
+        bookings,
+      ],
     );
 
+  function handleStatusChange(
+    status: BookingStatus,
+  ) {
+    setActiveStatus(status);
+  }
+
+  function handleRefresh() {
+    setRefreshKey(
+      (value) => value + 1,
+    );
+  }
+
+  function handleCancel(
+    bookingId: string,
+  ) {
     updateBookingStatus(
-      booking.id,
+      bookingId,
       "cancelled",
-      "Declined appointment cancelled by patient",
     );
 
-    refreshBookings();
-
-    setProcessingBookingId(
-      null,
-    );
+    handleRefresh();
   }
 
-  const session =
-    getSession();
-
-  if (!session) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-xl font-semibold text-[var(--ink)]">
-          Login required
-        </h1>
-
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Please log in to view your
-          appointments.
-        </p>
-
-        <Link
-          href="/login"
-          className="mt-6 inline-block"
-        >
-          <Button>
-            Login
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
-  if (
-    session.role !==
-    "patient"
+  function handleMarkMissed(
+    bookingId: string,
   ) {
+    updateBookingStatus(
+      bookingId,
+      "missed",
+    );
+
+    handleRefresh();
+  }
+
+  if (!patientId) {
     return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-xl font-semibold text-[var(--ink)]">
-          Patient portal required
-        </h1>
-
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          Log in with a patient account
-          to view patient appointments.
-        </p>
-
-        <Link
-          href="/login"
-          className="mt-6 inline-block"
-        >
-          <Button>
-            Patient login
-          </Button>
-        </Link>
+      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-8">
+        <EmptyState
+          title="Patient login required"
+          description="Log in with a patient account to view your appointments."
+        />
       </div>
     );
   }
@@ -1435,80 +832,71 @@ export default function MyAppointments() {
 
   return (
     <>
-      <section className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
-        <div>
-          <p className="text-sm font-medium text-[var(--brand-deep)]">
-            Patient portal
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
+            Patient Portal
           </p>
 
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
-            My appointments
+            My Appointments
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-            Keep track of your upcoming,
-            completed, and past appointments.
+            View your appointments, consultation
+            details, prescriptions and follow-up
+            information.
           </p>
-        </div>
+        </header>
 
-        <div className="mt-6">
-          <AppointmentIntelligence
-            bookings={bookings}
-          />
-        </div>
-
-        <div className="mt-6 overflow-x-auto rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-1">
+        <div className="mt-6 overflow-x-auto border-b border-[var(--line)]">
           <div className="flex min-w-max gap-1">
             {TABS.map((tab) => {
-              const isActive =
+              const count =
+                bookings.filter(
+                  (booking) =>
+                    booking.status ===
+                    tab.status,
+                ).length;
+
+              const active =
                 activeStatus ===
                 tab.status;
-
-              const count =
-                statusCounts[
-                  tab.status
-                ] ?? 0;
 
               return (
                 <button
                   key={tab.status}
                   type="button"
                   onClick={() =>
-                    setActiveStatus(
+                    handleStatusChange(
                       tab.status,
                     )
                   }
-                  className={`inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                    isActive
-                      ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
-                      : "text-[var(--muted)] hover:bg-[var(--surface)]/70 hover:text-[var(--ink)]"
+                  className={`inline-flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                    active
+                      ? "border-[var(--brand)] text-[var(--brand-deep)]"
+                      : "border-transparent text-[var(--muted)] hover:text-[var(--ink)]"
                   }`}
                 >
-                  {isActive && (
-                    <span className="size-1.5 rounded-full bg-[var(--brand)]" />
-                  )}
-
                   {tab.label}
 
-                  {count > 0 && (
-                    <span
-                      className={`rounded-full px-1.5 py-0.5 text-[11px] ${
-                        isActive
-                          ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
-                          : "bg-[var(--surface)] text-[var(--muted)]"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  )}
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[11px] ${
+                      active
+                        ? "bg-[var(--brand-soft)] text-[var(--brand-deep)]"
+                        : "bg-[var(--canvas)] text-[var(--muted)]"
+                    }`}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="mt-5">
-          {visibleBookings.length ===
+        <section className="mt-6">
+          {filteredBookings.length ===
           0 ? (
             <EmptyState
               title={
@@ -1517,44 +905,15 @@ export default function MyAppointments() {
               description={
                 emptyState.description
               }
-              action={
-                bookings.length ===
-                0 ? (
-                  <Link href="/doctors">
-                    <Button>
-                      Book appointment
-                    </Button>
-                  </Link>
-                ) : undefined
-              }
             />
           ) : (
-            <ul className="flex flex-col gap-4">
-              {visibleBookings.map(
+            <div className="space-y-4">
+              {filteredBookings.map(
                 (booking) => {
                   const doctor =
                     getDoctorById(
                       booking.doctorId,
                     );
-
-                  void prescriptionRefreshKey;
-                  void reviewRefreshKey;
-
-                  const prescription =
-                    booking.status ===
-                    "completed"
-                      ? getPrescriptionByAppointmentId(
-                          booking.id,
-                        )
-                      : undefined;
-
-                  const review =
-                    booking.status ===
-                    "completed"
-                      ? getReviewByAppointmentId(
-                          booking.id,
-                        )
-                      : undefined;
 
                   const consultationStatus =
                     booking.consultationType ===
@@ -1576,14 +935,12 @@ export default function MyAppointments() {
                         )
                       : null;
 
-                  const canJoinConsultation =
+                  const canJoin =
                     booking.consultationType ===
                       "online" &&
-                    (
-                      consultationStatus ===
-                        "starting-soon" ||
-                      consultationStatus ===
-                        "live"
+                    isConsultationJoinable(
+                      consultationStatus ??
+                        "scheduled",
                     ) &&
                     (
                       booking.status ===
@@ -1593,428 +950,336 @@ export default function MyAppointments() {
                     );
 
                   return (
-                    <li
+                    <article
                       key={booking.id}
-                      className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] transition-shadow hover:shadow-sm"
+                      className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5"
                     >
-                      <div className="p-4 sm:p-5">
-                        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-                          <div className="flex min-w-0 flex-1 gap-3.5">
-                            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
-                              {doctor?.avatarInitials ??
-                                "DR"}
-                            </div>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex min-w-0 gap-4">
+                          <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[var(--brand-soft)] text-sm font-semibold text-[var(--brand-deep)]">
+                            {doctor?.avatarInitials ??
+                              "DR"}
+                          </div>
 
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-base font-semibold text-[var(--ink)] sm:text-lg">
-                                  {doctor?.name ??
-                                    "Doctor"}
-                                </p>
+                          <div className="min-w-0">
+                            <h2 className="truncate text-base font-semibold text-[var(--ink)]">
+                              {doctor?.name ??
+                                "Doctor"}
+                            </h2>
 
-                                <span
-                                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusClasses(
-                                    booking.status,
-                                  )}`}
-                                >
-                                  <StatusIcon
-                                    status={
-                                      booking.status
-                                    }
-                                  />
+                            <p className="mt-1 text-sm text-[var(--muted)]">
+                              {doctor?.specialty ??
+                                "Medical consultation"}
+                            </p>
 
-                                  {getStatusLabel(
-                                    booking.status,
-                                  )}
-                                </span>
-                              </div>
+                            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                              <AppointmentMeta
+                                icon={
+                                  <CalendarIcon />
+                                }
+                              >
+                                {formatLongDate(
+                                  booking.date,
+                                )}
+                              </AppointmentMeta>
 
-                              <p className="mt-1 text-sm text-[var(--muted)]">
-                                {doctor?.specialty ??
-                                  "Healthcare"}
-                              </p>
+                              <AppointmentMeta
+                                icon={
+                                  <ClockIcon />
+                                }
+                              >
+                                {booking.time}
+                              </AppointmentMeta>
 
-                              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                                <AppointmentMeta
-                                  icon={
-                                    <CalendarIcon />
-                                  }
-                                >
-                                  {formatLongDate(
-                                    booking.date,
-                                  )}
-                                </AppointmentMeta>
-
-                                <AppointmentMeta
-                                  icon={
-                                    <ClockIcon />
-                                  }
-                                >
-                                  {booking.time}
-                                </AppointmentMeta>
-
-                                <AppointmentMeta
-                                  icon={
-                                    <span className="text-xs font-semibold">
-                                      {booking.consultationType ===
-                                      "online"
-                                        ? "ON"
-                                        : "IP"}
-                                    </span>
-                                  }
-                                >
-                                  {getConsultationTypeLabel(
-                                    booking.consultationType,
-                                  )}
-                                </AppointmentMeta>
-                              </div>
-
-                              {doctor?.clinic && (
-                                <div className="mt-2">
+                              {booking.consultationType ===
+                                "in-person" &&
+                                doctor?.location && (
                                   <AppointmentMeta
                                     icon={
                                       <LocationIcon />
                                     }
                                   >
-                                    {doctor.clinic}
+                                    {doctor.location}
                                   </AppointmentMeta>
-                                </div>
-                              )}
-
-                              {booking.consultationType ===
-                                "online" &&
-                                (
-                                  booking.status ===
-                                    "confirmed" ||
-                                  booking.status ===
-                                    "upcoming"
-                                ) && (
-                                  <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-3.5">
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                      <div>
-                                        <p className="text-xs font-medium text-[var(--muted)]">
-                                          Consultation
-                                        </p>
-
-                                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                                          <span
-                                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getConsultationStatusClasses(
-                                              consultationStatus ??
-                                                "scheduled",
-                                            )}`}
-                                          >
-                                            {getConsultationStatusLabel(
-                                              consultationStatus ??
-                                                "scheduled",
-                                            )}
-                                          </span>
-
-                                          {consultationCountdown && (
-                                            <span className="font-mono text-xs font-semibold text-[var(--ink)]">
-                                              {consultationCountdown}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {canJoinConsultation ? (
-                                        <Link
-                                          href={`/appointments/${booking.id}/consultation`}
-                                          className="w-full sm:w-auto"
-                                        >
-                                          <Button
-                                            size="sm"
-                                            className="w-full sm:w-auto"
-                                          >
-                                            Join Consultation
-                                          </Button>
-                                        </Link>
-                                      ) : (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          disabled
-                                          className="w-full sm:w-auto"
-                                        >
-                                          {consultationStatus ===
-                                          "ended"
-                                            ? "Consultation ended"
-                                            : "Join when starting"}
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
                                 )}
-
-                              {booking.status ===
-                                "declined" && (
-                                <div className="mt-4 rounded-xl border border-[var(--urgent)]/15 bg-[var(--urgent-soft)] px-3.5 py-3">
-                                  <p className="text-sm font-medium text-[var(--urgent-deep)]">
-                                    Your doctor declined
-                                    this appointment
-                                    request.
-                                  </p>
-
-                                  <p className="mt-1 text-xs leading-5 text-[var(--urgent-deep)]/80">
-                                    You can choose
-                                    another available
-                                    date and time with
-                                    the same doctor, or
-                                    cancel this request.
-                                  </p>
-                                </div>
-                              )}
-
-                              {booking.status ===
-                                "cancelled" && (
-                                <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-3.5 py-3">
-                                  <p className="text-sm font-medium text-[var(--ink)]">
-                                    This appointment has
-                                    been cancelled.
-                                  </p>
-
-                                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                                    You can choose a new
-                                    date and time with
-                                    the same doctor from
-                                    the appointment details.
-                                  </p>
-                                </div>
-                              )}
-
-                              {booking.status ===
-                                "missed" && (
-                                <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-3.5 py-3">
-                                  <p className="text-sm font-medium text-[var(--ink)]">
-                                    This appointment was
-                                    marked as missed.
-                                  </p>
-
-                                  <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                                    You can book another
-                                    appointment with the
-                                    same doctor.
-                                  </p>
-                                </div>
-                              )}
-
-                              <div className="mt-4">
-                                <AppointmentTimeline
-                                  booking={booking}
-                                  compact
-                                />
-                              </div>
-
-                              {booking.status ===
-                                "completed" && (
-                                <div className="mt-4">
-                                  <span
-                                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${
-                                      prescription
-                                        ? "bg-[var(--success-soft)] text-[var(--success)]"
-                                        : "bg-slate-100 text-[var(--muted)]"
-                                    }`}
-                                  >
-                                    <span
-                                      className={`size-1.5 rounded-full ${
-                                        prescription
-                                          ? "bg-[var(--success)]"
-                                          : "bg-[var(--muted)]"
-                                      }`}
-                                    />
-
-                                    {prescription
-                                      ? "Prescription Available"
-                                      : "Prescription Not Available"}
-                                  </span>
-                                </div>
-                              )}
                             </div>
-                          </div>
-
-                          <div className="lg:pt-1">
-                            <Link
-                              href={`/appointments/${booking.id}`}
-                              className="block"
-                            >
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full lg:w-auto"
-                              >
-                                View details
-                              </Button>
-                            </Link>
                           </div>
                         </div>
 
-                        {booking.status ===
-                          "declined" && (
-                          <div className="mt-5 border-t border-[var(--line)] pt-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                              <Link
-                                href={`/doctors/${booking.doctorId}`}
-                                className="sm:w-auto"
-                              >
-                                <Button
-                                  size="sm"
-                                  className="w-full sm:w-auto"
-                                >
-                                  Book again
-                                </Button>
-                              </Link>
+                        <span
+                          className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusClasses(
+                            booking.status,
+                          )}`}
+                        >
+                          <StatusIcon
+                            status={
+                              booking.status
+                            }
+                          />
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={
-                                  processingBookingId ===
-                                  booking.id
-                                }
-                                onClick={() =>
-                                  handleCancelDeclined(
-                                    booking,
-                                  )
-                                }
-                              >
-                                {processingBookingId ===
-                                booking.id
-                                  ? "Cancelling..."
-                                  : "Cancel"}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
+                          {getStatusLabel(
+                            booking.status,
+                          )}
+                        </span>
+                      </div>
 
-                        {booking.status ===
-                          "cancelled" && (
-                          <div className="mt-5 border-t border-[var(--line)] pt-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-                              <Link
-                                href={`/appointments/${booking.id}/reschedule`}
-                                className="sm:w-auto"
-                              >
-                                <Button
-                                  size="sm"
-                                  className="w-full sm:w-auto"
-                                >
-                                  Reschedule
-                                </Button>
-                              </Link>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl bg-[var(--canvas)] p-4">
+                          <p className="text-xs font-medium text-[var(--muted)]">
+                            Consultation type
+                          </p>
 
-                              <Link
-                                href={`/doctors/${booking.doctorId}`}
-                                className="sm:w-auto"
-                              >
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full sm:w-auto"
-                                >
-                                  Book new appointment
-                                </Button>
-                              </Link>
-                            </div>
-                          </div>
-                        )}
+                          <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                            {getConsultationTypeLabel(
+                              booking.consultationType,
+                            )}
+                          </p>
+                        </div>
 
-                        {booking.status ===
-                          "missed" && (
-                          <div className="mt-5 border-t border-[var(--line)] pt-4">
-                            <div className="flex justify-end">
-                              <Link
-                                href={`/doctors/${booking.doctorId}`}
-                                className="w-full sm:w-auto"
-                              >
-                                <Button
-                                  size="sm"
-                                  className="w-full sm:w-auto"
-                                >
-                                  Book again
-                                </Button>
-                              </Link>
-                            </div>
-                          </div>
-                        )}
+                        {booking.consultationType ===
+                          "in-person" &&
+                        doctor ? (
+                          <div className="rounded-xl bg-[var(--canvas)] p-4">
+                            <p className="text-xs font-medium text-[var(--muted)]">
+                              Clinic
+                            </p>
 
-                        {booking.status ===
-                          "completed" && (
-                          <div className="mt-5 border-t border-[var(--line)] pt-4">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                              {prescription && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      setSelectedPrescription(
-                                        prescription,
-                                      )
-                                    }
-                                  >
-                                    View prescription
-                                  </Button>
+                            <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                              {doctor.clinic}
+                            </p>
 
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() =>
-                                      downloadPrescription(
-                                        prescription,
-                                        booking,
-                                      )
-                                    }
-                                  >
-                                    Download PDF
-                                  </Button>
-                                </>
-                              )}
-
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  setReviewBooking(
-                                    booking,
-                                  )
-                                }
-                              >
-                                {review
-                                  ? "Edit review"
-                                  : "Review doctor"}
-                              </Button>
-
-                              <Link
-                                href={`/doctors/${booking.doctorId}`}
-                              >
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="w-full sm:w-auto"
-                                >
-                                  Rebook appointment
-                                </Button>
-                              </Link>
-                            </div>
-
-                            {!prescription && (
-                              <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-                                Your doctor has not
-                                added a prescription
-                                for this appointment
-                                yet.
+                            {doctor.location && (
+                              <p className="mt-1 text-xs text-[var(--muted)]">
+                                {doctor.location}
                               </p>
                             )}
                           </div>
+                        ) : (
+                          <div className="rounded-xl bg-[var(--canvas)] p-4">
+                            <p className="text-xs font-medium text-[var(--muted)]">
+                              Appointment ID
+                            </p>
+
+                            <p className="mt-1 break-all text-sm font-semibold text-[var(--ink)]">
+                              {booking.id}
+                            </p>
+                          </div>
                         )}
                       </div>
-                    </li>
+
+                      {booking.consultationType ===
+                        "in-person" &&
+                        doctor?.location && (
+                          <div className="mt-4 flex flex-col gap-3 rounded-xl border border-[var(--brand)]/15 bg-[var(--brand-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-[var(--ink)]">
+                                Visit the clinic
+                              </p>
+
+                              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                                {doctor.clinic} ·{" "}
+                                {
+                                  doctor.location
+                                }
+                              </p>
+                            </div>
+
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                `${doctor.clinic}, ${doctor.location}`,
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="w-full sm:w-auto"
+                            >
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                              >
+                                View Location
+                              </Button>
+                            </a>
+                          </div>
+                        )}
+
+                      {booking.consultationType ===
+                        "online" && (
+                          <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-[var(--muted)]">
+                                  Online consultation
+                                </p>
+
+                                <div className="mt-1 flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getConsultationStatusClasses(
+                                      consultationStatus ??
+                                        "scheduled",
+                                    )}`}
+                                  >
+                                    {getConsultationStatusLabel(
+                                      consultationStatus ??
+                                        "scheduled",
+                                    )}
+                                  </span>
+
+                                  {consultationCountdown && (
+                                    <span className="font-mono text-xs font-semibold text-[var(--ink)]">
+                                      {
+                                        consultationCountdown
+                                      }
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {canJoin ? (
+                                <Link
+                                  href={`/appointments/${booking.id}/consultation`}
+                                  className="w-full sm:w-auto"
+                                >
+                                  <Button
+                                    size="sm"
+                                    className="w-full sm:w-auto"
+                                  >
+                                    Join Consultation
+                                  </Button>
+                                </Link>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                  className="w-full sm:w-auto"
+                                >
+                                  {consultationStatus ===
+                                  "ended"
+                                    ? "Consultation ended"
+                                    : "Join when starting"}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                      <div className="mt-4 flex flex-col gap-3 border-t border-[var(--line)] pt-4 sm:flex-row sm:flex-wrap sm:items-center">
+                        <Link
+                          href={`/appointments/${booking.id}`}
+                          className="w-full sm:w-auto"
+                        >
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                          >
+                            View Details
+                          </Button>
+                        </Link>
+
+                        {booking.status ===
+                          "completed" && (
+                          <>
+                            {getPrescriptionByAppointmentId(
+                              booking.id,
+                            ) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setSelectedPrescription(
+                                    getPrescriptionByAppointmentId(
+                                      booking.id,
+                                    )!,
+                                  )
+                                }
+                                className="w-full sm:w-auto"
+                              >
+                                View Prescription
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                setReviewBooking(
+                                  booking,
+                                )
+                              }
+                              className="w-full sm:w-auto"
+                            >
+                              {getReviewByAppointmentId(
+                                booking.id,
+                              )
+                                ? "Edit Review"
+                                : "Review Doctor"}
+                            </Button>
+                          </>
+                        )}
+
+                        {(
+                          booking.status ===
+                            "confirmed" ||
+                          booking.status ===
+                            "upcoming"
+                        ) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleCancel(
+                                booking.id,
+                              )
+                            }
+                            className="w-full sm:w-auto"
+                          >
+                            Cancel Appointment
+                          </Button>
+                        )}
+
+                        {booking.status ===
+                          "confirmed" &&
+                          currentTime > 0 &&
+                          new Date(
+                            `${booking.date} ${booking.time}`,
+                          ).getTime() <
+                            currentTime && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleMarkMissed(
+                                  booking.id,
+                                )
+                              }
+                              className="w-full sm:w-auto"
+                            >
+                              Mark as Missed
+                            </Button>
+                          )}
+                      </div>
+
+                      <div className="mt-5">
+                        <AppointmentTimeline
+                          booking={booking}
+                        />
+                      </div>
+
+                      <div className="mt-5">
+                        <AppointmentIntelligence
+                          bookings={bookings}
+                        />
+                      </div>
+                    </article>
                   );
                 },
               )}
-            </ul>
+            </div>
           )}
-        </div>
-      </section>
+        </section>
+      </div>
 
       {selectedPrescription && (
         <PrescriptionModal
@@ -2031,17 +1296,20 @@ export default function MyAppointments() {
 
       {reviewBooking && (
         <ReviewModal
-          booking={reviewBooking}
+          booking={
+            reviewBooking
+          }
           onClose={() =>
-            setReviewBooking(null)
+            setReviewBooking(
+              null,
+            )
           }
           onSaved={() => {
-            setReviewBooking(null);
-
-            setReviewRefreshKey(
-              (value) =>
-                value + 1,
+            setReviewBooking(
+              null,
             );
+
+            handleRefresh();
           }}
         />
       )}
