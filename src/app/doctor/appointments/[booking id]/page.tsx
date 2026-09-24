@@ -5,6 +5,7 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import { useParams } from "next/navigation";
 
 import Button from "@/components/ui/Button";
@@ -38,6 +39,10 @@ import type {
   Booking,
   BookingStatus,
 } from "@/types/booking";
+
+import type {
+  ConsultationStatus,
+} from "@/types/consultation";
 
 function getStatusLabel(
   status: BookingStatus,
@@ -138,6 +143,194 @@ function getConsultationTypeLabel(
   return consultationType === "online"
     ? "Online Consultation"
     : "In-Person Consultation";
+}
+
+function getAppointmentDate(
+  date: string,
+  time: string,
+) {
+  const appointmentDate =
+    new Date(`${date} ${time}`);
+
+  return Number.isNaN(
+    appointmentDate.getTime(),
+  )
+    ? null
+    : appointmentDate;
+}
+
+function getConsultationStatus(
+  date: string,
+  time: string,
+  currentTime: number,
+): ConsultationStatus {
+  const appointmentDate =
+    getAppointmentDate(
+      date,
+      time,
+    );
+
+  if (
+    !appointmentDate ||
+    currentTime <= 0
+  ) {
+    return "scheduled";
+  }
+
+  const start =
+    appointmentDate.getTime();
+
+  const fifteenMinutes =
+    15 * 60 * 1000;
+
+  const thirtyMinutes =
+    30 * 60 * 1000;
+
+  if (
+    currentTime >=
+    start + thirtyMinutes
+  ) {
+    return "ended";
+  }
+
+  if (currentTime >= start) {
+    return "live";
+  }
+
+  if (
+    start - currentTime <=
+    fifteenMinutes
+  ) {
+    return "starting-soon";
+  }
+
+  return "scheduled";
+}
+
+function getConsultationStatusLabel(
+  status: ConsultationStatus,
+) {
+  switch (status) {
+    case "scheduled":
+      return "Scheduled";
+
+    case "starting-soon":
+      return "Starting Soon";
+
+    case "live":
+      return "Live";
+
+    case "ended":
+      return "Ended";
+
+    default:
+      return "Scheduled";
+  }
+}
+
+function getConsultationStatusClasses(
+  status: ConsultationStatus,
+) {
+  switch (status) {
+    case "starting-soon":
+      return "bg-[var(--warning-soft)] text-[var(--warning)]";
+
+    case "live":
+      return "bg-[var(--success-soft)] text-[var(--success)]";
+
+    case "ended":
+      return "bg-slate-100 text-slate-600";
+
+    case "scheduled":
+    default:
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+  }
+}
+
+function getCountdown(
+  date: string,
+  time: string,
+  currentTime: number,
+) {
+  const appointmentDate =
+    getAppointmentDate(
+      date,
+      time,
+    );
+
+  if (
+    !appointmentDate ||
+    currentTime <= 0
+  ) {
+    return null;
+  }
+
+  const difference =
+    appointmentDate.getTime() -
+    currentTime;
+
+  if (difference <= 0) {
+    return null;
+  }
+
+  const totalSeconds =
+    Math.floor(
+      difference / 1000,
+    );
+
+  const days =
+    Math.floor(
+      totalSeconds /
+        (24 * 60 * 60),
+    );
+
+  const hours =
+    Math.floor(
+      (totalSeconds %
+        (24 * 60 * 60)) /
+        (60 * 60),
+    );
+
+  const minutes =
+    Math.floor(
+      (totalSeconds %
+        (60 * 60)) /
+        60,
+    );
+
+  const seconds =
+    totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${String(
+      hours,
+    ).padStart(
+      2,
+      "0",
+    )}h ${String(
+      minutes,
+    ).padStart(
+      2,
+      "0",
+    )}m`;
+  }
+
+  return `${String(
+    hours,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    minutes,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    seconds,
+  ).padStart(
+    2,
+    "0",
+  )}`;
 }
 
 function getInitials(
@@ -299,6 +492,11 @@ export default function DoctorAppointmentDetailsPage() {
     setAccessDenied,
   ] = useState(false);
 
+  const [
+    currentTime,
+    setCurrentTime,
+  ] = useState(0);
+
   useEffect(() => {
     Promise.resolve().then(() => {
       const session =
@@ -339,6 +537,40 @@ export default function DoctorAppointmentDetailsPage() {
       );
     });
   }, [bookingId]);
+
+  useEffect(() => {
+    if (
+      !booking ||
+      booking.consultationType !==
+        "online"
+    ) {
+      return;
+    }
+
+    const initialTimer =
+      window.setTimeout(() => {
+        setCurrentTime(
+          Date.now(),
+        );
+      }, 0);
+
+    const interval =
+      window.setInterval(() => {
+        setCurrentTime(
+          Date.now(),
+        );
+      }, 1000);
+
+    return () => {
+      window.clearTimeout(
+        initialTimer,
+      );
+
+      window.clearInterval(
+        interval,
+      );
+    };
+  }, [booking]);
 
   function refreshBooking() {
     const updated =
@@ -813,6 +1045,43 @@ export default function DoctorAppointmentDetailsPage() {
       booking.doctorId,
     );
 
+  const consultationStatus =
+    booking.consultationType ===
+    "online"
+      ? getConsultationStatus(
+          booking.date,
+          booking.time,
+          currentTime,
+        )
+      : "scheduled";
+
+  const countdown =
+    booking.consultationType ===
+    "online"
+      ? getCountdown(
+          booking.date,
+          booking.time,
+          currentTime,
+        )
+      : null;
+
+  const canStartConsultation =
+    booking.consultationType ===
+      "online" &&
+    (
+      consultationStatus ===
+        "starting-soon" ||
+      consultationStatus ===
+        "live"
+    ) &&
+    (
+      booking.status ===
+        "confirmed" ||
+      booking.status ===
+        "upcoming"
+    ) &&
+    currentTime > 0;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-8 sm:py-10">
       <div className="flex items-center justify-between gap-3">
@@ -947,6 +1216,89 @@ export default function DoctorAppointmentDetailsPage() {
             <p className="mt-1 text-sm text-[var(--muted)]">
               {doctor.specialty}
             </p>
+          </div>
+        )}
+
+        {booking.consultationType ===
+          "online" && (
+          <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-[var(--muted)]">
+                  Consultation status
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                  {getConsultationStatusLabel(
+                    consultationStatus,
+                  )}
+                </p>
+              </div>
+
+              <span
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${getConsultationStatusClasses(
+                  consultationStatus,
+                )}`}
+              >
+                {getConsultationStatusLabel(
+                  consultationStatus,
+                )}
+              </span>
+            </div>
+
+            {countdown && (
+              <div className="mt-4 border-t border-[var(--line)] pt-4">
+                <p className="text-xs text-[var(--muted)]">
+                  Consultation starts in
+                </p>
+
+                <p className="mt-1 font-mono text-lg font-semibold tracking-wide text-[var(--ink)]">
+                  {countdown}
+                </p>
+              </div>
+            )}
+
+            {consultationStatus ===
+              "live" && (
+              <p className="mt-3 text-xs leading-5 text-[var(--success)]">
+                The consultation is live. You
+                can start now.
+              </p>
+            )}
+
+            {consultationStatus ===
+              "ended" && (
+              <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                This consultation window has
+                ended.
+              </p>
+            )}
+
+            <div className="mt-4">
+              {canStartConsultation ? (
+                <Link
+                  href={`/doctor/appointments/${booking.id}/consultation`}
+                  className="block"
+                >
+                  <Button className="w-full">
+                    Start Consultation
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  className="w-full"
+                  disabled
+                >
+                  {consultationStatus ===
+                  "scheduled"
+                    ? "Start when consultation is starting"
+                    : consultationStatus ===
+                        "ended"
+                      ? "Consultation ended"
+                      : "Start Consultation"}
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

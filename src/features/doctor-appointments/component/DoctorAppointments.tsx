@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useEffect,
   useMemo,
@@ -36,6 +37,10 @@ import type {
   BookingStatus,
 } from "@/types/booking";
 
+import type {
+  ConsultationStatus,
+} from "@/types/consultation";
+
 type PageStatus =
   | "loading"
   | "unauthorized"
@@ -61,17 +66,23 @@ function getStatusBadgeClass(
   switch (status) {
     case "pending":
       return "bg-[var(--warning-soft)] text-[var(--warning)]";
+
     case "confirmed":
       return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+
     case "upcoming":
       return "bg-[var(--success-soft)] text-[var(--success)]";
+
     case "declined":
     case "cancelled":
       return "bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
+
     case "completed":
       return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+
     case "missed":
       return "bg-[var(--canvas)] text-[var(--muted)]";
+
     default:
       return "bg-[var(--canvas)] text-[var(--muted)]";
   }
@@ -83,18 +94,25 @@ function getStatusLabel(
   switch (status) {
     case "pending":
       return "Pending";
+
     case "confirmed":
       return "Confirmed";
+
     case "upcoming":
       return "Upcoming";
+
     case "declined":
       return "Declined";
+
     case "completed":
       return "Completed";
+
     case "cancelled":
       return "Cancelled";
+
     case "missed":
       return "Missed";
+
     default:
       return status;
   }
@@ -159,6 +177,7 @@ function ClockIcon() {
         cy="12"
         r="8.5"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -183,6 +202,7 @@ function UserIcon() {
         cy="8"
         r="3"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -249,26 +269,222 @@ function getSearchableBookingText(
     .toLowerCase();
 }
 
+function getAppointmentDate(
+  date: string,
+  time: string,
+) {
+  const appointmentDate =
+    new Date(`${date} ${time}`);
+
+  return Number.isNaN(
+    appointmentDate.getTime(),
+  )
+    ? null
+    : appointmentDate;
+}
+
+function getConsultationStatus(
+  date: string,
+  time: string,
+  currentTime: number,
+): ConsultationStatus {
+  const appointmentDate =
+    getAppointmentDate(
+      date,
+      time,
+    );
+
+  if (
+    !appointmentDate ||
+    currentTime <= 0
+  ) {
+    return "scheduled";
+  }
+
+  const start =
+    appointmentDate.getTime();
+
+  const fifteenMinutes =
+    15 * 60 * 1000;
+
+  const thirtyMinutes =
+    30 * 60 * 1000;
+
+  if (
+    currentTime >=
+    start + thirtyMinutes
+  ) {
+    return "ended";
+  }
+
+  if (
+    currentTime >= start
+  ) {
+    return "live";
+  }
+
+  if (
+    start - currentTime <=
+    fifteenMinutes
+  ) {
+    return "starting-soon";
+  }
+
+  return "scheduled";
+}
+
+function getConsultationStatusLabel(
+  status: ConsultationStatus,
+) {
+  switch (status) {
+    case "scheduled":
+      return "Scheduled";
+
+    case "starting-soon":
+      return "Starting Soon";
+
+    case "live":
+      return "Live";
+
+    case "ended":
+      return "Ended";
+
+    default:
+      return "Scheduled";
+  }
+}
+
+function getConsultationStatusClasses(
+  status: ConsultationStatus,
+) {
+  switch (status) {
+    case "starting-soon":
+      return "bg-[var(--warning-soft)] text-[var(--warning)]";
+
+    case "live":
+      return "bg-[var(--success-soft)] text-[var(--success)]";
+
+    case "ended":
+      return "bg-slate-100 text-slate-600";
+
+    case "scheduled":
+    default:
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+  }
+}
+
+function getConsultationCountdown(
+  date: string,
+  time: string,
+  currentTime: number,
+) {
+  const appointmentDate =
+    getAppointmentDate(
+      date,
+      time,
+    );
+
+  if (
+    !appointmentDate ||
+    currentTime <= 0
+  ) {
+    return null;
+  }
+
+  const difference =
+    appointmentDate.getTime() -
+    currentTime;
+
+  if (difference <= 0) {
+    return null;
+  }
+
+  const totalSeconds =
+    Math.floor(
+      difference / 1000,
+    );
+
+  const days =
+    Math.floor(
+      totalSeconds /
+        (24 * 60 * 60),
+    );
+
+  const hours =
+    Math.floor(
+      (totalSeconds %
+        (24 * 60 * 60)) /
+        (60 * 60),
+    );
+
+  const minutes =
+    Math.floor(
+      (totalSeconds %
+        (60 * 60)) /
+        60,
+    );
+
+  const seconds =
+    totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${String(
+      hours,
+    ).padStart(
+      2,
+      "0",
+    )}h ${String(
+      minutes,
+    ).padStart(
+      2,
+      "0",
+    )}m`;
+  }
+
+  return `${String(
+    hours,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    minutes,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    seconds,
+  ).padStart(
+    2,
+    "0",
+  )}`;
+}
+
 export default function DoctorAppointments() {
   const [
     pageStatus,
     setPageStatus,
-  ] = useState<PageStatus>("loading");
+  ] = useState<PageStatus>(
+    "loading",
+  );
 
   const [
     doctorId,
     setDoctorId,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
 
-  const [bookings, setBookings] =
-    useState<Booking[]>([]);
+  const [
+    bookings,
+    setBookings,
+  ] = useState<Booking[]>([]);
 
   const [
     activeFilter,
     setActiveFilter,
-  ] = useState<BookingStatus | "all">(
-    "all",
-  );
+  ] = useState<
+    BookingStatus | "all"
+  >("all");
 
   const [filters, setFilters] =
     useState<AppointmentFilterValues>({
@@ -280,35 +496,55 @@ export default function DoctorAppointments() {
   const [
     processingBookingId,
     setProcessingBookingId,
-  ] = useState<string | null>(null);
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    currentTime,
+    setCurrentTime,
+  ] = useState(0);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session = getSession();
+    const initialLoad =
+      window.setTimeout(() => {
+        const session =
+          getSession();
 
-      if (
-        !session ||
-        session.role !== "doctor" ||
-        !session.id
-      ) {
-        setPageStatus("unauthorized");
-        return;
-      }
+        if (
+          !session ||
+          session.role !== "doctor" ||
+          !session.id
+        ) {
+          setPageStatus(
+            "unauthorized",
+          );
 
-      setDoctorId(session.id);
+          return;
+        }
 
-      setBookings(
-        getBookingsByDoctorId(
-          session.id,
-        ),
+        setDoctorId(session.id);
+
+        setBookings(
+          getBookingsByDoctorId(
+            session.id,
+          ),
+        );
+
+        setPageStatus("ready");
+      }, 0);
+
+    return () => {
+      window.clearTimeout(
+        initialLoad,
       );
-
-      setPageStatus("ready");
-    });
+    };
   }, []);
 
   useEffect(() => {
-    if (!doctorId) return;
+    if (!doctorId) {
+      return;
+    }
 
     const currentDoctorId =
       doctorId;
@@ -344,8 +580,53 @@ export default function DoctorAppointments() {
     };
   }, [doctorId]);
 
+  useEffect(() => {
+    const hasOnlineAppointments =
+      bookings.some(
+        (booking) =>
+          booking.consultationType ===
+            "online" &&
+          (
+            booking.status ===
+              "confirmed" ||
+            booking.status ===
+              "upcoming"
+          ),
+      );
+
+    if (!hasOnlineAppointments) {
+      return;
+    }
+
+    const initialTick =
+      window.setTimeout(() => {
+        setCurrentTime(
+          Date.now(),
+        );
+      }, 0);
+
+    const interval =
+      window.setInterval(() => {
+        setCurrentTime(
+          Date.now(),
+        );
+      }, 1000);
+
+    return () => {
+      window.clearTimeout(
+        initialTick,
+      );
+
+      window.clearInterval(
+        interval,
+      );
+    };
+  }, [bookings]);
+
   function refreshBookings() {
-    if (!doctorId) return;
+    if (!doctorId) {
+      return;
+    }
 
     setBookings(
       getBookingsByDoctorId(
@@ -389,7 +670,8 @@ export default function DoctorAppointments() {
       return bookings
         .filter((booking) => {
           if (
-            activeFilter !== "all" &&
+            activeFilter !==
+              "all" &&
             booking.status !==
               activeFilter
           ) {
@@ -397,7 +679,8 @@ export default function DoctorAppointments() {
           }
 
           if (
-            filters.status !== "all" &&
+            filters.status !==
+              "all" &&
             booking.status !==
               filters.status
           ) {
@@ -450,7 +733,9 @@ export default function DoctorAppointments() {
       | "confirmation"
       | "cancellation",
   ) {
-    if (!booking.patientId) return;
+    if (!booking.patientId) {
+      return;
+    }
 
     createPatientNotification({
       userId: booking.patientId,
@@ -487,7 +772,9 @@ export default function DoctorAppointments() {
         "Appointment confirmed",
         `Your appointment on ${formatLongDate(
           updated.date,
-        )} at ${updated.time} has been confirmed and is now upcoming.`,
+        )} at ${
+          updated.time
+        } has been confirmed and is now upcoming.`,
         "confirmation",
       );
     }
@@ -529,7 +816,9 @@ export default function DoctorAppointments() {
         "Appointment declined",
         `Your appointment request for ${formatLongDate(
           updated.date,
-        )} at ${updated.time} was declined by the doctor. You can book another available slot.`,
+        )} at ${
+          updated.time
+        } was declined by the doctor. You can book another available slot.`,
         "appointment",
       );
     }
@@ -564,7 +853,9 @@ export default function DoctorAppointments() {
         "Appointment is upcoming",
         `Your appointment on ${formatLongDate(
           updated.date,
-        )} at ${updated.time} is now upcoming.`,
+        )} at ${
+          updated.time
+        } is now upcoming.`,
         "appointment",
       );
     }
@@ -632,7 +923,9 @@ export default function DoctorAppointments() {
         "Appointment missed",
         `Your appointment scheduled for ${formatLongDate(
           updated.date,
-        )} at ${updated.time} was marked as missed. You can book another appointment.`,
+        )} at ${
+          updated.time
+        } was marked as missed. You can book another appointment.`,
         "appointment",
       );
     }
@@ -680,7 +973,9 @@ export default function DoctorAppointments() {
         "Appointment cancelled",
         `Your appointment scheduled for ${formatLongDate(
           updated.date,
-        )} at ${updated.time} has been cancelled. You can reschedule or book another appointment.`,
+        )} at ${
+          updated.time
+        } has been cancelled. You can reschedule or book another appointment.`,
         "cancellation",
       );
     }
@@ -700,7 +995,9 @@ export default function DoctorAppointments() {
   }
 
   function handleStatusTabChange(
-    status: BookingStatus | "all",
+    status:
+      | BookingStatus
+      | "all",
   ) {
     setActiveFilter(status);
 
@@ -726,6 +1023,32 @@ export default function DoctorAppointments() {
     const isProcessing =
       processingBookingId ===
       booking.id;
+
+    const consultationStatus =
+      booking.consultationType ===
+      "online"
+        ? getConsultationStatus(
+            booking.date,
+            booking.time,
+            currentTime,
+          )
+        : null;
+
+    const canStartConsultation =
+      booking.consultationType ===
+        "online" &&
+      (
+        consultationStatus ===
+          "starting-soon" ||
+        consultationStatus ===
+          "live"
+      ) &&
+      (
+        booking.status ===
+          "confirmed" ||
+        booking.status ===
+          "upcoming"
+      );
 
     switch (booking.status) {
       case "pending":
@@ -780,6 +1103,23 @@ export default function DoctorAppointments() {
       case "confirmed":
         return (
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            {booking.consultationType ===
+              "online" &&
+              canStartConsultation && (
+                <Link
+                  href={`/doctor/appointments/${encodeURIComponent(
+                    booking.id,
+                  )}/consultation`}
+                >
+                  <Button
+                    size="sm"
+                    disabled={isProcessing}
+                  >
+                    Start Consultation
+                  </Button>
+                </Link>
+              )}
+
             <Button
               size="sm"
               disabled={isProcessing}
@@ -824,6 +1164,23 @@ export default function DoctorAppointments() {
       case "upcoming":
         return (
           <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            {booking.consultationType ===
+              "online" &&
+              canStartConsultation && (
+                <Link
+                  href={`/doctor/appointments/${encodeURIComponent(
+                    booking.id,
+                  )}/consultation`}
+                >
+                  <Button
+                    size="sm"
+                    disabled={isProcessing}
+                  >
+                    Start Consultation
+                  </Button>
+                </Link>
+              )}
+
             <Button
               size="sm"
               disabled={isProcessing}
@@ -999,7 +1356,10 @@ export default function DoctorAppointments() {
     }
   }
 
-  if (pageStatus === "loading") {
+  if (
+    pageStatus ===
+    "loading"
+  ) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-center text-sm text-[var(--muted)]">
         Loading appointments…
@@ -1007,7 +1367,10 @@ export default function DoctorAppointments() {
     );
   }
 
-  if (pageStatus === "unauthorized") {
+  if (
+    pageStatus ===
+    "unauthorized"
+  ) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
@@ -1196,6 +1559,42 @@ export default function DoctorAppointments() {
                       processingBookingId ===
                       booking.id;
 
+                    const consultationStatus =
+                      booking.consultationType ===
+                      "online"
+                        ? getConsultationStatus(
+                            booking.date,
+                            booking.time,
+                            currentTime,
+                          )
+                        : null;
+
+                    const consultationCountdown =
+                      booking.consultationType ===
+                      "online"
+                        ? getConsultationCountdown(
+                            booking.date,
+                            booking.time,
+                            currentTime,
+                          )
+                        : null;
+
+                    const canStartConsultation =
+                      booking.consultationType ===
+                        "online" &&
+                      (
+                        consultationStatus ===
+                          "starting-soon" ||
+                        consultationStatus ===
+                          "live"
+                      ) &&
+                      (
+                        booking.status ===
+                          "confirmed" ||
+                        booking.status ===
+                          "upcoming"
+                      );
+
                     return (
                       <li
                         key={booking.id}
@@ -1220,6 +1619,7 @@ export default function DoctorAppointments() {
                                 <div className="mt-2 flex flex-col gap-1.5 text-sm text-[var(--muted)] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4">
                                   <span className="inline-flex items-center gap-1.5">
                                     <CalendarIcon />
+
                                     {formatLongDate(
                                       booking.date,
                                     )}
@@ -1227,6 +1627,7 @@ export default function DoctorAppointments() {
 
                                   <span className="inline-flex items-center gap-1.5">
                                     <ClockIcon />
+
                                     {booking.time}
                                   </span>
                                 </div>
@@ -1267,6 +1668,73 @@ export default function DoctorAppointments() {
                               </p>
                             </div>
                           </div>
+
+                          {booking.consultationType ===
+                            "online" &&
+                            (
+                              booking.status ===
+                                "confirmed" ||
+                              booking.status ===
+                                "upcoming"
+                            ) && (
+                              <div className="mt-3 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                  <div>
+                                    <p className="text-xs font-medium text-[var(--muted)]">
+                                      Online consultation
+                                    </p>
+
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                      <span
+                                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getConsultationStatusClasses(
+                                          consultationStatus ??
+                                            "scheduled",
+                                        )}`}
+                                      >
+                                        {getConsultationStatusLabel(
+                                          consultationStatus ??
+                                            "scheduled",
+                                        )}
+                                      </span>
+
+                                      {consultationCountdown && (
+                                        <span className="font-mono text-xs font-semibold text-[var(--ink)]">
+                                          {consultationCountdown}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {canStartConsultation ? (
+                                    <Link
+                                      href={`/doctor/appointments/${encodeURIComponent(
+                                        booking.id,
+                                      )}/consultation`}
+                                      className="w-full sm:w-auto"
+                                    >
+                                      <Button
+                                        size="sm"
+                                        className="w-full sm:w-auto"
+                                      >
+                                        Start Consultation
+                                      </Button>
+                                    </Link>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled
+                                      className="w-full sm:w-auto"
+                                    >
+                                      {consultationStatus ===
+                                      "ended"
+                                        ? "Consultation ended"
+                                        : "Start when ready"}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
 
                           <div className="mt-3 flex flex-col gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:flex-row sm:items-center sm:justify-end">
                             <Link

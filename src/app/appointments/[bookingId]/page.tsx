@@ -5,7 +5,9 @@ import {
   useEffect,
   useState,
 } from "react";
+
 import { useParams } from "next/navigation";
+
 import {
   useDispatch,
   useSelector,
@@ -49,6 +51,10 @@ import type {
 import type {
   BookingStatus,
 } from "@/types/booking";
+
+import type {
+  ConsultationStatus,
+} from "@/types/consultation";
 
 function getStatusLabel(
   status: BookingStatus,
@@ -237,6 +243,196 @@ function getConsultationTypeLabel(
     : "In-Person Consultation";
 }
 
+function getAppointmentDate(
+  date: string,
+  time: string,
+) {
+  const appointmentDate =
+    new Date(`${date} ${time}`);
+
+  return Number.isNaN(
+    appointmentDate.getTime(),
+  )
+    ? null
+    : appointmentDate;
+}
+
+function getConsultationStatus(
+  date: string,
+  time: string,
+  currentTime: number,
+): ConsultationStatus {
+  const appointmentDate =
+    getAppointmentDate(
+      date,
+      time,
+    );
+
+  if (
+    !appointmentDate ||
+    currentTime <= 0
+  ) {
+    return "scheduled";
+  }
+
+  const now = currentTime;
+
+  const start =
+    appointmentDate.getTime();
+
+  const fifteenMinutes =
+    15 * 60 * 1000;
+
+  const thirtyMinutes =
+    30 * 60 * 1000;
+
+  if (
+    now >=
+    start + thirtyMinutes
+  ) {
+    return "ended";
+  }
+
+  if (now >= start) {
+    return "live";
+  }
+
+  if (
+    start - now <=
+    fifteenMinutes
+  ) {
+    return "starting-soon";
+  }
+
+  return "scheduled";
+}
+
+function getConsultationStatusLabel(
+  status: ConsultationStatus,
+) {
+  switch (status) {
+    case "scheduled":
+      return "Scheduled";
+
+    case "starting-soon":
+      return "Starting Soon";
+
+    case "live":
+      return "Live";
+
+    case "ended":
+      return "Ended";
+
+    default:
+      return "Scheduled";
+  }
+}
+
+function getConsultationStatusClasses(
+  status: ConsultationStatus,
+) {
+  switch (status) {
+    case "starting-soon":
+      return "bg-[var(--warning-soft)] text-[var(--warning)]";
+
+    case "live":
+      return "bg-[var(--success-soft)] text-[var(--success)]";
+
+    case "ended":
+      return "bg-slate-100 text-slate-600";
+
+    case "scheduled":
+    default:
+      return "bg-[var(--brand-soft)] text-[var(--brand-deep)]";
+  }
+}
+
+function getCountdown(
+  date: string,
+  time: string,
+  currentTime: number,
+) {
+  const appointmentDate =
+    getAppointmentDate(
+      date,
+      time,
+    );
+
+  if (
+    !appointmentDate ||
+    currentTime <= 0
+  ) {
+    return null;
+  }
+
+  const difference =
+    appointmentDate.getTime() -
+    currentTime;
+
+  if (difference <= 0) {
+    return null;
+  }
+
+  const totalSeconds =
+    Math.floor(
+      difference / 1000,
+    );
+
+  const days =
+    Math.floor(
+      totalSeconds /
+        (24 * 60 * 60),
+    );
+
+  const hours =
+    Math.floor(
+      (totalSeconds %
+        (24 * 60 * 60)) /
+        (60 * 60),
+    );
+
+  const minutes =
+    Math.floor(
+      (totalSeconds %
+        (60 * 60)) /
+        60,
+    );
+
+  const seconds =
+    totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${String(
+      hours,
+    ).padStart(
+      2,
+      "0",
+    )}h ${String(
+      minutes,
+    ).padStart(
+      2,
+      "0",
+    )}m`;
+  }
+
+  return `${String(
+    hours,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    minutes,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    seconds,
+  ).padStart(
+    2,
+    "0",
+  )}`;
+}
+
 export default function AppointmentConfirmationPage() {
   const { bookingId } =
     useParams<{
@@ -316,6 +512,45 @@ export default function AppointmentConfirmationPage() {
     isCancelling,
     setIsCancelling,
   ] = useState(false);
+
+  const [
+    currentTime,
+    setCurrentTime,
+  ] = useState(0);
+
+  useEffect(() => {
+    if (
+      !booking ||
+      booking.consultationType !==
+        "online"
+    ) {
+      return;
+    }
+
+    const initialTimer =
+      window.setTimeout(() => {
+        setCurrentTime(
+          Date.now(),
+        );
+      }, 0);
+
+    const interval =
+      window.setInterval(() => {
+        setCurrentTime(
+          Date.now(),
+        );
+      }, 1000);
+
+    return () => {
+      window.clearTimeout(
+        initialTimer,
+      );
+
+      window.clearInterval(
+        interval,
+      );
+    };
+  }, [booking]);
 
   useEffect(() => {
     if (
@@ -459,6 +694,43 @@ export default function AppointmentConfirmationPage() {
   const isCancelled =
     currentBooking.status ===
     "cancelled";
+
+  const consultationStatus =
+    currentBooking.consultationType ===
+    "online"
+      ? getConsultationStatus(
+          currentBooking.date,
+          currentBooking.time,
+          currentTime,
+        )
+      : "scheduled";
+
+  const countdown =
+    currentBooking.consultationType ===
+    "online"
+      ? getCountdown(
+          currentBooking.date,
+          currentBooking.time,
+          currentTime,
+        )
+      : null;
+
+  const canJoinConsultation =
+    currentBooking.consultationType ===
+      "online" &&
+    (
+      consultationStatus ===
+        "starting-soon" ||
+      consultationStatus ===
+        "live"
+    ) &&
+    (
+      currentBooking.status ===
+        "confirmed" ||
+      currentBooking.status ===
+        "upcoming"
+    ) &&
+    currentTime > 0;
 
   function handleCancel() {
     if (
@@ -701,6 +973,89 @@ export default function AppointmentConfirmationPage() {
             </dd>
           </div>
         </dl>
+
+        {currentBooking.consultationType ===
+          "online" && (
+          <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-[var(--muted)]">
+                  Consultation status
+                </p>
+
+                <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
+                  {getConsultationStatusLabel(
+                    consultationStatus,
+                  )}
+                </p>
+              </div>
+
+              <span
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${getConsultationStatusClasses(
+                  consultationStatus,
+                )}`}
+              >
+                {getConsultationStatusLabel(
+                  consultationStatus,
+                )}
+              </span>
+            </div>
+
+            {countdown && (
+              <div className="mt-4 border-t border-[var(--line)] pt-4">
+                <p className="text-xs text-[var(--muted)]">
+                  Consultation starts in
+                </p>
+
+                <p className="mt-1 font-mono text-lg font-semibold tracking-wide text-[var(--ink)]">
+                  {countdown}
+                </p>
+              </div>
+            )}
+
+            {consultationStatus ===
+              "live" && (
+              <p className="mt-3 text-xs leading-5 text-[var(--success)]">
+                The consultation is live. You
+                can join now.
+              </p>
+            )}
+
+            {consultationStatus ===
+              "ended" && (
+              <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
+                This consultation window has
+                ended.
+              </p>
+            )}
+
+            <div className="mt-4">
+              {canJoinConsultation ? (
+                <Link
+                  href={`/appointments/${currentBooking.id}/consultation`}
+                  className="block"
+                >
+                  <Button className="w-full">
+                    Join Consultation
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  className="w-full"
+                  disabled
+                >
+                  {consultationStatus ===
+                  "scheduled"
+                    ? "Join when consultation is starting"
+                    : consultationStatus ===
+                        "ended"
+                      ? "Consultation ended"
+                      : "Join Consultation"}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
         {isDeclined && (
           <div className="mt-5 rounded-xl border border-[var(--urgent)]/15 bg-[var(--urgent-soft)] px-4 py-3">
