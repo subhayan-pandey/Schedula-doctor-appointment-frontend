@@ -55,12 +55,12 @@ import type {
 } from "@/store";
 
 import {
-  setAppointments,
+  initializeAppointments,
   updateAppointmentStatus,
 } from "@/store/slices/appointmentsSlice";
 
 import {
-  setDoctors,
+  initializeDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import type {
@@ -750,7 +750,7 @@ export default function MyAppointment() {
   useEffect(() => {
     if (!appointmentsInitialized) {
       dispatch(
-        setAppointments(
+        initializeAppointments(
           getAllBookings(),
         ),
       );
@@ -763,7 +763,7 @@ export default function MyAppointment() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        setDoctors(
+        initializeDoctors(
           getAllDoctors(),
         ),
       );

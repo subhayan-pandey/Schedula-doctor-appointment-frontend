@@ -6,7 +6,10 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { useDispatch } from "react-redux";
+
+import {
+  useDispatch,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
@@ -22,24 +25,32 @@ import {
   login,
 } from "@/store/slices/authSlice";
 
-import type { AppDispatch } from "@/store";
+import type {
+  AppDispatch,
+} from "@/store";
 
 import {
   isValidEmailOrMobile,
   isValidPassword,
 } from "@/lib/utils/validators";
 
-type Role = "patient" | "doctor";
+type Role =
+  | "patient"
+  | "doctor";
 
 type FieldErrors = {
   emailOrMobile?: string;
   password?: string;
 };
 
-type Mode = "login" | "forgot";
+type Mode =
+  | "login"
+  | "forgot";
 
 export default function LoginForm() {
-  const router = useRouter();
+  const router =
+    useRouter();
+
   const dispatch =
     useDispatch<AppDispatch>();
 
@@ -49,35 +60,55 @@ export default function LoginForm() {
   const [mode, setMode] =
     useState<Mode>("login");
 
-  const [emailOrMobile, setEmailOrMobile] =
-    useState("");
+  const [
+    emailOrMobile,
+    setEmailOrMobile,
+  ] = useState("");
 
-  const [password, setPassword] =
-    useState("");
+  const [
+    password,
+    setPassword,
+  ] = useState("");
 
-  const [rememberMe, setRememberMe] =
-    useState(true);
+  const [
+    rememberMe,
+    setRememberMe,
+  ] = useState(true);
 
-  const [newPassword, setNewPassword] =
-    useState("");
+  const [
+    newPassword,
+    setNewPassword,
+  ] = useState("");
 
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] = useState("");
 
-  const [errors, setErrors] =
-    useState<FieldErrors>({});
+  const [
+    errors,
+    setErrors,
+  ] = useState<FieldErrors>({});
 
-  const [formError, setFormError] =
-    useState("");
+  const [
+    formError,
+    setFormError,
+  ] = useState("");
 
-  const [successNote, setSuccessNote] =
-    useState("");
+  const [
+    successNote,
+    setSuccessNote,
+  ] = useState("");
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
 
-  const [googleNote, setGoogleNote] =
-    useState(false);
+  const [
+    googleNote,
+    setGoogleNote,
+  ] = useState(false);
 
   function resetMessages() {
     setErrors({});
@@ -86,7 +117,9 @@ export default function LoginForm() {
     setGoogleNote(false);
   }
 
-  function switchRole(nextRole: Role) {
+  function switchRole(
+    nextRole: Role,
+  ) {
     setRole(nextRole);
     setMode("login");
     setEmailOrMobile("");
@@ -97,35 +130,56 @@ export default function LoginForm() {
   }
 
   function validateLogin(): boolean {
-    const nextErrors: FieldErrors = {};
+    const nextErrors: FieldErrors =
+      {};
 
-    if (!isValidEmailOrMobile(emailOrMobile)) {
+    if (
+      !isValidEmailOrMobile(
+        emailOrMobile,
+      )
+    ) {
       nextErrors.emailOrMobile =
         "Enter a valid email or 10-digit mobile number";
     }
 
-    if (!isValidPassword(password)) {
+    if (
+      !isValidPassword(
+        password,
+      )
+    ) {
       nextErrors.password =
         "Password must be at least 6 characters";
     }
 
-    setErrors(nextErrors);
+    setErrors(
+      nextErrors,
+    );
 
     return (
-      Object.keys(nextErrors).length ===
-      0
+      Object.keys(
+        nextErrors,
+      ).length === 0
     );
   }
 
   function validateForgot(): boolean {
-    const nextErrors: FieldErrors = {};
+    const nextErrors: FieldErrors =
+      {};
 
-    if (!isValidEmailOrMobile(emailOrMobile)) {
+    if (
+      !isValidEmailOrMobile(
+        emailOrMobile,
+      )
+    ) {
       nextErrors.emailOrMobile =
         "Enter a valid email or 10-digit mobile number";
     }
 
-    if (!isValidPassword(newPassword)) {
+    if (
+      !isValidPassword(
+        newPassword,
+      )
+    ) {
       nextErrors.password =
         "Password must be at least 6 characters";
     }
@@ -138,11 +192,14 @@ export default function LoginForm() {
         "Passwords do not match";
     }
 
-    setErrors(nextErrors);
+    setErrors(
+      nextErrors,
+    );
 
     return (
-      Object.keys(nextErrors).length ===
-      0
+      Object.keys(
+        nextErrors,
+      ).length === 0
     );
   }
 
@@ -151,7 +208,9 @@ export default function LoginForm() {
   ) {
     event.preventDefault();
 
-    if (!validateLogin()) {
+    if (
+      !validateLogin()
+    ) {
       return;
     }
 
@@ -169,13 +228,15 @@ export default function LoginForm() {
 
       if (
         account &&
-        account.password !== password
+        account.password !==
+          password
       ) {
         setFormError(
           "The password is incorrect. Use Forgot password to reset it.",
         );
 
         setIsSubmitting(false);
+
         return;
       }
 
@@ -192,7 +253,8 @@ export default function LoginForm() {
         account?.name ??
         (normalizedIdentifier.split(
           "@",
-        )[0] || "Patient");
+        )[0] ||
+          "Patient");
 
       if (!account) {
         savePatientAccount({
@@ -204,6 +266,12 @@ export default function LoginForm() {
         });
       }
 
+      /*
+       * Redux is the authoritative application
+       * authentication state. The storage layer
+       * remains the persistence layer used by the
+       * frontend demo.
+       */
       dispatch(
         login({
           id: accountId,
@@ -225,7 +293,9 @@ export default function LoginForm() {
   ) {
     event.preventDefault();
 
-    if (!validateForgot()) {
+    if (
+      !validateForgot()
+    ) {
       return;
     }
 
@@ -233,7 +303,9 @@ export default function LoginForm() {
     resetMessages();
 
     window.setTimeout(() => {
-      if (role === "patient") {
+      if (
+        role === "patient"
+      ) {
         const account =
           getPatientAccount(
             emailOrMobile,
@@ -245,12 +317,14 @@ export default function LoginForm() {
           );
 
           setIsSubmitting(false);
+
           return;
         }
 
         savePatientAccount({
           ...account,
-          password: newPassword,
+          password:
+            newPassword,
         });
       }
 
@@ -266,7 +340,9 @@ export default function LoginForm() {
     }, 600);
   }
 
-  if (mode === "forgot") {
+  if (
+    mode === "forgot"
+  ) {
     return (
       <form
         onSubmit={
@@ -304,11 +380,13 @@ export default function LoginForm() {
             if (
               errors.emailOrMobile
             ) {
-              setErrors((current) => ({
-                ...current,
-                emailOrMobile:
-                  undefined,
-              }));
+              setErrors(
+                (current) => ({
+                  ...current,
+                  emailOrMobile:
+                    undefined,
+                }),
+              );
             }
 
             setFormError("");
@@ -330,14 +408,21 @@ export default function LoginForm() {
               event.target.value,
             );
 
-            if (errors.password) {
-              setErrors((current) => ({
-                ...current,
-                password: undefined,
-              }));
+            if (
+              errors.password
+            ) {
+              setErrors(
+                (current) => ({
+                  ...current,
+                  password:
+                    undefined,
+                }),
+              );
             }
           }}
-          error={errors.password}
+          error={
+            errors.password
+          }
           autoComplete="new-password"
         />
 
@@ -346,17 +431,24 @@ export default function LoginForm() {
           label="Confirm new password"
           type="password"
           placeholder="Re-enter your new password"
-          value={confirmPassword}
+          value={
+            confirmPassword
+          }
           onChange={(event) => {
             setConfirmPassword(
               event.target.value,
             );
 
-            if (errors.password) {
-              setErrors((current) => ({
-                ...current,
-                password: undefined,
-              }));
+            if (
+              errors.password
+            ) {
+              setErrors(
+                (current) => ({
+                  ...current,
+                  password:
+                    undefined,
+                }),
+              );
             }
           }}
           autoComplete="new-password"
@@ -406,7 +498,9 @@ export default function LoginForm() {
     );
   }
 
-  if (role === "doctor") {
+  if (
+    role === "doctor"
+  ) {
     return (
       <div className="flex flex-col gap-5">
         <RoleToggle
@@ -427,7 +521,9 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={() =>
-                switchRole("patient")
+                switchRole(
+                  "patient",
+                )
               }
               className="font-semibold text-[var(--brand-deep)] hover:underline"
             >
@@ -441,7 +537,9 @@ export default function LoginForm() {
 
   return (
     <form
-      onSubmit={handlePatientLogin}
+      onSubmit={
+        handlePatientLogin
+      }
       noValidate
       className="flex flex-col gap-5"
     >
@@ -479,17 +577,23 @@ export default function LoginForm() {
             event.target.value,
           );
 
-          if (errors.emailOrMobile) {
-            setErrors((current) => ({
-              ...current,
-              emailOrMobile:
-                undefined,
-            }));
+          if (
+            errors.emailOrMobile
+          ) {
+            setErrors(
+              (current) => ({
+                ...current,
+                emailOrMobile:
+                  undefined,
+              }),
+            );
           }
 
           setFormError("");
         }}
-        error={errors.emailOrMobile}
+        error={
+          errors.emailOrMobile
+        }
         autoComplete="username"
       />
 
@@ -504,16 +608,23 @@ export default function LoginForm() {
             event.target.value,
           );
 
-          if (errors.password) {
-            setErrors((current) => ({
-              ...current,
-              password: undefined,
-            }));
+          if (
+            errors.password
+          ) {
+            setErrors(
+              (current) => ({
+                ...current,
+                password:
+                  undefined,
+              }),
+            );
           }
 
           setFormError("");
         }}
-        error={errors.password}
+        error={
+          errors.password
+        }
         autoComplete="current-password"
       />
 
@@ -541,7 +652,9 @@ export default function LoginForm() {
             className="size-4 rounded border-[var(--line)] accent-[var(--brand)]"
           />
 
-          <span>Remember me</span>
+          <span>
+            Remember me
+          </span>
         </label>
 
         <button
@@ -627,14 +740,20 @@ function RoleToggle({
   onChange,
 }: {
   role: Role;
-  onChange: (role: Role) => void;
+  onChange: (
+    role: Role,
+  ) => void;
 }) {
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-1.5">
       <div className="grid grid-cols-2 gap-1">
         <button
           type="button"
-          onClick={() => onChange("patient")}
+          onClick={() =>
+            onChange(
+              "patient",
+            )
+          }
           className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
             role === "patient"
               ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
@@ -646,7 +765,11 @@ function RoleToggle({
 
         <button
           type="button"
-          onClick={() => onChange("doctor")}
+          onClick={() =>
+            onChange(
+              "doctor",
+            )
+          }
           className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
             role === "doctor"
               ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
@@ -670,7 +793,12 @@ function UserIcon() {
       className="size-4"
       aria-hidden="true"
     >
-      <circle cx="12" cy="8" r="3" />
+      <circle
+        cx="12"
+        cy="8"
+        r="3"
+      />
+
       <path
         d="M5.5 20c.8-3.5 3-5.3 6.5-5.3s5.7 1.8 6.5 5.3"
         strokeLinecap="round"

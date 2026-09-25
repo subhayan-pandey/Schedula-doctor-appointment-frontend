@@ -1,14 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
+
 import {
   getNotificationPreferences,
   resetNotificationPreferences,
   saveNotificationPreferences,
 } from "@/lib/notification-preferences-store";
-import { getSession } from "@/lib/storage";
+
+import {
+  initializeAuth,
+} from "@/store/slices/authSlice";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 import type {
   NotificationPreferenceKey,
@@ -70,16 +88,6 @@ const PREFERENCES: Array<{
   },
 ];
 
-function getInitialPreferences(): NotificationPreferences | null {
-  const session = getSession();
-
-  if (!session) {
-    return null;
-  }
-
-  return getNotificationPreferences(session.id);
-}
-
 function Toggle({
   checked,
   disabled,
@@ -119,65 +127,123 @@ function Toggle({
 }
 
 export default function NotificationPreferences() {
-  const [preferences, setPreferences] =
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const {
+    user,
+    initialized,
+  } = useSelector(
+    (state: RootState) =>
+      state.auth,
+  );
+
+  const [
+    preferences,
+    setPreferences,
+  ] =
     useState<NotificationPreferences | null>(
-      getInitialPreferences,
+      null,
     );
 
-  const [sessionId, setSessionId] =
-    useState<string | null>(
-      () => getSession()?.id ?? null,
-    );
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  const [isSaving, setIsSaving] =
-    useState(false);
+  const [
+    isSaving,
+    setIsSaving,
+  ] = useState(false);
 
-  const [isResetting, setIsResetting] =
-    useState(false);
+  const [
+    isResetting,
+    setIsResetting,
+  ] = useState(false);
 
-  const [message, setMessage] =
-    useState<string | null>(null);
+  const [
+    message,
+    setMessage,
+  ] = useState<string | null>(
+    null,
+  );
 
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const loadPreferences = useCallback(() => {
-    try {
-      const session = getSession();
-
-      setSessionId(session?.id ?? null);
-
-      setPreferences(
-        session
-          ? getNotificationPreferences(session.id)
-          : null,
-      );
-
-      setError(null);
-    } catch {
-      setError(
-        "Notification preferences could not be loaded.",
-      );
-    }
-  }, []);
+  const [
+    error,
+    setError,
+  ] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
-    const handleUpdate = () => {
-      loadPreferences();
-    };
+    if (!initialized) {
+      dispatch(
+        initializeAuth(),
+      );
+    }
+  }, [
+    dispatch,
+    initialized,
+  ]);
 
-    const handleStorage = (
+  const loadPreferences =
+    useCallback(() => {
+      if (!initialized) {
+        return;
+      }
+
+      if (!user) {
+        setPreferences(null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setPreferences(
+          getNotificationPreferences(
+            user.id,
+          ),
+        );
+
+        setError(null);
+      } catch {
+        setPreferences(null);
+
+        setError(
+          "Notification preferences could not be loaded.",
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }, [
+      initialized,
+      user,
+    ]);
+
+  useEffect(() => {
+    loadPreferences();
+  }, [
+    loadPreferences,
+  ]);
+
+  useEffect(() => {
+    function handleUpdate() {
+      loadPreferences();
+    }
+
+    function handleStorage(
       event: StorageEvent,
-    ) => {
+    ) {
       if (
         !event.key ||
         event.key ===
           "schedula:notification-preferences" ||
-        event.key === "schedula:session"
+        event.key ===
+          "schedula:session"
       ) {
         loadPreferences();
       }
-    };
+    }
 
     window.addEventListener(
       "schedula:notification-preferences-updated",
@@ -210,7 +276,9 @@ export default function NotificationPreferences() {
         handleStorage,
       );
     };
-  }, [loadPreferences]);
+  }, [
+    loadPreferences,
+  ]);
 
   const updatePreference = (
     key: NotificationPreferenceKey,
@@ -229,7 +297,10 @@ export default function NotificationPreferences() {
   };
 
   const handleSave = () => {
-    if (!preferences || !sessionId) {
+    if (
+      !preferences ||
+      !user
+    ) {
       return;
     }
 
@@ -244,6 +315,7 @@ export default function NotificationPreferences() {
         );
 
       setPreferences(saved);
+
       setMessage(
         "Notification preferences saved.",
       );
@@ -257,7 +329,7 @@ export default function NotificationPreferences() {
   };
 
   const handleReset = () => {
-    if (!sessionId) {
+    if (!user) {
       return;
     }
 
@@ -268,10 +340,11 @@ export default function NotificationPreferences() {
     try {
       const reset =
         resetNotificationPreferences(
-          sessionId,
+          user.id,
         );
 
       setPreferences(reset);
+
       setMessage(
         "Notification preferences reset to default.",
       );
@@ -284,7 +357,17 @@ export default function NotificationPreferences() {
     }
   };
 
-  if (!sessionId) {
+  if (!initialized || isLoading) {
+    return (
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
+        <p className="text-sm text-[var(--muted)]">
+          Loading notification preferences…
+        </p>
+      </section>
+    );
+  }
+
+  if (!user) {
     return (
       <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
@@ -303,7 +386,7 @@ export default function NotificationPreferences() {
     return (
       <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <p className="text-sm text-[var(--muted)]">
-          Loading notification preferences…
+          Notification preferences could not be loaded.
         </p>
       </section>
     );
@@ -324,38 +407,47 @@ export default function NotificationPreferences() {
 
       <div className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
         <div className="divide-y divide-[var(--line)]">
-          {PREFERENCES.map((preference) => (
-            <div
-              key={preference.key}
-              className="flex items-center justify-between gap-5 px-5 py-4 sm:px-6"
-            >
-              <div className="min-w-0">
-                <h2 className="text-sm font-medium text-[var(--ink)]">
-                  {preference.label}
-                </h2>
+          {PREFERENCES.map(
+            (preference) => (
+              <div
+                key={
+                  preference.key
+                }
+                className="flex items-center justify-between gap-5 px-5 py-4 sm:px-6"
+              >
+                <div className="min-w-0">
+                  <h2 className="text-sm font-medium text-[var(--ink)]">
+                    {
+                      preference.label
+                    }
+                  </h2>
 
-                <p className="mt-1 max-w-2xl text-sm leading-5 text-[var(--muted)]">
-                  {preference.description}
-                </p>
+                  <p className="mt-1 max-w-2xl text-sm leading-5 text-[var(--muted)]">
+                    {
+                      preference.description
+                    }
+                  </p>
+                </div>
+
+                <Toggle
+                  checked={
+                    preferences[
+                      preference.key
+                    ]
+                  }
+                  disabled={
+                    isSaving ||
+                    isResetting
+                  }
+                  onChange={() =>
+                    updatePreference(
+                      preference.key,
+                    )
+                  }
+                />
               </div>
-
-              <Toggle
-                checked={
-                  preferences[
-                    preference.key
-                  ]
-                }
-                disabled={
-                  isSaving || isResetting
-                }
-                onChange={() =>
-                  updatePreference(
-                    preference.key,
-                  )
-                }
-              />
-            </div>
-          ))}
+            ),
+          )}
         </div>
 
         <div className="flex flex-col gap-3 border-t border-[var(--line)] bg-[var(--canvas)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -369,7 +461,8 @@ export default function NotificationPreferences() {
               </span>
             ) : null}
 
-            {!error && message ? (
+            {!error &&
+            message ? (
               <span className="text-[var(--success)]">
                 {message}
               </span>
@@ -382,9 +475,12 @@ export default function NotificationPreferences() {
               variant="outline"
               size="sm"
               disabled={
-                isSaving || isResetting
+                isSaving ||
+                isResetting
               }
-              onClick={handleReset}
+              onClick={
+                handleReset
+              }
             >
               {isResetting
                 ? "Resetting…"
@@ -395,9 +491,12 @@ export default function NotificationPreferences() {
               type="button"
               size="sm"
               disabled={
-                isSaving || isResetting
+                isSaving ||
+                isResetting
               }
-              onClick={handleSave}
+              onClick={
+                handleSave
+              }
             >
               {isSaving
                 ? "Saving…"

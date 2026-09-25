@@ -6,7 +6,10 @@ import {
   useState,
   type FormEvent,
 } from "react";
-import { useDispatch } from "react-redux";
+
+import {
+  useDispatch,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
@@ -22,14 +25,18 @@ import {
   login,
 } from "@/store/slices/authSlice";
 
-import type { AppDispatch } from "@/store";
+import type {
+  AppDispatch,
+} from "@/store";
 
 import {
   isValidEmailOrMobile,
   isValidPassword,
 } from "@/lib/utils/validators";
 
-type Role = "patient" | "doctor";
+type Role =
+  | "patient"
+  | "doctor";
 
 type FieldErrors = {
   name?: string;
@@ -42,7 +49,9 @@ export default function SignupForm() {
   const [role, setRole] =
     useState<Role>("patient");
 
-  if (role === "doctor") {
+  if (
+    role === "doctor"
+  ) {
     return (
       <div className="flex flex-col gap-5">
         <RoleToggle
@@ -58,7 +67,9 @@ export default function SignupForm() {
             <button
               type="button"
               onClick={() =>
-                setRole("patient")
+                setRole(
+                  "patient",
+                )
               }
               className="font-semibold text-[var(--brand-deep)] hover:underline"
             >
@@ -83,37 +94,56 @@ function PatientSignupForm({
   onRoleChange,
 }: {
   role: Role;
-  onRoleChange: (role: Role) => void;
+  onRoleChange: (
+    role: Role,
+  ) => void;
 }) {
-  const router = useRouter();
+  const router =
+    useRouter();
+
   const dispatch =
     useDispatch<AppDispatch>();
 
   const [name, setName] =
     useState("");
 
-  const [emailOrMobile, setEmailOrMobile] =
-    useState("");
+  const [
+    emailOrMobile,
+    setEmailOrMobile,
+  ] = useState("");
 
-  const [password, setPassword] =
-    useState("");
+  const [
+    password,
+    setPassword,
+  ] = useState("");
 
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] = useState("");
 
-  const [errors, setErrors] =
-    useState<FieldErrors>({});
+  const [
+    errors,
+    setErrors,
+  ] = useState<FieldErrors>({});
 
-  const [formError, setFormError] =
-    useState("");
+  const [
+    formError,
+    setFormError,
+  ] = useState("");
 
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
 
   function validate(): boolean {
-    const nextErrors: FieldErrors = {};
+    const nextErrors: FieldErrors =
+      {};
 
-    if (name.trim().length < 2) {
+    if (
+      name.trim().length < 2
+    ) {
       nextErrors.name =
         "Enter your full name";
     }
@@ -127,7 +157,11 @@ function PatientSignupForm({
         "Enter a valid email or 10-digit mobile number";
     }
 
-    if (!isValidPassword(password)) {
+    if (
+      !isValidPassword(
+        password,
+      )
+    ) {
       nextErrors.password =
         "Password must be at least 6 characters";
     }
@@ -140,11 +174,14 @@ function PatientSignupForm({
         "Passwords do not match";
     }
 
-    setErrors(nextErrors);
+    setErrors(
+      nextErrors,
+    );
 
     return (
-      Object.keys(nextErrors).length ===
-      0
+      Object.keys(
+        nextErrors,
+      ).length === 0
     );
   }
 
@@ -153,7 +190,9 @@ function PatientSignupForm({
   ) {
     event.preventDefault();
 
-    if (!validate()) {
+    if (
+      !validate()
+    ) {
       return;
     }
 
@@ -175,6 +214,7 @@ function PatientSignupForm({
         );
 
         setIsSubmitting(false);
+
         return;
       }
 
@@ -191,8 +231,14 @@ function PatientSignupForm({
         password,
       };
 
-      savePatientAccount(account);
+      savePatientAccount(
+        account,
+      );
 
+      /*
+       * Redux becomes the authoritative authentication
+       * state immediately after account creation.
+       */
       dispatch(
         login({
           id: account.id,
@@ -245,16 +291,24 @@ function PatientSignupForm({
         placeholder="Your full name"
         value={name}
         onChange={(event) => {
-          setName(event.target.value);
+          setName(
+            event.target.value,
+          );
 
-          if (errors.name) {
-            setErrors((current) => ({
-              ...current,
-              name: undefined,
-            }));
+          if (
+            errors.name
+          ) {
+            setErrors(
+              (current) => ({
+                ...current,
+                name: undefined,
+              }),
+            );
           }
         }}
-        error={errors.name}
+        error={
+          errors.name
+        }
         autoComplete="name"
       />
 
@@ -268,12 +322,16 @@ function PatientSignupForm({
             event.target.value,
           );
 
-          if (errors.emailOrMobile) {
-            setErrors((current) => ({
-              ...current,
-              emailOrMobile:
-                undefined,
-            }));
+          if (
+            errors.emailOrMobile
+          ) {
+            setErrors(
+              (current) => ({
+                ...current,
+                emailOrMobile:
+                  undefined,
+              }),
+            );
           }
 
           setFormError("");
@@ -296,14 +354,21 @@ function PatientSignupForm({
               event.target.value,
             );
 
-            if (errors.password) {
-              setErrors((current) => ({
-                ...current,
-                password: undefined,
-              }));
+            if (
+              errors.password
+            ) {
+              setErrors(
+                (current) => ({
+                  ...current,
+                  password:
+                    undefined,
+                }),
+              );
             }
           }}
-          error={errors.password}
+          error={
+            errors.password
+          }
           autoComplete="new-password"
         />
 
@@ -312,7 +377,9 @@ function PatientSignupForm({
           label="Confirm password"
           type="password"
           placeholder="Re-enter password"
-          value={confirmPassword}
+          value={
+            confirmPassword
+          }
           onChange={(event) => {
             setConfirmPassword(
               event.target.value,
@@ -321,11 +388,13 @@ function PatientSignupForm({
             if (
               errors.confirmPassword
             ) {
-              setErrors((current) => ({
-                ...current,
-                confirmPassword:
-                  undefined,
-              }));
+              setErrors(
+                (current) => ({
+                  ...current,
+                  confirmPassword:
+                    undefined,
+                }),
+              );
             }
           }}
           error={
@@ -384,7 +453,9 @@ function RoleToggle({
   onChange,
 }: {
   role: Role;
-  onChange: (role: Role) => void;
+  onChange: (
+    role: Role,
+  ) => void;
 }) {
   return (
     <div className="rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-1.5">
@@ -392,7 +463,9 @@ function RoleToggle({
         <button
           type="button"
           onClick={() =>
-            onChange("patient")
+            onChange(
+              "patient",
+            )
           }
           className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
             role === "patient"
@@ -406,7 +479,9 @@ function RoleToggle({
         <button
           type="button"
           onClick={() =>
-            onChange("doctor")
+            onChange(
+              "doctor",
+            )
           }
           className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
             role === "doctor"

@@ -5,6 +5,11 @@ import {
   useState,
 } from "react";
 
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 
 import {
@@ -16,13 +21,18 @@ import {
 } from "@/lib/prescriptions-store";
 
 import {
-  getSession,
-} from "@/lib/storage";
-
-import {
   getUserProfile,
   saveUserProfile,
 } from "@/lib/user-profile-store";
+
+import {
+  initializeAuth,
+} from "@/store/slices/authSlice";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
 
 import type {
   UserProfile,
@@ -254,17 +264,23 @@ function validateProfile(
 }
 
 export default function UserProfileManager() {
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const {
+    user,
+    initialized,
+  } = useSelector(
+    (state: RootState) =>
+      state.auth,
+  );
+
   const [
     profile,
     setProfile,
   ] = useState<UserProfile | null>(
     null,
   );
-
-  const [
-    userName,
-    setUserName,
-  ] = useState("");
 
   const [
     isLoading,
@@ -299,58 +315,67 @@ export default function UserProfileManager() {
     testReports: 0,
   });
 
-  function refreshStats() {
-    const session =
-      getSession();
+  useEffect(() => {
+    if (!initialized) {
+      dispatch(
+        initializeAuth(),
+      );
+    }
+  }, [
+    dispatch,
+    initialized,
+  ]);
 
-    if (
-      !session ||
-      session.role !== "patient"
-    ) {
+  useEffect(() => {
+    if (!initialized) {
       return;
     }
 
+    if (
+      !user ||
+      user.role !== "patient"
+    ) {
+      setProfile(null);
+      setIsLoading(false);
+      return;
+    }
+
+    const loadedProfile =
+      getUserProfile(
+        user.id,
+      );
+
+    setProfile(
+      loadedProfile,
+    );
+
     setStats(
       getProfileStats(
-        session.id,
+        user.id,
       ),
     );
-  }
+
+    setIsLoading(false);
+  }, [
+    initialized,
+    user,
+  ]);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session =
-        getSession();
-
+    function refreshStats() {
       if (
-        !session ||
-        session.role !== "patient"
+        !user ||
+        user.role !== "patient"
       ) {
-        setIsLoading(false);
         return;
       }
 
-      const loadedProfile =
-        getUserProfile(
-          session.id,
-        );
-
-      setProfile(
-        loadedProfile,
-      );
-
-      setUserName(
-        session.name ?? "",
-      );
-
       setStats(
         getProfileStats(
-          session.id,
+          user.id,
         ),
       );
-
-      setIsLoading(false);
-    });
+    }
 
     function handleBookingsUpdated() {
       refreshStats();
@@ -381,7 +406,9 @@ export default function UserProfileManager() {
         handlePrescriptionsUpdated,
       );
     };
-  }, []);
+  }, [
+    user,
+  ]);
 
   function updateField<
     Key extends keyof UserProfile,
@@ -471,6 +498,9 @@ export default function UserProfileManager() {
       </div>
     );
   }
+
+  const userName =
+    user?.name ?? "";
 
   return (
     <main className="bg-[var(--canvas)]">

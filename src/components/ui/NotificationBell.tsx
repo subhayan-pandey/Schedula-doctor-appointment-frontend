@@ -10,14 +10,27 @@ import {
 } from "react";
 
 import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import {
+  initializeNotifications,
+  markAllAsRead,
+  markAsRead,
+  syncNotifications,
+} from "@/store/slices/notificationsSlice";
+
+import {
   getNotificationsByUserAndRole,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "@/lib/notifications-store";
-
-import {
-  getSession,
-} from "@/lib/storage";
 
 import type {
   AppNotification,
@@ -295,114 +308,106 @@ function getNotificationHref(
 }
 
 export default function NotificationBell() {
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const user =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
+
+  const notifications =
+    useSelector(
+      (state: RootState) =>
+        state.notifications.notifications,
+    );
+
   const [
     isOpen,
     setIsOpen,
   ] = useState(false);
-
-  const [
-    userId,
-    setUserId,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    role,
-    setRole,
-  ] = useState<
-    NotificationRecipientRole | null
-  >(null);
-
-  const [
-    notifications,
-    setNotifications,
-  ] = useState<
-    AppNotification[]
-  >([]);
 
   const containerRef =
     useRef<HTMLDivElement>(
       null,
     );
 
+  const userId =
+    user?.id ?? null;
+
+  const role =
+    user?.role ?? null;
+
   const refreshNotifications =
-    useCallback(
-      (
-        currentUserId:
-          | string
-          | null,
-        currentRole:
-          | NotificationRecipientRole
-          | null,
-      ) => {
-        if (
-          !currentUserId ||
-          !currentRole
-        ) {
-          setNotifications(
-            [],
-          );
-
-          return;
-        }
-
-        setNotifications(
-          getNotificationsByUserAndRole(
-            currentUserId,
-            currentRole,
-          ),
+    useCallback(() => {
+      if (
+        !userId ||
+        !role
+      ) {
+        dispatch(
+          syncNotifications([]),
         );
-      },
-      [],
-    );
-
-  useEffect(() => {
-    function loadSession() {
-      const session =
-        getSession();
-
-      if (!session) {
-        setUserId(null);
-        setRole(null);
-        setNotifications([]);
 
         return;
       }
 
-      const sessionRole =
-        session.role ===
-        "doctor"
-          ? "doctor"
-          : "patient";
+      const currentNotifications =
+        getNotificationsByUserAndRole(
+          userId,
+          role,
+        );
 
-      setUserId(
-        session.id,
+      dispatch(
+        syncNotifications(
+          currentNotifications,
+        ),
       );
+    }, [
+      dispatch,
+      userId,
+      role,
+    ]);
 
-      setRole(
-        sessionRole,
-      );
-
-      refreshNotifications(
-        session.id,
-        sessionRole,
-      );
+  useEffect(() => {
+    if (
+      !authInitialized ||
+      !userId ||
+      !role
+    ) {
+      return;
     }
 
-    /*
-     * Delaying the initial read
-     * prevents synchronous state
-     * updates directly inside the
-     * effect body.
-     */
-    const frame =
-      window.requestAnimationFrame(
-        loadSession,
+    const currentNotifications =
+      getNotificationsByUserAndRole(
+        userId,
+        role,
       );
 
+    dispatch(
+      initializeNotifications({
+        userId,
+        recipientRole: role,
+        notifications:
+          currentNotifications,
+      }),
+    );
+  }, [
+    dispatch,
+    authInitialized,
+    userId,
+    role,
+  ]);
+
+  useEffect(() => {
     function handleUpdate() {
-      loadSession();
+      refreshNotifications();
     }
 
     function handleStorage(
@@ -412,14 +417,7 @@ export default function NotificationBell() {
         event.key ===
         "schedula:notifications"
       ) {
-        loadSession();
-      }
-
-      if (
-        event.key ===
-        "schedula:session"
-      ) {
-        loadSession();
+        refreshNotifications();
       }
     }
 
@@ -468,10 +466,6 @@ export default function NotificationBell() {
     );
 
     return () => {
-      window.cancelAnimationFrame(
-        frame,
-      );
-
       window.removeEventListener(
         "schedula:notifications-updated",
         handleUpdate,
@@ -511,12 +505,13 @@ export default function NotificationBell() {
       markNotificationAsRead(
         notification.id,
       );
-    }
 
-    refreshNotifications(
-      userId,
-      role,
-    );
+      dispatch(
+        markAsRead(
+          notification.id,
+        ),
+      );
+    }
 
     setIsOpen(false);
   }
@@ -534,9 +529,11 @@ export default function NotificationBell() {
       role,
     );
 
-    refreshNotifications(
-      userId,
-      role,
+    dispatch(
+      markAllAsRead({
+        userId,
+        recipientRole: role,
+      }),
     );
   }
 

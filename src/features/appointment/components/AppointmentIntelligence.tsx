@@ -7,7 +7,10 @@ import {
   useMemo,
 } from "react";
 
-import { useDispatch, useSelector } from "react-redux";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 
@@ -30,7 +33,7 @@ import type {
 } from "@/store";
 
 import {
-  setDoctors,
+  initializeDoctors,
 } from "@/store/slices/doctorsSlice";
 
 function CalendarIcon() {
@@ -187,7 +190,7 @@ export default function AppointmentIntelligence({
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        setDoctors(
+        initializeDoctors(
           getAllDoctors(),
         ),
       );

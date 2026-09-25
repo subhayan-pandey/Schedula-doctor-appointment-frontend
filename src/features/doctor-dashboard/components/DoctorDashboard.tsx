@@ -4,22 +4,17 @@ import Link from "next/link";
 import {
   useEffect,
   useMemo,
-  useState,
 } from "react";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 
 import StatCard from "@/features/doctor-dashboard/components/StatCard";
 import DoctorAvailabilityIntelligence from "@/features/doctor-dashboard/components/DoctorAvailabilityIntelligence";
-
-import {
-  getSession,
-} from "@/lib/storage";
-
-import {
-  getDoctorAccount,
-} from "@/lib/doctor-account-store";
 
 import {
   getAllBookings,
@@ -34,8 +29,19 @@ import {
 } from "@/lib/utils/date";
 
 import type {
-  DoctorAccount,
-} from "@/types/doctorAccount";
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import {
+  initializeAppointments,
+  setAppointments,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  initializeDoctorSlots,
+  setDoctorSlots,
+} from "@/store/slices/slotsSlice";
 
 import type {
   Booking,
@@ -73,11 +79,6 @@ const QUICK_LINKS = [
       "View your schedule and reschedule upcoming appointments",
   },
 ];
-
-type Status =
-  | "loading"
-  | "unauthorized"
-  | "ready";
 
 function CalendarIcon() {
   return (
@@ -124,118 +125,134 @@ function UserIcon() {
 }
 
 export default function DoctorDashboard() {
-  const [
-    status,
-    setStatus,
-  ] = useState<Status>(
-    "loading",
-  );
+  const dispatch =
+    useDispatch<AppDispatch>();
 
-  const [
-    account,
-    setAccount,
-  ] = useState<DoctorAccount | null>(
-    null,
-  );
-
-  const [
-    bookings,
-    setBookings,
-  ] = useState<Booking[]>(
-    [],
-  );
-
-  const [
-    availableSlotCount,
-    setAvailableSlotCount,
-  ] = useState(0);
-
-  const [
-    doctorId,
-    setDoctorId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  function refreshDashboard(
-    currentDoctorId: string,
-  ) {
-    const doctorBookings =
-      getAllBookings().filter(
-        (booking) =>
-          booking.doctorId ===
-          currentDoctorId,
-      );
-
-    setBookings(
-      doctorBookings,
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
     );
 
-    const slots =
-      getSlotsForDoctor(
-        currentDoctorId,
-      );
-
-    setAvailableSlotCount(
-      slots.filter(
-        (slot) =>
-          slot.status ===
-          "available",
-      ).length,
+  const authUser =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
     );
-  }
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const allBookings =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments,
+    );
+
+  const doctorId =
+    authUser?.role === "doctor"
+      ? authUser.id
+      : null;
+
+  const slotsInitialized =
+    useSelector(
+      (state: RootState) =>
+        doctorId
+          ? state.slots.initializedDoctors.includes(
+              doctorId,
+            )
+          : false,
+    );
+
+  const slots =
+    useSelector(
+      (state: RootState) =>
+        doctorId
+          ? state.slots.slotsByDoctor[
+              doctorId
+            ] ?? []
+          : [],
+    );
+
+  const bookings =
+    useMemo<Booking[]>(
+      () =>
+        doctorId
+          ? allBookings.filter(
+              (booking) =>
+                booking.doctorId ===
+                doctorId,
+            )
+          : [],
+      [
+        allBookings,
+        doctorId,
+      ],
+    );
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session =
-        getSession();
-
-      if (
-        !session ||
-        session.role !==
-          "doctor"
-      ) {
-        setStatus(
-          "unauthorized",
-        );
-
-        return;
-      }
-
-      setDoctorId(
-        session.id,
-      );
-
-      setAccount(
-        getDoctorAccount(),
-      );
-
-      refreshDashboard(
-        session.id,
-      );
-
-      setStatus("ready");
-    });
-  }, []);
-
-  useEffect(() => {
-    const session =
-      getSession();
-
     if (
-      !session ||
-      session.role !==
-        "doctor"
+      !authInitialized ||
+      !doctorId ||
+      appointmentsInitialized
+    ) {
+      return;
+    }
+
+    dispatch(
+      initializeAppointments(
+        getAllBookings(),
+      ),
+    );
+  }, [
+    authInitialized,
+    doctorId,
+    appointmentsInitialized,
+    dispatch,
+  ]);
+
+  useEffect(() => {
+    if (
+      !doctorId ||
+      slotsInitialized
+    ) {
+      return;
+    }
+
+    dispatch(
+      initializeDoctorSlots({
+        doctorId,
+        slots:
+          getSlotsForDoctor(
+            doctorId,
+          ),
+      }),
+    );
+  }, [
+    doctorId,
+    slotsInitialized,
+    dispatch,
+  ]);
+
+  useEffect(() => {
+    if (
+      !authInitialized ||
+      !doctorId
     ) {
       return;
     }
 
     const currentDoctorId =
-      session.id;
+      doctorId;
 
     function handleBookingsUpdated() {
-      refreshDashboard(
-        currentDoctorId,
+      dispatch(
+        setAppointments(
+          getAllBookings(),
+        ),
       );
     }
 
@@ -249,14 +266,23 @@ export default function DoctorDashboard() {
 
       if (
         customEvent.detail
-          ?.doctorId !==
-        currentDoctorId
+          ?.doctorId &&
+        customEvent.detail
+          .doctorId !==
+          currentDoctorId
       ) {
         return;
       }
 
-      refreshDashboard(
-        currentDoctorId,
+      dispatch(
+        setDoctorSlots({
+          doctorId:
+            currentDoctorId,
+          slots:
+            getSlotsForDoctor(
+              currentDoctorId,
+            ),
+        }),
       );
     }
 
@@ -291,7 +317,18 @@ export default function DoctorDashboard() {
         handleBookingsUpdated,
       );
     };
-  }, []);
+  }, [
+    authInitialized,
+    doctorId,
+    dispatch,
+  ]);
+
+  const status =
+    !authInitialized
+      ? "loading"
+      : !doctorId
+        ? "unauthorized"
+        : "ready";
 
   const today =
     toISODate(
@@ -342,6 +379,13 @@ export default function DoctorDashboard() {
         "pending",
     ).length;
 
+  const availableSlotCount =
+    slots.filter(
+      (slot) =>
+        slot.status ===
+        "available",
+    ).length;
+
   if (
     status ===
     "loading"
@@ -389,8 +433,8 @@ export default function DoctorDashboard() {
 
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)]">
           Welcome back
-          {account
-            ? `, ${account.name}`
+          {authUser
+            ? `, ${authUser.name}`
             : ""}
         </h1>
 
@@ -438,7 +482,9 @@ export default function DoctorDashboard() {
       {doctorId && (
         <div className="mt-8">
           <DoctorAvailabilityIntelligence
-            doctorId={doctorId}
+            doctorId={
+              doctorId
+            }
           />
         </div>
       )}

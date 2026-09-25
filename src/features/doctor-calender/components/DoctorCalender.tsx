@@ -7,6 +7,10 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
@@ -14,6 +18,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import {
   getAllBookings,
   rescheduleBooking,
+  updateBooking,
 } from "@/lib/bookings-store";
 
 import {
@@ -27,15 +32,27 @@ import {
   createPatientNotification,
 } from "@/lib/notifications-store";
 
-import { getSession } from "@/lib/storage";
-
 import type { Booking } from "@/types/booking";
 import type { Slot } from "@/types/slot";
 
-type PageStatus =
-  | "loading"
-  | "unauthorized"
-  | "ready";
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import {
+  initializeAppointments,
+  setAppointments,
+  updateAppointment,
+} from "@/store/slices/appointmentsSlice";
+
+import {
+  initializeDoctorSlots,
+  setDoctorSlots,
+  bookDoctorSlot,
+  releaseDoctorSlot,
+  rescheduleDoctorSlot,
+} from "@/store/slices/slotsSlice";
 
 type CalendarView =
   | "day"
@@ -63,15 +80,18 @@ function addDays(
   days: number,
 ): Date {
   const next = new Date(date);
+
   next.setDate(
     next.getDate() + days,
   );
+
   return next;
 }
 
 function getWeekStart(date: Date): Date {
   const next = new Date(date);
   const day = next.getDay();
+
   const offset =
     day === 0 ? -6 : 1 - day;
 
@@ -84,8 +104,12 @@ function getWeekStart(date: Date): Date {
   return next;
 }
 
-function formatDate(date: string): string {
-  return parseDate(date).toLocaleDateString(
+function formatDate(
+  date: string,
+): string {
+  return parseDate(
+    date,
+  ).toLocaleDateString(
     "en-IN",
     {
       weekday: "short",
@@ -98,7 +122,9 @@ function formatDate(date: string): string {
 function formatFullDate(
   date: string,
 ): string {
-  return parseDate(date).toLocaleDateString(
+  return parseDate(
+    date,
+  ).toLocaleDateString(
     "en-IN",
     {
       weekday: "long",
@@ -109,17 +135,22 @@ function formatFullDate(
   );
 }
 
-function getMonthDays(anchor: Date): Date[] {
+function getMonthDays(
+  anchor: Date,
+): Date[] {
   const firstDay = new Date(
     anchor.getFullYear(),
     anchor.getMonth(),
     1,
   );
 
-  const weekday = firstDay.getDay();
+  const weekday =
+    firstDay.getDay();
 
   const mondayOffset =
-    weekday === 0 ? 6 : weekday - 1;
+    weekday === 0
+      ? 6
+      : weekday - 1;
 
   const start = addDays(
     firstDay,
@@ -133,24 +164,13 @@ function getMonthDays(anchor: Date): Date[] {
   );
 }
 
-/*
- * Slot times are stored as values such as:
- *
- * "09:00 AM - 09:15 AM"
- * "04:00 PM - 04:15 PM"
- *
- * They cannot be passed directly to
- * new Date(`${date}T${time}`).
- *
- * This helper extracts the starting time
- * and converts the 12-hour value into a
- * real local Date.
- */
 function parseSlotDateTime(
   slot: Slot,
 ): Date | null {
   const startTime =
-    slot.time.split(" - ")[0]?.trim();
+    slot.time
+      .split(" - ")[0]
+      ?.trim();
 
   if (!startTime) {
     return null;
@@ -165,9 +185,16 @@ function parseSlotDateTime(
     return null;
   }
 
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const period = match[3].toUpperCase();
+  const hour = Number(
+    match[1],
+  );
+
+  const minute = Number(
+    match[2],
+  );
+
+  const period =
+    match[3].toUpperCase();
 
   if (
     hour < 1 ||
@@ -182,13 +209,19 @@ function parseSlotDateTime(
 
   if (period === "AM") {
     hour24 =
-      hour === 12 ? 0 : hour;
+      hour === 12
+        ? 0
+        : hour;
   } else {
     hour24 =
-      hour === 12 ? 12 : hour + 12;
+      hour === 12
+        ? 12
+        : hour + 12;
   }
 
-  const date = parseDate(slot.date);
+  const date = parseDate(
+    slot.date,
+  );
 
   date.setHours(
     hour24,
@@ -203,23 +236,33 @@ function parseSlotDateTime(
 function getBookingStyle(
   status: Booking["status"],
 ): string {
-  if (status === "completed") {
+  if (
+    status === "completed"
+  ) {
     return "border-[var(--brand)]/20 bg-[var(--brand-soft)] text-[var(--brand-deep)]";
   }
 
-  if (status === "cancelled") {
+  if (
+    status === "cancelled"
+  ) {
     return "border-[var(--urgent)]/20 bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
   }
 
-  if (status === "missed") {
+  if (
+    status === "missed"
+  ) {
     return "border-[var(--line)] bg-[var(--canvas)] text-[var(--muted)]";
   }
 
-  if (status === "pending") {
+  if (
+    status === "pending"
+  ) {
     return "border-[var(--warning)]/20 bg-[var(--warning-soft)] text-[var(--warning)]";
   }
 
-  if (status === "declined") {
+  if (
+    status === "declined"
+  ) {
     return "border-[var(--urgent)]/20 bg-[var(--urgent-soft)] text-[var(--urgent-deep)]";
   }
 
@@ -232,16 +275,22 @@ function getStatusLabel(
   switch (status) {
     case "pending":
       return "Pending";
+
     case "confirmed":
       return "Confirmed";
+
     case "upcoming":
       return "Upcoming";
+
     case "completed":
       return "Completed";
+
     case "cancelled":
       return "Cancelled";
+
     case "missed":
       return "Missed";
+
     case "declined":
       return "Declined";
   }
@@ -281,6 +330,7 @@ function ClockIcon() {
         cy="12"
         r="8.5"
       />
+
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -322,6 +372,9 @@ function ChevronIcon({
 }
 
 export default function DoctorCalendar() {
+  const dispatch =
+    useDispatch<AppDispatch>();
+
   const searchParams =
     useSearchParams();
 
@@ -330,29 +383,69 @@ export default function DoctorCalendar() {
       "appointmentId",
     );
 
-  const [
-    pageStatus,
-    setPageStatus,
-  ] = useState<PageStatus>(
-    "loading",
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
+
+  const authUser =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const appointmentsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.initialized,
+    );
+
+  const allBookings =
+    useSelector(
+      (state: RootState) =>
+        state.appointments.appointments,
+    );
+
+  const doctorId =
+    authUser?.role === "doctor"
+      ? authUser.id
+      : null;
+
+  const slotsInitialized =
+    useSelector(
+      (state: RootState) =>
+        doctorId
+          ? state.slots.initializedDoctors.includes(
+              doctorId,
+            )
+          : false,
+    );
+
+  const slots =
+    useSelector(
+      (state: RootState) =>
+        doctorId
+          ? state.slots.slotsByDoctor[
+              doctorId
+            ] ?? []
+          : [],
+    );
+
+  const bookings = useMemo(
+    () =>
+      doctorId
+        ? allBookings.filter(
+            (booking) =>
+              booking.doctorId ===
+              doctorId,
+          )
+        : [],
+    [
+      allBookings,
+      doctorId,
+    ],
   );
-
-  const [
-    doctorId,
-    setDoctorId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    bookings,
-    setBookings,
-  ] = useState<Booking[]>([]);
-
-  const [
-    slots,
-    setSlots,
-  ] = useState<Slot[]>([]);
 
   const [
     calendarView,
@@ -376,9 +469,9 @@ export default function DoctorCalendar() {
   );
 
   const [
-    selectedBooking,
-    setSelectedBooking,
-  ] = useState<Booking | null>(
+    selectedBookingId,
+    setSelectedBookingId,
+  ] = useState<string | null>(
     null,
   );
 
@@ -401,47 +494,71 @@ export default function DoctorCalendar() {
     null,
   );
 
-  function refreshData(id: string) {
-    const doctorBookings =
-      getAllBookings().filter(
-        (booking) =>
-          booking.doctorId === id,
-      );
-
-    setBookings(
-      doctorBookings,
+  const selectedBooking =
+    useMemo(
+      () =>
+        selectedBookingId
+          ? bookings.find(
+              (booking) =>
+                booking.id ===
+                selectedBookingId,
+            ) ?? null
+          : null,
+      [
+        bookings,
+        selectedBookingId,
+      ],
     );
 
-    setSlots(
-      getSlotsForDoctor(id),
+  useEffect(() => {
+    if (
+      !authInitialized ||
+      !doctorId ||
+      appointmentsInitialized
+    ) {
+      return;
+    }
+
+    dispatch(
+      initializeAppointments(
+        getAllBookings(),
+      ),
     );
-  }
+  }, [
+    authInitialized,
+    doctorId,
+    appointmentsInitialized,
+    dispatch,
+  ]);
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session = getSession();
+    if (
+      !doctorId ||
+      slotsInitialized
+    ) {
+      return;
+    }
 
-      if (
-        !session ||
-        session.role !== "doctor" ||
-        !session.id
-      ) {
-        setPageStatus(
-          "unauthorized",
-        );
-        return;
-      }
-
-      setDoctorId(session.id);
-
-      refreshData(session.id);
-
-      setPageStatus("ready");
-    });
-  }, []);
+    dispatch(
+      initializeDoctorSlots({
+        doctorId,
+        slots:
+          getSlotsForDoctor(
+            doctorId,
+          ),
+      }),
+    );
+  }, [
+    doctorId,
+    slotsInitialized,
+    dispatch,
+  ]);
 
   useEffect(() => {
-    if (!doctorId) {
+    if (
+      !authInitialized ||
+      !doctorId
+    ) {
       return;
     }
 
@@ -449,8 +566,10 @@ export default function DoctorCalendar() {
       doctorId;
 
     function handleBookingsUpdated() {
-      refreshData(
-        currentDoctorId,
+      dispatch(
+        setAppointments(
+          getAllBookings(),
+        ),
       );
     }
 
@@ -464,16 +583,23 @@ export default function DoctorCalendar() {
 
       if (
         customEvent.detail
-          ?.doctorId !==
-        currentDoctorId
+          ?.doctorId &&
+        customEvent.detail
+          .doctorId !==
+          currentDoctorId
       ) {
         return;
       }
 
-      setSlots(
-        getSlotsForDoctor(
-          currentDoctorId,
-        ),
+      dispatch(
+        setDoctorSlots({
+          doctorId:
+            currentDoctorId,
+          slots:
+            getSlotsForDoctor(
+              currentDoctorId,
+            ),
+        }),
       );
     }
 
@@ -498,7 +624,11 @@ export default function DoctorCalendar() {
         handleSlotsUpdated,
       );
     };
-  }, [doctorId]);
+  }, [
+    authInitialized,
+    doctorId,
+    dispatch,
+  ]);
 
   useEffect(() => {
     if (
@@ -522,8 +652,8 @@ export default function DoctorCalendar() {
 
     const timeoutId =
       window.setTimeout(() => {
-        setSelectedBooking(
-          target,
+        setSelectedBookingId(
+          target.id,
         );
       }, 0);
 
@@ -538,9 +668,19 @@ export default function DoctorCalendar() {
     bookings,
   ]);
 
+  const pageStatus =
+    !authInitialized
+      ? "loading"
+      : !doctorId
+        ? "unauthorized"
+        : "ready";
+
   const visibleDays =
     useMemo(() => {
-      if (calendarView === "day") {
+      if (
+        calendarView ===
+        "day"
+      ) {
         return [
           parseDate(
             selectedDate,
@@ -548,7 +688,10 @@ export default function DoctorCalendar() {
         ];
       }
 
-      if (calendarView === "week") {
+      if (
+        calendarView ===
+        "week"
+      ) {
         const start =
           getWeekStart(
             parseDate(
@@ -581,7 +724,8 @@ export default function DoctorCalendar() {
         return [];
       }
 
-      const now = new Date();
+      const now =
+        new Date();
 
       return slots
         .filter((slot) => {
@@ -655,7 +799,10 @@ export default function DoctorCalendar() {
         ? 1
         : -1;
 
-    if (calendarView === "month") {
+    if (
+      calendarView ===
+      "month"
+    ) {
       const next =
         new Date(
           monthAnchor,
@@ -671,7 +818,8 @@ export default function DoctorCalendar() {
     }
 
     const days =
-      calendarView === "week"
+      calendarView ===
+      "week"
         ? amount * 7
         : amount;
 
@@ -688,7 +836,8 @@ export default function DoctorCalendar() {
   }
 
   function goToToday() {
-    const today = new Date();
+    const today =
+      new Date();
 
     setSelectedDate(
       toISODate(today),
@@ -700,18 +849,27 @@ export default function DoctorCalendar() {
   function selectBooking(
     booking: Booking,
   ) {
-    setSelectedBooking(
-      booking,
+    setSelectedBookingId(
+      booking.id,
     );
 
-    setIsRescheduling(false);
+    setIsRescheduling(
+      false,
+    );
+
     setError(null);
     setSuccess(null);
   }
 
   function closeBooking() {
-    setSelectedBooking(null);
-    setIsRescheduling(false);
+    setSelectedBookingId(
+      null,
+    );
+
+    setIsRescheduling(
+      false,
+    );
+
     setError(null);
     setSuccess(null);
   }
@@ -725,14 +883,16 @@ export default function DoctorCalendar() {
     }
 
     createPatientNotification({
-      userId: booking.patientId,
+      userId:
+        booking.patientId,
       title:
         "Appointment rescheduled",
       message: `Your appointment has been rescheduled to ${formatFullDate(
         newSlot.date,
       )} at ${newSlot.time}.`,
       type: "appointment",
-      appointmentId: booking.id,
+      appointmentId:
+        booking.id,
     });
   }
 
@@ -769,6 +929,7 @@ export default function DoctorCalendar() {
       setError(
         "Only confirmed, upcoming or declined appointments can be rescheduled.",
       );
+
       return;
     }
 
@@ -785,6 +946,7 @@ export default function DoctorCalendar() {
       setError(
         "Appointments cannot be rescheduled to a past date or time.",
       );
+
       return;
     }
 
@@ -809,7 +971,15 @@ export default function DoctorCalendar() {
         "This slot is no longer available. Please select another slot.",
       );
 
-      setSlots(latestSlots);
+      dispatch(
+        setDoctorSlots({
+          doctorId:
+            currentDoctorId,
+          slots:
+            latestSlots,
+        }),
+      );
+
       return;
     }
 
@@ -834,10 +1004,15 @@ export default function DoctorCalendar() {
           "This slot is no longer available. Please select another slot.",
         );
 
-        setSlots(
-          getSlotsForDoctor(
-            currentDoctorId,
-          ),
+        dispatch(
+          setDoctorSlots({
+            doctorId:
+              currentDoctorId,
+            slots:
+              getSlotsForDoctor(
+                currentDoctorId,
+              ),
+          }),
         );
 
         return;
@@ -859,15 +1034,16 @@ export default function DoctorCalendar() {
             previousSlotId,
           );
 
-        setSlots(
-          rollbackResult ??
-            getSlotsForDoctor(
+        dispatch(
+          setDoctorSlots({
+            doctorId:
               currentDoctorId,
-            ),
-        );
-
-        refreshData(
-          currentDoctorId,
+            slots:
+              rollbackResult ??
+              getSlotsForDoctor(
+                currentDoctorId,
+              ),
+          }),
         );
 
         setError(
@@ -877,21 +1053,35 @@ export default function DoctorCalendar() {
         return;
       }
 
-      setBookings(
-        getAllBookings().filter(
-          (booking) =>
-            booking.doctorId ===
+      dispatch(
+        rescheduleDoctorSlot({
+          doctorId:
             currentDoctorId,
-        ),
+          currentSlotId:
+            previousSlotId,
+          newSlotId:
+            latestNewSlot.id,
+        }),
       );
 
-      setSlots(updatedSlots);
-
-      setSelectedBooking(
-        updatedBooking,
+      dispatch(
+        updateAppointment({
+          bookingId:
+            currentBooking.id,
+          updates: {
+            slotId:
+              latestNewSlot.id,
+            date:
+              latestNewSlot.date,
+            time:
+              latestNewSlot.time,
+          },
+        }),
       );
 
-      setIsRescheduling(false);
+      setIsRescheduling(
+        false,
+      );
 
       notifyPatientOfReschedule(
         updatedBooking,
@@ -916,22 +1106,34 @@ export default function DoctorCalendar() {
         "This slot is no longer available. Please select another slot.",
       );
 
-      setSlots(
-        getSlotsForDoctor(
-          currentDoctorId,
-        ),
+      dispatch(
+        setDoctorSlots({
+          doctorId:
+            currentDoctorId,
+          slots:
+            getSlotsForDoctor(
+              currentDoctorId,
+            ),
+        }),
       );
 
       return;
     }
 
     const updatedBooking =
-      rescheduleBooking(
-          currentBooking.id,
-          latestNewSlot.id,
-          latestNewSlot.date,
-          latestNewSlot.time,
-        );
+      updateBooking(
+        currentBooking.id,
+        {
+          slotId:
+            latestNewSlot.id,
+          date:
+            latestNewSlot.date,
+          time:
+            latestNewSlot.time,
+          status:
+            "upcoming",
+        },
+      );
 
     if (!updatedBooking) {
       releaseSlot(
@@ -939,14 +1141,15 @@ export default function DoctorCalendar() {
         latestNewSlot.id,
       );
 
-      setSlots(
-        getSlotsForDoctor(
-          currentDoctorId,
-        ),
-      );
-
-      refreshData(
-        currentDoctorId,
+      dispatch(
+        setDoctorSlots({
+          doctorId:
+            currentDoctorId,
+          slots:
+            getSlotsForDoctor(
+              currentDoctorId,
+            ),
+        }),
       );
 
       setError(
@@ -956,25 +1159,35 @@ export default function DoctorCalendar() {
       return;
     }
 
-    setBookings(
-      getAllBookings().filter(
-        (booking) =>
-          booking.doctorId ===
+    dispatch(
+      bookDoctorSlot({
+        doctorId:
           currentDoctorId,
-      ),
+        slotId:
+          latestNewSlot.id,
+      }),
     );
 
-    setSlots(
-      getSlotsForDoctor(
-        currentDoctorId,
-      ),
+    dispatch(
+      updateAppointment({
+        bookingId:
+          currentBooking.id,
+        updates: {
+          slotId:
+            latestNewSlot.id,
+          date:
+            latestNewSlot.date,
+          time:
+            latestNewSlot.time,
+          status:
+            "upcoming",
+        },
+      }),
     );
 
-    setSelectedBooking(
-      updatedBooking,
+    setIsRescheduling(
+      false,
     );
-
-    setIsRescheduling(false);
 
     notifyPatientOfReschedule(
       updatedBooking,
@@ -986,7 +1199,10 @@ export default function DoctorCalendar() {
     );
   }
 
-  if (pageStatus === "loading") {
+  if (
+    pageStatus ===
+    "loading"
+  ) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-8">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
@@ -1035,7 +1251,8 @@ export default function DoctorCalendar() {
     toISODate(new Date());
 
   const calendarTitle =
-    calendarView === "month"
+    calendarView ===
+    "month"
       ? monthAnchor.toLocaleDateString(
           "en-IN",
           {
@@ -1043,7 +1260,8 @@ export default function DoctorCalendar() {
             year: "numeric",
           },
         )
-      : calendarView === "week"
+      : calendarView ===
+          "week"
         ? `${formatDate(
             toISODate(
               visibleDays[0],
@@ -1051,7 +1269,8 @@ export default function DoctorCalendar() {
           )} - ${formatDate(
             toISODate(
               visibleDays[
-                visibleDays.length - 1
+                visibleDays.length -
+                  1
               ],
             ),
           )}`
@@ -1084,7 +1303,9 @@ export default function DoctorCalendar() {
             <Button
               variant="outline"
               size="sm"
-              onClick={goToToday}
+              onClick={
+                goToToday
+              }
             >
               Today
             </Button>
@@ -1099,7 +1320,9 @@ export default function DoctorCalendar() {
               className="grid size-9 place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--brand)] hover:text-[var(--brand-deep)]"
               aria-label="Previous period"
             >
-              <ChevronIcon direction="left" />
+              <ChevronIcon
+                direction="left"
+              />
             </button>
 
             <button
@@ -1112,7 +1335,9 @@ export default function DoctorCalendar() {
               className="grid size-9 place-items-center rounded-lg border border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:border-[var(--brand)] hover:text-[var(--brand-deep)]"
               aria-label="Next period"
             >
-              <ChevronIcon direction="right" />
+              <ChevronIcon
+                direction="right"
+              />
             </button>
           </div>
         </div>
@@ -1143,25 +1368,27 @@ export default function DoctorCalendar() {
                 "week",
                 "month",
               ] as CalendarView[]
-            ).map((view) => (
-              <button
-                key={view}
-                type="button"
-                onClick={() =>
-                  setCalendarView(
-                    view,
-                  )
-                }
-                className={`rounded-md px-3 py-2 text-sm font-medium capitalize ${
-                  calendarView ===
-                  view
-                    ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
-                    : "text-[var(--muted)] hover:text-[var(--ink)]"
-                }`}
-              >
-                {view}
-              </button>
-            ))}
+            ).map(
+              (view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() =>
+                    setCalendarView(
+                      view,
+                    )
+                  }
+                  className={`rounded-md px-3 py-2 text-sm font-medium capitalize ${
+                    calendarView ===
+                    view
+                      ? "bg-[var(--surface)] text-[var(--brand-deep)] shadow-sm"
+                      : "text-[var(--muted)] hover:text-[var(--ink)]"
+                  }`}
+                >
+                  {view}
+                </button>
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -1180,14 +1407,16 @@ export default function DoctorCalendar() {
                   "Fri",
                   "Sat",
                   "Sun",
-                ].map((day) => (
-                  <div
-                    key={day}
-                    className="border-r border-[var(--line)] px-1 py-3 text-center text-[11px] font-semibold text-[var(--muted)] last:border-r-0 sm:text-xs"
-                  >
-                    {day}
-                  </div>
-                ))}
+                ].map(
+                  (day) => (
+                    <div
+                      key={day}
+                      className="border-r border-[var(--line)] px-1 py-3 text-center text-[11px] font-semibold text-[var(--muted)] last:border-r-0 sm:text-xs"
+                    >
+                      {day}
+                    </div>
+                  ),
+                )}
               </div>
 
               <div className="grid grid-cols-7">
@@ -1383,11 +1612,9 @@ export default function DoctorCalendar() {
                                         </div>
 
                                         <span className="shrink-0 rounded-full bg-white/60 px-2 py-1 text-[10px] font-semibold capitalize">
-                                          {
-                                            getStatusLabel(
-                                              booking.status,
-                                            )
-                                          }
+                                          {getStatusLabel(
+                                            booking.status,
+                                          )}
                                         </span>
                                       </div>
                                     </button>

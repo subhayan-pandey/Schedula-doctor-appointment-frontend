@@ -7,6 +7,10 @@ import {
   type FormEvent,
 } from "react";
 
+import {
+  useDispatch,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
 
@@ -14,7 +18,13 @@ import {
   matchesDoctorAccount,
 } from "@/lib/doctor-account-store";
 
-import { setSession } from "@/lib/storage";
+import {
+  login,
+} from "@/store/slices/authSlice";
+
+import type {
+  AppDispatch,
+} from "@/store";
 
 import {
   isValidEmailOrMobile,
@@ -33,6 +43,9 @@ export default function DoctorLoginForm({
   onForgotPassword?: () => void;
 }) {
   const router = useRouter();
+
+  const dispatch =
+    useDispatch<AppDispatch>();
 
   const [identifier, setIdentifier] =
     useState("");
@@ -93,12 +106,15 @@ export default function DoctorLoginForm({
         return;
       }
 
-      setSession({
-        id: account.id,
-        name: account.name,
-        emailOrMobile: account.email,
-        role: "doctor",
-      });
+      dispatch(
+        login({
+          id: account.id,
+          name: account.name,
+          emailOrMobile:
+            account.email,
+          role: "doctor",
+        }),
+      );
 
       setIsSubmitting(false);
 
@@ -256,10 +272,12 @@ function DoctorIcon() {
         d="M8 4h8v16H8z"
         strokeLinejoin="round"
       />
+
       <path
         d="M10 9h4M12 7v4"
         strokeLinecap="round"
       />
+
       <path
         d="M10 15h4"
         strokeLinecap="round"

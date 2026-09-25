@@ -1,14 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
+
 import AddSlotForm from "@/features/doctor-slot/components/AddSlotForm";
 import SlotManagerGrid from "@/features/doctor-slot/components/SlotManagerGrid";
-
-import { getSession } from "@/lib/storage";
 
 import {
   getSlotsForDoctor,
@@ -21,18 +28,46 @@ import { toISODate } from "@/lib/utils/date";
 
 import type { Slot } from "@/types/slot";
 
-type Status = "loading" | "unauthorized" | "ready";
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import {
+  initializeDoctorSlots,
+  setDoctorSlots,
+  createDoctorSlot,
+  removeDoctorSlot,
+  toggleDoctorSlotAvailability,
+} from "@/store/slices/slotsSlice";
+
+type Status =
+  | "loading"
+  | "unauthorized"
+  | "ready";
 
 function getTodayISO(): string {
-  const today = new Date();
+  const today =
+    new Date();
 
-  today.setHours(0, 0, 0, 0);
+  today.setHours(
+    0,
+    0,
+    0,
+    0,
+  );
 
-  return toISODate(today);
+  return toISODate(
+    today,
+  );
 }
 
-function formatSelectedDate(isoDate: string): string {
-  return new Date(`${isoDate}T00:00:00`).toLocaleDateString(
+function formatSelectedDate(
+  isoDate: string,
+): string {
+  return new Date(
+    `${isoDate}T00:00:00`,
+  ).toLocaleDateString(
     "en-IN",
     {
       weekday: "long",
@@ -44,17 +79,52 @@ function formatSelectedDate(isoDate: string): string {
 }
 
 export default function SlotManager() {
-  const [status, setStatus] =
-    useState<Status>("loading");
+  const dispatch =
+    useDispatch<AppDispatch>();
 
-  const [doctorId, setDoctorId] =
-    useState<string | null>(null);
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
 
-  const [slots, setSlots] =
-    useState<Slot[]>([]);
+  const authUser =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
 
-  const [selectedDate, setSelectedDate] =
-    useState<string>(getTodayISO);
+  const doctorId =
+    authUser?.role === "doctor"
+      ? authUser.id
+      : null;
+
+  const slotsInitialized =
+    useSelector(
+      (state: RootState) =>
+        doctorId
+          ? state.slots.initializedDoctors.includes(
+              doctorId,
+            )
+          : false,
+    );
+
+  const slots =
+    useSelector(
+      (state: RootState) =>
+        doctorId
+          ? state.slots.slotsByDoctor[
+              doctorId
+            ] ?? []
+          : [],
+    );
+
+  const [
+    selectedDate,
+    setSelectedDate,
+  ] = useState<string>(
+    getTodayISO,
+  );
 
   const today = useMemo(
     () => getTodayISO(),
@@ -62,34 +132,51 @@ export default function SlotManager() {
   );
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const session = getSession();
-
-      if (!session || session.role !== "doctor") {
-        setStatus("unauthorized");
-        return;
-      }
-
-      setDoctorId(session.id);
-
-      setSlots(
-        getSlotsForDoctor(session.id),
-      );
-
-      setStatus("ready");
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!doctorId) {
+    if (
+      !authInitialized ||
+      !doctorId ||
+      slotsInitialized
+    ) {
       return;
     }
 
-    const currentDoctorId = doctorId;
+    dispatch(
+      initializeDoctorSlots({
+        doctorId,
+        slots:
+          getSlotsForDoctor(
+            doctorId,
+          ),
+      }),
+    );
+  }, [
+    authInitialized,
+    doctorId,
+    slotsInitialized,
+    dispatch,
+  ]);
+
+  useEffect(() => {
+    if (
+      !authInitialized ||
+      !doctorId
+    ) {
+      return;
+    }
+
+    const currentDoctorId =
+      doctorId;
 
     function refreshSlots() {
-      setSlots(
-        getSlotsForDoctor(currentDoctorId),
+      dispatch(
+        setDoctorSlots({
+          doctorId:
+            currentDoctorId,
+          slots:
+            getSlotsForDoctor(
+              currentDoctorId,
+            ),
+        }),
       );
     }
 
@@ -113,12 +200,16 @@ export default function SlotManager() {
         }>;
 
       if (
-        !customEvent.detail?.doctorId ||
-        customEvent.detail.doctorId ===
+        customEvent.detail
+          ?.doctorId &&
+        customEvent.detail
+          .doctorId !==
           currentDoctorId
       ) {
-        refreshSlots();
+        return;
       }
+
+      refreshSlots();
     }
 
     window.addEventListener(
@@ -142,83 +233,146 @@ export default function SlotManager() {
         handleSlotsUpdated,
       );
     };
-  }, [doctorId]);
+  }, [
+    authInitialized,
+    doctorId,
+    dispatch,
+  ]);
 
-  const slotsForDate = useMemo(
-    () =>
-      slots.filter(
-        (slot) =>
-          slot.date === selectedDate,
-      ),
-    [slots, selectedDate],
-  );
-
-  const morningSlots = useMemo(
-    () =>
-      slotsForDate
-        .filter(
+  const slotsForDate =
+    useMemo(
+      () =>
+        slots.filter(
           (slot) =>
-            slot.period === "Morning",
-        )
-        .sort((a, b) =>
-          a.time.localeCompare(b.time),
+            slot.date ===
+            selectedDate,
         ),
-    [slotsForDate],
-  );
+      [
+        slots,
+        selectedDate,
+      ],
+    );
 
-  const eveningSlots = useMemo(
-    () =>
-      slotsForDate
-        .filter(
-          (slot) =>
-            slot.period === "Evening",
-        )
-        .sort((a, b) =>
-          a.time.localeCompare(b.time),
-        ),
-    [slotsForDate],
-  );
+  const morningSlots =
+    useMemo(
+      () =>
+        slotsForDate
+          .filter(
+            (slot) =>
+              slot.period ===
+              "Morning",
+          )
+          .sort((a, b) =>
+            a.time.localeCompare(
+              b.time,
+            ),
+          ),
+      [slotsForDate],
+    );
+
+  const eveningSlots =
+    useMemo(
+      () =>
+        slotsForDate
+          .filter(
+            (slot) =>
+              slot.period ===
+              "Evening",
+          )
+          .sort((a, b) =>
+            a.time.localeCompare(
+              b.time,
+            ),
+          ),
+      [slotsForDate],
+    );
 
   const availableCount =
     slotsForDate.filter(
       (slot) =>
-        slot.status === "available",
+        slot.status ===
+        "available",
     ).length;
 
   const bookedCount =
     slotsForDate.filter(
       (slot) =>
-        slot.status === "booked",
+        slot.status ===
+        "booked",
     ).length;
 
   const unavailableCount =
     slotsForDate.filter(
       (slot) =>
-        slot.status === "unavailable",
+        slot.status ===
+        "unavailable",
     ).length;
+
+  const status =
+    !authInitialized
+      ? "loading"
+      : !doctorId
+        ? "unauthorized"
+        : "ready";
 
   function handleDateChange(
     value: string,
   ) {
-    if (!value || value < today) {
+    if (
+      !value ||
+      value < today
+    ) {
       return;
     }
 
-    setSelectedDate(value);
+    setSelectedDate(
+      value,
+    );
   }
 
-  function handleAdd(newSlot: {
-    time: string;
-    period: Slot["period"];
-  }) {
+  function handleAdd(
+    newSlot: {
+      time: string;
+      period: Slot["period"];
+    },
+  ) {
     if (!doctorId) {
       return;
     }
 
-    setSlots(
-      createSlot(doctorId, {
-        date: selectedDate,
-        ...newSlot,
+    const existingSlots =
+      getSlotsForDoctor(
+        doctorId,
+      );
+
+    const duplicate =
+      existingSlots.some(
+        (slot) =>
+          slot.date ===
+            selectedDate &&
+          slot.time ===
+            newSlot.time,
+      );
+
+    if (duplicate) {
+      return;
+    }
+
+    const updatedSlots =
+      createSlot(
+        doctorId,
+        {
+          date:
+            selectedDate,
+          ...newSlot,
+        },
+      );
+
+    dispatch(
+      setDoctorSlots({
+        doctorId,
+        slots:
+          updatedSlots,
       }),
     );
   }
@@ -230,11 +384,40 @@ export default function SlotManager() {
       return;
     }
 
-    setSlots(
+    const target =
+      slots.find(
+        (slot) =>
+          slot.id ===
+          slotId,
+      );
+
+    if (
+      !target ||
+      target.status ===
+        "booked"
+    ) {
+      return;
+    }
+
+    const updatedSlots =
       toggleSlotAvailability(
         doctorId,
         slotId,
-      ),
+      );
+
+    dispatch(
+      setDoctorSlots({
+        doctorId,
+        slots:
+          updatedSlots,
+      }),
+    );
+
+    dispatch(
+      toggleDoctorSlotAvailability({
+        doctorId,
+        slotId,
+      }),
     );
   }
 
@@ -245,15 +428,47 @@ export default function SlotManager() {
       return;
     }
 
-    setSlots(
+    const target =
+      slots.find(
+        (slot) =>
+          slot.id ===
+          slotId,
+      );
+
+    if (
+      !target ||
+      target.status ===
+        "booked"
+    ) {
+      return;
+    }
+
+    const updatedSlots =
       removeSlot(
         doctorId,
         slotId,
-      ),
+      );
+
+    dispatch(
+      setDoctorSlots({
+        doctorId,
+        slots:
+          updatedSlots,
+      }),
+    );
+
+    dispatch(
+      removeDoctorSlot({
+        doctorId,
+        slotId,
+      }),
     );
   }
 
-  if (status === "loading") {
+  if (
+    status ===
+    "loading"
+  ) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 sm:px-8">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
@@ -265,7 +480,10 @@ export default function SlotManager() {
     );
   }
 
-  if (status === "unauthorized") {
+  if (
+    status ===
+    "unauthorized"
+  ) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7 shadow-sm">
@@ -350,10 +568,15 @@ export default function SlotManager() {
                 id="doctor-slot-date"
                 type="date"
                 min={today}
-                value={selectedDate}
-                onChange={(event) =>
+                value={
+                  selectedDate
+                }
+                onChange={(
+                  event,
+                ) =>
                   handleDateChange(
-                    event.target.value,
+                    event.target
+                      .value,
                   )
                 }
                 className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3 text-sm font-medium text-[var(--ink)] outline-none transition-colors focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)] sm:w-52"
@@ -411,7 +634,8 @@ export default function SlotManager() {
           </div>
 
           <div className="mt-5 space-y-7">
-            {slotsForDate.length === 0 ? (
+            {slotsForDate.length ===
+            0 ? (
               <EmptyState
                 title="No slots for this date"
                 description="Create the first appointment slot for this date using the availability form above."
@@ -420,16 +644,28 @@ export default function SlotManager() {
               <>
                 <SlotManagerGrid
                   title="Morning"
-                  slots={morningSlots}
-                  onToggle={handleToggle}
-                  onRemove={handleRemove}
+                  slots={
+                    morningSlots
+                  }
+                  onToggle={
+                    handleToggle
+                  }
+                  onRemove={
+                    handleRemove
+                  }
                 />
 
                 <SlotManagerGrid
                   title="Evening"
-                  slots={eveningSlots}
-                  onToggle={handleToggle}
-                  onRemove={handleRemove}
+                  slots={
+                    eveningSlots
+                  }
+                  onToggle={
+                    handleToggle
+                  }
+                  onRemove={
+                    handleRemove
+                  }
                 />
               </>
             )}

@@ -7,6 +7,10 @@ import {
   type FormEvent,
 } from "react";
 
+import {
+  useDispatch,
+} from "react-redux";
+
 import Button from "@/components/ui/Button";
 import TextField from "@/components/ui/TextField";
 
@@ -14,9 +18,25 @@ import {
   saveDoctorAccount,
 } from "@/lib/doctor-account-store";
 
-import { addDoctor } from "@/lib/doctors-store";
-import { setSession } from "@/lib/storage";
-import { getInitials } from "@/lib/utils/text";
+import {
+  addDoctor,
+} from "@/lib/doctors-store";
+
+import {
+  getInitials,
+} from "@/lib/utils/text";
+
+import {
+  addDoctorToStore,
+} from "@/store/slices/doctorsSlice";
+
+import {
+  login,
+} from "@/store/slices/authSlice";
+
+import type {
+  AppDispatch,
+} from "@/store";
 
 import {
   isValidEmail,
@@ -42,6 +62,9 @@ type FieldErrors = {
 
 export default function DoctorRegisterForm() {
   const router = useRouter();
+
+  const dispatch =
+    useDispatch<AppDispatch>();
 
   const [name, setName] =
     useState("");
@@ -171,22 +194,7 @@ export default function DoctorRegisterForm() {
       const experience =
         Number(experienceYears);
 
-      saveDoctorAccount(
-        {
-          id: accountId,
-          name: trimmedName,
-          email: trimmedEmail,
-          phone: trimmedPhone,
-          specialty,
-          experienceYears:
-            experience,
-          clinic: trimmedClinic,
-          location: trimmedLocation,
-        },
-        password,
-      );
-
-      addDoctor({
+      const doctor = {
         id: accountId,
         name: trimmedName,
         specialty,
@@ -206,15 +214,48 @@ export default function DoctorRegisterForm() {
           getInitials(
             trimmedName,
           ),
-      });
+      };
 
-      setSession({
-        id: accountId,
-        name: trimmedName,
-        emailOrMobile:
-          trimmedEmail,
-        role: "doctor",
-      });
+      saveDoctorAccount(
+        {
+          id: accountId,
+          name: trimmedName,
+          email: trimmedEmail,
+          phone: trimmedPhone,
+          specialty,
+          experienceYears:
+            experience,
+          clinic: trimmedClinic,
+          location: trimmedLocation,
+        },
+        password,
+      );
+
+      /*
+       * The local store remains the persistence
+       * layer for the existing frontend demo.
+       * Redux is the authoritative application
+       * state consumed by the UI.
+       */
+      addDoctor(
+        doctor,
+      );
+
+      dispatch(
+        addDoctorToStore(
+          doctor,
+        ),
+      );
+
+      dispatch(
+        login({
+          id: accountId,
+          name: trimmedName,
+          emailOrMobile:
+            trimmedEmail,
+          role: "doctor",
+        }),
+      );
 
       setIsSubmitting(false);
 
@@ -565,10 +606,12 @@ function DoctorPlusIcon() {
         d="M8 4h8v16H8z"
         strokeLinejoin="round"
       />
+
       <path
         d="M10 9h4M12 7v4"
         strokeLinecap="round"
       />
+
       <path
         d="M17 13v5M14.5 15.5h5"
         strokeLinecap="round"
