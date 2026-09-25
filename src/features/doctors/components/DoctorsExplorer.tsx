@@ -5,15 +5,24 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useDispatch, useSelector } from "react-redux";
+
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import DoctorFilters, {
   type DoctorFiltersValue,
 } from "@/features/doctors/components/DoctorFilters";
+
 import DoctorList from "@/features/doctors/components/DoctorList";
 
 import {
-  initializeDoctors,
+  getAllDoctors,
+} from "@/lib/doctors-store";
+
+import {
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import type {
@@ -39,7 +48,9 @@ function DoctorCardSkeleton() {
 
         <div className="min-w-0 flex-1">
           <div className="h-4 w-32 animate-pulse rounded bg-[var(--line)]" />
+
           <div className="mt-2 h-3 w-24 animate-pulse rounded bg-[var(--line)]" />
+
           <div className="mt-2 h-3 w-36 animate-pulse rounded bg-[var(--line)]" />
         </div>
       </div>
@@ -53,6 +64,7 @@ function DoctorCardSkeleton() {
 
       <div className="mt-5 border-t border-[var(--line)] pt-4">
         <div className="h-3 w-24 animate-pulse rounded bg-[var(--line)]" />
+
         <div className="mt-2 h-3 w-32 animate-pulse rounded bg-[var(--line)]" />
       </div>
 
@@ -90,31 +102,44 @@ function scoreDoctor(
 
   const name =
     normalize(doctor.name);
+
   const specialty =
     normalize(doctor.specialty);
+
   const qualification =
-    normalize(doctor.qualification);
+    normalize(
+      doctor.qualification,
+    );
+
   const clinic =
     normalize(doctor.clinic);
+
   const location =
     normalize(doctor.location);
+
   const timing =
     normalize(doctor.timing);
+
   const bio =
     normalize(doctor.bio);
 
   let score = 0;
 
-  if (name === normalizedQuery) {
+  if (
+    name === normalizedQuery
+  ) {
     score += 100;
   } else if (
-    name.includes(normalizedQuery)
+    name.includes(
+      normalizedQuery,
+    )
   ) {
     score += 80;
   }
 
   if (
-    specialty === normalizedQuery
+    specialty ===
+    normalizedQuery
   ) {
     score += 75;
   } else if (
@@ -170,25 +195,37 @@ function scoreDoctor(
       score += 20;
     }
 
-    if (specialty.includes(token)) {
+    if (
+      specialty.includes(
+        token,
+      )
+    ) {
       score += 25;
     }
 
-    if (location.includes(token)) {
+    if (
+      location.includes(token)
+    ) {
       score += 15;
     }
 
-    if (clinic.includes(token)) {
+    if (
+      clinic.includes(token)
+    ) {
       score += 12;
     }
 
     if (
-      qualification.includes(token)
+      qualification.includes(
+        token,
+      )
     ) {
       score += 10;
     }
 
-    if (timing.includes(token)) {
+    if (
+      timing.includes(token)
+    ) {
       score += 8;
     }
 
@@ -210,7 +247,8 @@ function getSmartResults(
   const filtered =
     doctors.filter((doctor) => {
       const matchesSpecialty =
-        filters.specialty === "All" ||
+        filters.specialty ===
+          "All" ||
         doctor.specialty ===
           filters.specialty;
 
@@ -238,7 +276,8 @@ function getSmartResults(
         ),
       }))
       .filter(
-        ({ score }) => score > 0,
+        ({ score }) =>
+          score > 0,
       );
 
   scored.sort((a, b) => {
@@ -282,7 +321,9 @@ export default function DoctorsExplorer({
   initialSpecialty = "All",
 }: {
   initialQuery?: string;
-  initialSpecialty?: Specialty | "All";
+  initialSpecialty?:
+    | Specialty
+    | "All";
 }) {
   const dispatch =
     useDispatch<AppDispatch>();
@@ -313,7 +354,9 @@ export default function DoctorsExplorer({
   useEffect(() => {
     if (!initialized) {
       dispatch(
-        initializeDoctors(),
+        setDoctors(
+          getAllDoctors(),
+        ),
       );
     }
   }, [
@@ -331,7 +374,10 @@ export default function DoctorsExplorer({
           doctors,
           filters,
         ),
-      [doctors, filters],
+      [
+        doctors,
+        filters,
+      ],
     );
 
   const hasSearchQuery =

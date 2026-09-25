@@ -23,11 +23,7 @@ const doctorsSlice = createSlice({
   reducers: {
     initializeDoctors(
       state,
-      action: PayloadAction<Doctor[]>,
     ) {
-      state.doctors =
-        action.payload;
-
       state.initialized = true;
     },
 
@@ -58,10 +54,13 @@ const doctorsSlice = createSlice({
         state.doctors[
           existingIndex
         ] = doctor;
+
         return;
       }
 
-      state.doctors.push(doctor);
+      state.doctors.push(
+        doctor,
+      );
     },
 
     updateDoctor(
@@ -81,6 +80,7 @@ const doctorsSlice = createSlice({
         state.doctors.push(
           doctor,
         );
+
         return;
       }
 

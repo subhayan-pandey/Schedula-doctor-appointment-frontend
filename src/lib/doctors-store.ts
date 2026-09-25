@@ -23,9 +23,12 @@ function readDoctors(): Doctor[] {
 
   if (raw) {
     try {
-      return JSON.parse(
-        raw,
-      ) as Doctor[];
+      const parsed =
+        JSON.parse(raw);
+
+      if (Array.isArray(parsed)) {
+        return parsed as Doctor[];
+      }
     } catch {
       // Fall through and reseed.
     }
@@ -56,6 +59,13 @@ function writeDoctors(
   );
 }
 
+/**
+ * Persistence adapter.
+ *
+ * Redux doctors state is the application source
+ * of truth. This function is used for hydration
+ * and persistence access.
+ */
 export function getAllDoctors(): Doctor[] {
   return readDoctors();
 }
@@ -69,6 +79,12 @@ export function getDoctorById(
   );
 }
 
+/**
+ * Persists a doctor record.
+ *
+ * Application state should be updated through
+ * the doctors Redux slice.
+ */
 export function addDoctor(
   doctor: Doctor,
 ): void {

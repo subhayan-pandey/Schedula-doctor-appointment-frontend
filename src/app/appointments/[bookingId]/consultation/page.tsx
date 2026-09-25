@@ -1,30 +1,16 @@
 "use client";
 
 import Link from "next/link";
-
-import {
-  useEffect,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
-import {
-  useDispatch,
-  useSelector,
-} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import Button from "@/components/ui/Button";
 
 import MockConsultationScreen from "@/features/consultation/components/MockConsultationScreen";
 
-import {
-  getAllBookings,
-} from "@/lib/bookings-store";
-
-import {
-  getAllDoctors,
-} from "@/lib/doctors-store";
+import { getAllBookings } from "@/lib/bookings-store";
+import { getAllDoctors } from "@/lib/doctors-store";
 
 import {
   getConsultationCountdown,
@@ -34,30 +20,15 @@ import {
   isConsultationJoinable,
 } from "@/lib/consultation";
 
-import {
-  formatLongDate,
-} from "@/lib/utils/date";
+import { formatLongDate } from "@/lib/utils/date";
 
-import {
-  initializeAppointments,
-} from "@/store/slices/appointmentsSlice";
+import { setAppointments } from "@/store/slices/appointmentsSlice";
+import { setDoctors } from "@/store/slices/doctorsSlice";
 
-import {
-  initializeDoctors,
-} from "@/store/slices/doctorsSlice";
+import type { AppDispatch, RootState } from "@/store";
+import type { ConsultationStatus } from "@/types/consultation";
 
-import type {
-  AppDispatch,
-  RootState,
-} from "@/store";
-
-import type {
-  ConsultationStatus,
-} from "@/types/consultation";
-
-function getStatusDescription(
-  status: ConsultationStatus,
-) {
+function getStatusDescription(status: ConsultationStatus) {
   switch (status) {
     case "scheduled":
       return "Your consultation room is not available yet. You can join 15 minutes before the scheduled appointment time.";
@@ -86,11 +57,7 @@ function ClockIcon() {
       className="size-5"
       aria-hidden="true"
     >
-      <circle
-        cx="12"
-        cy="12"
-        r="8.5"
-      />
+      <circle cx="12" cy="12" r="8.5" />
 
       <path
         strokeLinecap="round"
@@ -129,123 +96,79 @@ function VideoIcon() {
 }
 
 export default function PatientConsultationPage() {
-  const params =
-    useParams<{
-      bookingId: string;
-    }>();
+  const params = useParams<{ bookingId: string }>();
+  const bookingId = params.bookingId;
 
-  const bookingId =
-    params.bookingId;
+  const dispatch = useDispatch<AppDispatch>();
 
-  const dispatch =
-    useDispatch<AppDispatch>();
+  const [currentTime, setCurrentTime] = useState(0);
 
-  const [
-    currentTime,
-    setCurrentTime,
-  ] = useState(0);
+  const user = useSelector(
+    (state: RootState) => state.auth.user,
+  );
 
-  const user =
-    useSelector(
-      (state: RootState) =>
-        state.auth.user,
-    );
+  const authInitialized = useSelector(
+    (state: RootState) => state.auth.initialized,
+  );
 
-  const authInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.auth.initialized,
-    );
+  const appointments = useSelector(
+    (state: RootState) => state.appointments.appointments,
+  );
 
-  const appointments =
-    useSelector(
-      (state: RootState) =>
-        state.appointments.appointments,
-    );
+  const appointmentsInitialized = useSelector(
+    (state: RootState) => state.appointments.initialized,
+  );
 
-  const appointmentsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.appointments.initialized,
-    );
+  const doctors = useSelector(
+    (state: RootState) => state.doctors.doctors,
+  );
 
-  const doctors =
-    useSelector(
-      (state: RootState) =>
-        state.doctors.doctors,
-    );
-
-  const doctorsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.doctors.initialized,
-    );
+  const doctorsInitialized = useSelector(
+    (state: RootState) => state.doctors.initialized,
+  );
 
   const booking =
     appointments.find(
       (appointment) =>
-        appointment.id ===
-        bookingId,
+        appointment.id === bookingId,
     ) ?? null;
 
-  const doctor =
-    booking
-      ? doctors.find(
-          (item) =>
-            item.id ===
-            booking.doctorId,
-        ) ?? null
-      : null;
+  const doctor = booking
+    ? doctors.find(
+        (item) => item.id === booking.doctorId,
+      ) ?? null
+    : null;
 
   useEffect(() => {
     if (!appointmentsInitialized) {
       dispatch(
-        initializeAppointments(
-          getAllBookings(),
-        ),
+        setAppointments(getAllBookings()),
       );
     }
-  }, [
-    dispatch,
-    appointmentsInitialized,
-  ]);
+  }, [dispatch, appointmentsInitialized]);
 
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(
-          getAllDoctors(),
-        ),
+        setDoctors(getAllDoctors()),
       );
     }
-  }, [
-    dispatch,
-    doctorsInitialized,
-  ]);
+  }, [dispatch, doctorsInitialized]);
 
   useEffect(() => {
-    const initialTick =
-      window.setTimeout(() => {
-        setCurrentTime(
-          Date.now(),
-        );
-      }, 0);
+    const initialTick = window.setTimeout(
+      () => setCurrentTime(Date.now()),
+      0,
+    );
 
-    const interval =
-      window.setInterval(() => {
-        setCurrentTime(
-          Date.now(),
-        );
-      }, 1000);
+    const interval = window.setInterval(
+      () => setCurrentTime(Date.now()),
+      1000,
+    );
 
     return () => {
-      window.clearTimeout(
-        initialTick,
-      );
-
-      window.clearInterval(
-        interval,
-      );
+      window.clearTimeout(initialTick);
+      window.clearInterval(interval);
     };
   }, []);
 
@@ -265,8 +188,7 @@ export default function PatientConsultationPage() {
     !user ||
     user.role !== "patient" ||
     !booking ||
-    booking.patientId !==
-      user.id
+    booking.patientId !== user.id
   ) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
@@ -276,27 +198,21 @@ export default function PatientConsultationPage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            You are not authorized to access
-            this consultation.
+            You are not authorized to access this consultation.
           </p>
 
           <Link
             href="/appointments"
             className="mt-6 inline-block"
           >
-            <Button>
-              My appointments
-            </Button>
+            <Button>My appointments</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  if (
-    booking.consultationType !==
-    "online"
-  ) {
+  if (booking.consultationType !== "online") {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-7">
@@ -305,70 +221,50 @@ export default function PatientConsultationPage() {
           </h1>
 
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            This appointment is configured as
-            an in-person consultation.
+            This appointment is configured as an in-person consultation.
           </p>
 
           <Link
             href={`/appointments/${booking.id}`}
             className="mt-6 inline-block"
           >
-            <Button>
-              View appointment
-            </Button>
+            <Button>View appointment</Button>
           </Link>
         </div>
       </div>
     );
   }
 
-  const consultationStatus =
-    getConsultationStatus(
-      booking.date,
-      booking.time,
-      currentTime,
-    );
+  const consultationStatus = getConsultationStatus(
+    booking.date,
+    booking.time,
+    currentTime,
+  );
 
-  const canJoin =
-    isConsultationJoinable(
-      consultationStatus,
-    );
+  const canJoin = isConsultationJoinable(
+    consultationStatus,
+  );
 
-  const countdown =
-    getConsultationCountdown(
-      booking.date,
-      booking.time,
-      currentTime,
-    );
+  const countdown = getConsultationCountdown(
+    booking.date,
+    booking.time,
+    currentTime,
+  );
 
   const validBookingStatus =
-    booking.status ===
-      "confirmed" ||
-    booking.status ===
-      "upcoming";
+    booking.status === "confirmed" ||
+    booking.status === "upcoming";
 
-  if (
-    canJoin &&
-    validBookingStatus
-  ) {
+  if (canJoin && validBookingStatus) {
     return (
       <MockConsultationScreen
         role="patient"
-        patientName={
-          booking.patientName
-        }
-        doctorName={
-          doctor?.name ??
-          "Doctor"
-        }
-        doctorSpecialty={
-          doctor?.specialty
-        }
+        patientName={booking.patientName}
+        doctorName={doctor?.name ?? "Doctor"}
+        doctorSpecialty={doctor?.specialty}
         date={booking.date}
         time={booking.time}
-        appointmentId={
-          booking.id
-        }
+        appointmentId={booking.id}
       />
     );
   }
@@ -394,15 +290,13 @@ export default function PatientConsultationPage() {
             </p>
 
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--ink)]">
-              {consultationStatus ===
-              "ended"
+              {consultationStatus === "ended"
                 ? "Consultation ended"
                 : "Consultation room"}
             </h1>
 
             <p className="mt-2 max-w-lg text-sm leading-6 text-[var(--muted)]">
-              {consultationStatus ===
-              "ended"
+              {consultationStatus === "ended"
                 ? "The scheduled consultation window has ended. Please book another appointment if you still need to consult your doctor."
                 : !validBookingStatus
                   ? "This consultation cannot be joined because the appointment is not currently confirmed or upcoming."
@@ -423,22 +317,21 @@ export default function PatientConsultationPage() {
               </span>
             </div>
 
-            {countdown &&
-              validBookingStatus && (
-                <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
-                  <span className="text-[var(--brand-deep)]">
-                    <ClockIcon />
-                  </span>
+            {countdown && validBookingStatus && (
+              <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
+                <span className="text-[var(--brand-deep)]">
+                  <ClockIcon />
+                </span>
 
-                  <span className="text-sm text-[var(--muted)]">
-                    Starts in
-                  </span>
+                <span className="text-sm text-[var(--muted)]">
+                  Starts in
+                </span>
 
-                  <span className="font-mono text-sm font-semibold text-[var(--ink)]">
-                    {countdown}
-                  </span>
-                </div>
-              )}
+                <span className="font-mono text-sm font-semibold text-[var(--ink)]">
+                  {countdown}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="mt-7 grid gap-3 border-t border-[var(--line)] pt-6 sm:grid-cols-3">
@@ -448,8 +341,7 @@ export default function PatientConsultationPage() {
               </p>
 
               <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                {doctor?.name ??
-                  "Doctor"}
+                {doctor?.name ?? "Doctor"}
               </p>
             </div>
 
@@ -459,9 +351,7 @@ export default function PatientConsultationPage() {
               </p>
 
               <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
-                {formatLongDate(
-                  booking.date,
-                )}
+                {formatLongDate(booking.date)}
               </p>
             </div>
 
@@ -477,13 +367,9 @@ export default function PatientConsultationPage() {
           </div>
 
           <div className="mt-6">
-            {consultationStatus ===
-              "scheduled" &&
+            {consultationStatus === "scheduled" &&
             validBookingStatus ? (
-              <Button
-                className="w-full"
-                disabled
-              >
+              <Button className="w-full" disabled>
                 Join when starting
               </Button>
             ) : (

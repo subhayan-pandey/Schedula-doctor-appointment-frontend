@@ -33,7 +33,7 @@ import type {
 } from "@/store";
 
 import {
-  initializeDoctors,
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 function CalendarIcon() {
@@ -190,7 +190,7 @@ export default function AppointmentIntelligence({
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(
+        setDoctors(
           getAllDoctors(),
         ),
       );

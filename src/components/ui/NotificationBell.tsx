@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-
 import {
   useDispatch,
   useSelector,
@@ -20,7 +18,6 @@ import type {
 } from "@/store";
 
 import {
-  initializeNotifications,
   markAllAsRead,
   markAsRead,
   syncNotifications,
@@ -40,25 +37,18 @@ import type {
 function formatNotificationTime(
   value: string,
 ): string {
-  const date =
-    new Date(value);
+  const date = new Date(value);
 
   const difference =
-    Date.now() -
-    date.getTime();
+    Date.now() - date.getTime();
 
-  if (
-    Number.isNaN(
-      date.getTime(),
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return "";
   }
 
-  const minutes =
-    Math.floor(
-      difference / 60000,
-    );
+  const minutes = Math.floor(
+    difference / 60000,
+  );
 
   if (minutes < 1) {
     return "Just now";
@@ -68,10 +58,9 @@ function formatNotificationTime(
     return `${minutes}m ago`;
   }
 
-  const hours =
-    Math.floor(
-      minutes / 60,
-    );
+  const hours = Math.floor(
+    minutes / 60,
+  );
 
   if (hours < 24) {
     return `${hours}h ago`;
@@ -89,12 +78,9 @@ function formatNotificationTime(
 function getNotificationIcon(
   notification: AppNotification,
 ) {
-  const iconClass =
-    "size-4";
+  const iconClass = "size-4";
 
-  switch (
-    notification.type
-  ) {
+  switch (notification.type) {
     case "confirmation":
       return (
         <svg
@@ -263,9 +249,7 @@ function getNotificationIcon(
 function getNotificationIconClasses(
   notification: AppNotification,
 ): string {
-  switch (
-    notification.type
-  ) {
+  switch (notification.type) {
     case "confirmation":
       return "bg-[var(--success-soft)] text-[var(--success)]";
 
@@ -292,15 +276,11 @@ function getNotificationHref(
   notification: AppNotification,
   role: NotificationRecipientRole,
 ): string | null {
-  if (
-    !notification.appointmentId
-  ) {
+  if (!notification.appointmentId) {
     return null;
   }
 
-  if (
-    role === "doctor"
-  ) {
+  if (role === "doctor") {
     return "/doctor/appointments";
   }
 
@@ -311,33 +291,33 @@ export default function NotificationBell() {
   const dispatch =
     useDispatch<AppDispatch>();
 
-  const user =
-    useSelector(
-      (state: RootState) =>
-        state.auth.user,
-    );
+  const user = useSelector(
+    (state: RootState) =>
+      state.auth.user,
+  );
 
-  const authInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.auth.initialized,
-    );
+  const authInitialized = useSelector(
+    (state: RootState) =>
+      state.auth.initialized,
+  );
 
-  const notifications =
-    useSelector(
-      (state: RootState) =>
-        state.notifications.notifications,
-    );
+  /*
+   * Redux is the authoritative application
+   * source for notifications.
+   *
+   * The local notification store is used only
+   * as the persistence/hydration boundary.
+   */
+  const notifications = useSelector(
+    (state: RootState) =>
+      state.notifications.notifications,
+  );
 
-  const [
-    isOpen,
-    setIsOpen,
-  ] = useState(false);
+  const [isOpen, setIsOpen] =
+    useState(false);
 
   const containerRef =
-    useRef<HTMLDivElement>(
-      null,
-    );
+    useRef<HTMLDivElement>(null);
 
   const userId =
     user?.id ?? null;
@@ -347,10 +327,7 @@ export default function NotificationBell() {
 
   const refreshNotifications =
     useCallback(() => {
-      if (
-        !userId ||
-        !role
-      ) {
+      if (!userId || !role) {
         dispatch(
           syncNotifications([]),
         );
@@ -375,6 +352,14 @@ export default function NotificationBell() {
       role,
     ]);
 
+  /*
+   * Hydrate Redux from the persistence
+   * adapter once authentication is ready.
+   *
+   * Do not use initializeNotifications()
+   * here because the current slice contract
+   * does not accept a payload.
+   */
   useEffect(() => {
     if (
       !authInitialized ||
@@ -391,12 +376,9 @@ export default function NotificationBell() {
       );
 
     dispatch(
-      initializeNotifications({
-        userId,
-        recipientRole: role,
-        notifications:
-          currentNotifications,
-      }),
+      syncNotifications(
+        currentNotifications,
+      ),
     );
   }, [
     dispatch,
@@ -437,10 +419,7 @@ export default function NotificationBell() {
     function handleEscape(
       event: KeyboardEvent,
     ) {
-      if (
-        event.key ===
-        "Escape"
-      ) {
+      if (event.key === "Escape") {
         setIsOpen(false);
       }
     }
@@ -499,9 +478,11 @@ export default function NotificationBell() {
   function handleNotificationClick(
     notification: AppNotification,
   ) {
-    if (
-      !notification.isRead
-    ) {
+    if (!notification.isRead) {
+      /*
+       * Persist the read state, then update
+       * the authoritative Redux state.
+       */
       markNotificationAsRead(
         notification.id,
       );
@@ -517,13 +498,15 @@ export default function NotificationBell() {
   }
 
   function handleMarkAllAsRead() {
-    if (
-      !userId ||
-      !role
-    ) {
+    if (!userId || !role) {
       return;
     }
 
+    /*
+     * Persist the change through the existing
+     * persistence adapter and update Redux
+     * as the authoritative application state.
+     */
     markAllNotificationsAsRead(
       userId,
       role,
@@ -537,10 +520,7 @@ export default function NotificationBell() {
     );
   }
 
-  if (
-    !userId ||
-    !role
-  ) {
+  if (!userId || !role) {
     return null;
   }
 
@@ -553,8 +533,7 @@ export default function NotificationBell() {
         type="button"
         onClick={() =>
           setIsOpen(
-            (value) =>
-              !value,
+            (value) => !value,
           )
         }
         aria-label={
@@ -562,9 +541,7 @@ export default function NotificationBell() {
             ? `Notifications, ${unreadCount} unread`
             : "Notifications"
         }
-        aria-expanded={
-          isOpen
-        }
+        aria-expanded={isOpen}
         aria-haspopup="dialog"
         className={`relative grid size-10 place-items-center rounded-xl border transition-colors ${
           isOpen
@@ -592,14 +569,12 @@ export default function NotificationBell() {
           />
         </svg>
 
-        {unreadCount >
-          0 && (
+        {unreadCount > 0 && (
           <span
             aria-hidden="true"
             className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full border-2 border-[var(--surface)] bg-[var(--urgent)] px-1 py-0.5 text-[10px] font-bold leading-none text-white"
           >
-            {unreadCount >
-            9
+            {unreadCount > 9
               ? "9+"
               : unreadCount}
           </span>
@@ -619,15 +594,13 @@ export default function NotificationBell() {
               </h2>
 
               <p className="mt-0.5 text-xs text-[var(--muted)]">
-                {unreadCount >
-                0
+                {unreadCount > 0
                   ? `${unreadCount} unread`
                   : "All caught up"}
               </p>
             </div>
 
-            {unreadCount >
-              0 && (
+            {unreadCount > 0 && (
               <button
                 type="button"
                 onClick={
@@ -673,17 +646,14 @@ export default function NotificationBell() {
                 <p className="mx-auto mt-1 max-w-xs text-xs leading-5 text-[var(--muted)]">
                   Appointment updates,
                   confirmations,
-                  cancellations,
-                  and prescription
-                  updates will appear
-                  here.
+                  cancellations, and
+                  prescription updates
+                  will appear here.
                 </p>
               </div>
             ) : (
               notifications.map(
-                (
-                  notification,
-                ) => {
+                (notification) => {
                   const href =
                     getNotificationHref(
                       notification,
@@ -769,9 +739,7 @@ export default function NotificationBell() {
                         key={
                           notification.id
                         }
-                        href={
-                          href
-                        }
+                        href={href}
                         onClick={() =>
                           handleNotificationClick(
                             notification,
@@ -779,9 +747,7 @@ export default function NotificationBell() {
                         }
                         className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--brand)]"
                       >
-                        {
-                          content
-                        }
+                        {content}
                       </Link>
                     );
                   }
@@ -799,9 +765,7 @@ export default function NotificationBell() {
                         )
                       }
                     >
-                      {
-                        content
-                      }
+                      {content}
                     </button>
                   );
                 },

@@ -331,31 +331,40 @@ export default function UserProfileManager() {
       return;
     }
 
-    if (
-      !user ||
-      user.role !== "patient"
-    ) {
-      setProfile(null);
-      setIsLoading(false);
-      return;
-    }
+    const timeoutId =
+      window.setTimeout(() => {
+        if (
+          !user ||
+          user.role !== "patient"
+        ) {
+          setProfile(null);
+          setIsLoading(false);
+          return;
+        }
 
-    const loadedProfile =
-      getUserProfile(
-        user.id,
+        const loadedProfile =
+          getUserProfile(
+            user.id,
+          );
+
+        setProfile(
+          loadedProfile,
+        );
+
+        setStats(
+          getProfileStats(
+            user.id,
+          ),
+        );
+
+        setIsLoading(false);
+      }, 0);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
       );
-
-    setProfile(
-      loadedProfile,
-    );
-
-    setStats(
-      getProfileStats(
-        user.id,
-      ),
-    );
-
-    setIsLoading(false);
+    };
   }, [
     initialized,
     user,

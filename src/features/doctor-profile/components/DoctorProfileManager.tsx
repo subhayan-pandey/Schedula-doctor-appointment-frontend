@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
 
 import Button from "@/components/ui/Button";
 import DoctorProfileForm from "@/features/doctor-profile/components/DoctorProfileForm";
@@ -15,12 +23,30 @@ import {
 import {
   addDoctor,
   getDoctorById,
+  getAllDoctors,
 } from "@/lib/doctors-store";
 
-import { getSession, setSession } from "@/lib/storage";
-import { getInitials } from "@/lib/utils/text";
+import {
+  getInitials,
+} from "@/lib/utils/text";
 
-import type { DoctorAccount } from "@/types/doctorAccount";
+import {
+  setDoctors,
+  updateDoctor,
+} from "@/store/slices/doctorsSlice";
+
+import type {
+  AppDispatch,
+  RootState,
+} from "@/store";
+
+import type {
+  Doctor,
+} from "@/types/doctor";
+
+import type {
+  DoctorAccount,
+} from "@/types/doctorAccount";
 
 type Status =
   | "loading"
@@ -28,31 +54,101 @@ type Status =
   | "ready";
 
 export default function DoctorProfileManager() {
+  const dispatch =
+    useDispatch<AppDispatch>();
+
+  const authUser =
+    useSelector(
+      (state: RootState) =>
+        state.auth.user,
+    );
+
+  const authInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.auth.initialized,
+    );
+
+  const doctors =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.doctors,
+    );
+
+  const doctorsInitialized =
+    useSelector(
+      (state: RootState) =>
+        state.doctors.initialized,
+    );
+
   const [status, setStatus] =
     useState<Status>("loading");
 
   const [account, setAccount] =
-    useState<DoctorAccount | null>(null);
+    useState<DoctorAccount | null>(
+      null,
+    );
 
   const [mode, setMode] =
-    useState<"view" | "edit">("view");
+    useState<"view" | "edit">(
+      "view",
+    );
 
   useEffect(() => {
+    if (!authInitialized) {
+      return;
+    }
+
+    let cancelled = false;
+
     Promise.resolve().then(() => {
-      const session = getSession();
+      if (cancelled) {
+        return;
+      }
 
       if (
-        !session ||
-        session.role !== "doctor"
+        !authUser ||
+        authUser.role !== "doctor"
       ) {
         setStatus("unauthorized");
         return;
       }
 
-      setAccount(getDoctorAccount());
+      if (!doctorsInitialized) {
+        dispatch(
+          setDoctors(
+            getAllDoctors(),
+          ),
+        );
+      }
+
+      const doctorAccount =
+        getDoctorAccount();
+
+      if (
+        !doctorAccount ||
+        doctorAccount.id !== authUser.id
+      ) {
+        setStatus("unauthorized");
+        return;
+      }
+
+      setAccount(
+        doctorAccount,
+      );
+
       setStatus("ready");
     });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dispatch,
+    authInitialized,
+    authUser,
+    doctorsInitialized,
+  ]);
 
   function handleSave(
     updated: Omit<DoctorAccount, "id">,
@@ -66,28 +162,34 @@ export default function DoctorProfileManager() {
       ...updated,
     };
 
-    saveDoctorAccount(nextAccount);
+    saveDoctorAccount(
+      nextAccount,
+    );
 
-    /*
-     * Keep the patient-facing doctor catalog
-     * synchronized with editable professional
-     * profile fields.
-     *
-     * Private account fields such as email and
-     * phone remain private and are not added to
-     * the public catalog.
-     */
+    const existingReduxDoctor =
+      doctors.find(
+        (doctor) =>
+          doctor.id ===
+          account.id,
+      );
+
     const existingCatalogDoctor =
-      getDoctorById(account.id);
+      existingReduxDoctor ??
+      getDoctorById(
+        account.id,
+      );
 
-    addDoctor({
+    const updatedDoctor: Doctor = {
       id: nextAccount.id,
       name: nextAccount.name,
-      specialty: nextAccount.specialty,
+      specialty:
+        nextAccount.specialty,
       experienceYears:
         nextAccount.experienceYears,
-      clinic: nextAccount.clinic,
-      location: nextAccount.location,
+      clinic:
+        nextAccount.clinic,
+      location:
+        nextAccount.location,
       qualification:
         existingCatalogDoctor?.qualification ??
         "MBBS",
@@ -111,21 +213,31 @@ export default function DoctorProfileManager() {
         "09:00 AM - 5:00 PM",
       bio: `${nextAccount.name} is a ${nextAccount.specialty.toLowerCase()} practicing at ${nextAccount.clinic}, ${nextAccount.location}.`,
       avatarInitials:
-        getInitials(nextAccount.name),
-    });
+        getInitials(
+          nextAccount.name,
+        ),
+    };
 
-    setSession({
-      id: nextAccount.id,
-      name: nextAccount.name,
-      emailOrMobile: nextAccount.email,
-      role: "doctor",
-    });
+    addDoctor(
+      updatedDoctor,
+    );
 
-    setAccount(nextAccount);
+    dispatch(
+      updateDoctor(
+        updatedDoctor,
+      ),
+    );
+
+    setAccount(
+      nextAccount,
+    );
+
     setMode("view");
   }
 
-  if (status === "loading") {
+  if (
+    status === "loading"
+  ) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
         <DoctorProfileSkeleton />
@@ -152,6 +264,7 @@ export default function DoctorProfileManager() {
               d="M12 3.5 19 7v5c0 4.3-2.7 7.3-7 8.8C7.7 19.3 5 16.3 5 12V7l7-3.5Z"
               strokeLinejoin="round"
             />
+
             <path
               d="M9.5 12.5 11.3 14l3.5-4"
               strokeLinecap="round"
@@ -188,7 +301,9 @@ export default function DoctorProfileManager() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[var(--brand-soft)] text-lg font-semibold text-[var(--brand-deep)]">
-              {getInitials(account.name)}
+              {getInitials(
+                account.name,
+              )}
             </div>
 
             <div className="min-w-0">
@@ -236,7 +351,9 @@ export default function DoctorProfileManager() {
         {mode === "view" ? (
           <DoctorProfileView
             account={account}
-            onEdit={() => setMode("edit")}
+            onEdit={() =>
+              setMode("edit")
+            }
           />
         ) : (
           <DoctorProfileForm
@@ -262,6 +379,7 @@ function DoctorProfileSkeleton() {
 
       <div className="mt-5 rounded-2xl bg-[var(--canvas)] p-6">
         <div className="h-6 w-44 rounded bg-[var(--line)]" />
+
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="h-16 rounded-xl bg-[var(--line)]" />
           <div className="h-16 rounded-xl bg-[var(--line)]" />

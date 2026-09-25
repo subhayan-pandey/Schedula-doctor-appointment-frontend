@@ -221,7 +221,16 @@ export default function NotificationPreferences() {
     ]);
 
   useEffect(() => {
-    loadPreferences();
+    const timeoutId =
+      window.setTimeout(() => {
+        loadPreferences();
+      }, 0);
+
+    return () => {
+      window.clearTimeout(
+        timeoutId,
+      );
+    };
   }, [
     loadPreferences,
   ]);
@@ -357,7 +366,10 @@ export default function NotificationPreferences() {
     }
   };
 
-  if (!initialized || isLoading) {
+  if (
+    !initialized ||
+    isLoading
+  ) {
     return (
       <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <p className="text-sm text-[var(--muted)]">

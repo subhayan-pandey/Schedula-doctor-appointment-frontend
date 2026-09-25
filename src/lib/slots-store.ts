@@ -210,6 +210,13 @@ function writeSlots(
   return true;
 }
 
+/**
+ * Persistence adapter.
+ *
+ * Redux slots state is the application source of
+ * truth. This function reads persisted slots for
+ * hydration.
+ */
 export function getSlotsForDoctor(
   doctorId: string,
 ): Slot[] {
@@ -222,6 +229,12 @@ export function getSlotsForDoctor(
   );
 }
 
+/**
+ * Persistence helper for slot booking.
+ *
+ * The slots Redux slice should be updated as the
+ * authoritative application state.
+ */
 export function bookSlot(
   doctorId: string,
   slotId: string,

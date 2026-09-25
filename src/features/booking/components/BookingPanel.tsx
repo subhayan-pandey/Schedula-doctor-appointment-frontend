@@ -23,10 +23,15 @@ import SlotGrid from "@/features/booking/components/SlotGrid";
 import WaitlistPanel from "@/features/booking/components/WaitlistPanel";
 
 import {
+  addBooking,
+} from "@/lib/bookings-store";
+
+import {
   createDoctorNotification,
 } from "@/lib/notifications-store";
 
 import {
+  bookSlot,
   getSlotsForDoctor,
 } from "@/lib/slots-store";
 
@@ -44,13 +49,14 @@ import {
 } from "@/store/slices/appointmentsSlice";
 
 import {
-  bookDoctorSlot,
-  initializeDoctorSlots,
-} from "@/store/slices/slotsSlice";
-
-import {
   addNotification,
 } from "@/store/slices/notificationsSlice";
+
+import {
+  bookDoctorSlot,
+  initializeDoctorSlots,
+  setDoctorSlots,
+} from "@/store/slices/slotsSlice";
 
 import type {
   AppDispatch,
@@ -120,11 +126,6 @@ export default function BookingPanel({
         state.auth.user,
     );
 
-  /*
-   * Redux is the authoritative
-   * source for the slots displayed
-   * by this component.
-   */
   const slots =
     useSelector(
       (state: RootState) =>
@@ -141,19 +142,6 @@ export default function BookingPanel({
         ),
     );
 
-  /*
-   * Initialize/reload the doctor's
-   * slots and put the resulting data
-   * into Redux.
-   *
-   * The current local slotsSlice
-   * expects:
-   *
-   * {
-   *   doctorId,
-   *   slots
-   * }
-   */
   const refreshSlots =
     useCallback(() => {
       if (!doctorId) {
@@ -166,7 +154,7 @@ export default function BookingPanel({
         );
 
       dispatch(
-        initializeDoctorSlots({
+        setDoctorSlots({
           doctorId,
           slots:
             currentSlots,
@@ -177,9 +165,6 @@ export default function BookingPanel({
       doctorId,
     ]);
 
-  /*
-   * Initial slot hydration.
-   */
   useEffect(() => {
     if (
       doctorId &&
@@ -204,14 +189,6 @@ export default function BookingPanel({
     slotsInitialized,
   ]);
 
-  /*
-   * Keep the existing waitlist
-   * availability synchronization.
-   *
-   * This is an external domain
-   * synchronization and does not
-   * replace Redux state.
-   */
   useEffect(() => {
     if (!slotsInitialized) {
       return;
@@ -227,12 +204,6 @@ export default function BookingPanel({
     slotsInitialized,
   ]);
 
-  /*
-   * Other doctor/slot screens can
-   * announce that availability
-   * changed. Rehydrate Redux from
-   * the existing slot data source.
-   */
   useEffect(() => {
     function handleSlotsUpdated(
       event: Event,
@@ -363,11 +334,6 @@ export default function BookingPanel({
       return;
     }
 
-    /*
-     * Re-read the selected slot
-     * from Redux immediately before
-     * booking.
-     */
     const slotToBook =
       slots.find(
         (slot) =>
@@ -401,16 +367,8 @@ export default function BookingPanel({
       null,
     );
 
-    /*
-     * Preserve the existing
-     * booking delay/interaction.
-     */
     window.setTimeout(
       () => {
-        /*
-         * Slot mutation is performed
-         * through Redux.
-         */
         dispatch(
           bookDoctorSlot({
             doctorId,
@@ -422,41 +380,36 @@ export default function BookingPanel({
         const bookingId =
           `bk-${Date.now()}`;
 
-        const appointment =
-          {
-            id:
-              bookingId,
+        const appointment = {
+          id:
+            bookingId,
 
-            doctorId,
+          doctorId,
 
-            slotId:
-              slotToBook.id,
+          slotId:
+            slotToBook.id,
 
-            patientId:
-              user.id,
+          patientId:
+            user.id,
 
-            patientName:
-              user.name,
+          patientName:
+            user.name,
 
-            date:
-              slotToBook.date,
+          date:
+            slotToBook.date,
 
-            time:
-              slotToBook.time,
+          time:
+            slotToBook.time,
 
-            status:
-              "pending" as const,
+          status:
+            "pending" as const,
 
-            consultationType,
+          consultationType,
 
-            createdAt:
-              new Date().toISOString(),
-          };
+          createdAt:
+            new Date().toISOString(),
+        };
 
-        /*
-         * Appointment state is
-         * created through Redux.
-         */
         dispatch(
           addAppointment(
             appointment,
@@ -464,11 +417,20 @@ export default function BookingPanel({
         );
 
         /*
-         * Keep the existing
-         * notification construction
-         * behavior. Redux owns the
-         * resulting notification state.
+         * Persist the Redux state changes
+         * through the existing persistence
+         * adapters. Redux remains the live
+         * application authority.
          */
+        addBooking(
+          appointment,
+        );
+
+        bookSlot(
+          doctorId,
+          slotToBook.id,
+        );
+
         const notification =
           createDoctorNotification(
             {

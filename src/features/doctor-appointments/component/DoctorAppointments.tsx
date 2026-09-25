@@ -21,6 +21,19 @@ import AppointmentFilters, {
 } from "@/features/doctor-appointments/component/AppointmentFilters";
 
 import {
+  getAllBookings,
+  updateBookingStatus,
+} from "@/lib/bookings-store";
+
+import {
+  getAllDoctors,
+} from "@/lib/doctors-store";
+
+import {
+  releaseSlot,
+} from "@/lib/slots-store";
+
+import {
   createPatientNotification,
 } from "@/lib/notifications-store";
 
@@ -34,12 +47,12 @@ import {
 } from "@/lib/consultation";
 
 import {
-  initializeAppointments,
+  setAppointments,
   updateAppointmentStatus,
 } from "@/store/slices/appointmentsSlice";
 
 import {
-  initializeDoctors,
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import {
@@ -430,7 +443,9 @@ export default function DoctorAppointments() {
   useEffect(() => {
     if (!appointmentsInitialized) {
       dispatch(
-        initializeAppointments(),
+        setAppointments(
+          getAllBookings(),
+        ),
       );
     }
   }, [
@@ -441,7 +456,9 @@ export default function DoctorAppointments() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(),
+        setDoctors(
+          getAllDoctors(),
+        ),
       );
     }
   }, [
@@ -644,6 +661,11 @@ export default function DoctorAppointments() {
       }),
     );
 
+    updateBookingStatus(
+      booking.id,
+      "upcoming",
+    );
+
     notifyPatient(
       booking,
       "Appointment confirmed",
@@ -684,6 +706,11 @@ export default function DoctorAppointments() {
       }),
     );
 
+    releaseSlot(
+      doctorId,
+      booking.slotId,
+    );
+
     dispatch(
       updateAppointmentStatus({
         bookingId:
@@ -693,6 +720,12 @@ export default function DoctorAppointments() {
         actionReason:
           "Appointment declined by doctor",
       }),
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "declined",
+      "Appointment declined by doctor",
     );
 
     notifyPatient(
@@ -735,6 +768,11 @@ export default function DoctorAppointments() {
       }),
     );
 
+    updateBookingStatus(
+      booking.id,
+      "upcoming",
+    );
+
     notifyPatient(
       booking,
       "Appointment is upcoming",
@@ -775,6 +813,11 @@ export default function DoctorAppointments() {
       }),
     );
 
+    updateBookingStatus(
+      booking.id,
+      "completed",
+    );
+
     notifyPatient(
       booking,
       "Appointment completed",
@@ -809,6 +852,11 @@ export default function DoctorAppointments() {
         status:
           "missed",
       }),
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "missed",
     );
 
     notifyPatient(
@@ -856,6 +904,11 @@ export default function DoctorAppointments() {
       }),
     );
 
+    releaseSlot(
+      doctorId,
+      booking.slotId,
+    );
+
     dispatch(
       updateAppointmentStatus({
         bookingId:
@@ -865,6 +918,12 @@ export default function DoctorAppointments() {
         actionReason:
           "Appointment cancelled by doctor",
       }),
+    );
+
+    updateBookingStatus(
+      booking.id,
+      "cancelled",
+      "Appointment cancelled by doctor",
     );
 
     notifyPatient(

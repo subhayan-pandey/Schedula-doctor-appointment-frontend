@@ -22,6 +22,7 @@ import AppointmentTimeline from "@/features/appointment/components/AppointmentTi
 
 import {
   getAllBookings,
+  updateBookingStatus,
 } from "@/lib/bookings-store";
 
 import {
@@ -55,12 +56,12 @@ import type {
 } from "@/store";
 
 import {
-  initializeAppointments,
-  updateAppointmentStatus,
+  setAppointments,
+  updateAppointmentStatus as updateAppointmentStatusInRedux,
 } from "@/store/slices/appointmentsSlice";
 
 import {
-  initializeDoctors,
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import type {
@@ -750,7 +751,7 @@ export default function MyAppointment() {
   useEffect(() => {
     if (!appointmentsInitialized) {
       dispatch(
-        initializeAppointments(
+        setAppointments(
           getAllBookings(),
         ),
       );
@@ -763,7 +764,7 @@ export default function MyAppointment() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(
+        setDoctors(
           getAllDoctors(),
         ),
       );
@@ -856,13 +857,21 @@ export default function MyAppointment() {
       return;
     }
 
+    const actionReason =
+      "Appointment cancelled by patient";
+
     dispatch(
-      updateAppointmentStatus({
+      updateAppointmentStatusInRedux({
         bookingId,
         status: "cancelled",
-        actionReason:
-          "Appointment cancelled by patient",
+        actionReason,
       }),
+    );
+
+    updateBookingStatus(
+      bookingId,
+      "cancelled",
+      actionReason,
     );
   }
 
@@ -898,13 +907,21 @@ export default function MyAppointment() {
       return;
     }
 
+    const actionReason =
+      "Appointment marked as missed after scheduled time";
+
     dispatch(
-      updateAppointmentStatus({
+      updateAppointmentStatusInRedux({
         bookingId,
         status: "missed",
-        actionReason:
-          "Appointment marked as missed after scheduled time",
+        actionReason,
       }),
+    );
+
+    updateBookingStatus(
+      bookingId,
+      "missed",
+      actionReason,
     );
   }
 

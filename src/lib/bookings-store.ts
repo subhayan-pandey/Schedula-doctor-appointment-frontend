@@ -95,6 +95,13 @@ function writeBookings(
   );
 }
 
+/**
+ * Persistence adapter.
+ *
+ * Redux is the application source of truth.
+ * This function only reads persisted booking data
+ * for hydration or persistence workflows.
+ */
 export function getAllBookings(): Booking[] {
   return readBookings();
 }
@@ -130,6 +137,12 @@ export function getBookingsByDoctorId(
   );
 }
 
+/**
+ * Persists a booking.
+ *
+ * Live application state should be updated through
+ * the appointments Redux slice before persistence.
+ */
 export function addBooking(
   booking: Booking,
 ): Booking {
@@ -160,6 +173,11 @@ export function addBooking(
   return normalizedBooking;
 }
 
+/**
+ * Persistence helper for appointment status.
+ *
+ * Redux should receive the corresponding mutation first.
+ */
 export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
@@ -201,6 +219,11 @@ export function updateBookingStatus(
   return updatedBooking;
 }
 
+/**
+ * Persistence helper for appointment updates.
+ *
+ * Redux remains the authoritative application state.
+ */
 export function updateBooking(
   bookingId: string,
   updates: Partial<

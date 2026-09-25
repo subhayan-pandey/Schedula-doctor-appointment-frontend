@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   useEffect,
   useMemo,
 } from "react";
+
 import {
   useDispatch,
   useSelector,
@@ -34,7 +36,6 @@ import type {
 } from "@/store";
 
 import {
-  initializeAppointments,
   setAppointments,
 } from "@/store/slices/appointmentsSlice";
 
@@ -203,7 +204,7 @@ export default function DoctorDashboard() {
     }
 
     dispatch(
-      initializeAppointments(
+      setAppointments(
         getAllBookings(),
       ),
     );

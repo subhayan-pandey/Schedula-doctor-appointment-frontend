@@ -1,401 +1,400 @@
 "use client";
 
-import Link from "next/link";
 import {
-  useEffect,
   useState,
+  type FormEvent,
 } from "react";
 
-import {
-  useDispatch,
-  useSelector,
-} from "react-redux";
-
 import Button from "@/components/ui/Button";
-import DoctorProfileForm from "@/features/doctor-profile/components/DoctorProfileForm";
-import DoctorProfileView from "@/features/doctor-profile/components/DoctorProfileView";
+import TextField from "@/components/ui/TextField";
 
 import {
-  getDoctorAccount,
-  saveDoctorAccount,
-} from "@/lib/doctor-account-store";
+  isValidEmail,
+  isValidMobile,
+} from "@/lib/utils/validators";
 
 import {
-  addDoctor,
-  getDoctorById,
-  getAllDoctors,
-} from "@/lib/doctors-store";
-
-import {
-  getInitials,
-} from "@/lib/utils/text";
-
-import {
-  initializeDoctors,
-  updateDoctor,
-} from "@/store/slices/doctorsSlice";
-
-import type {
-  AppDispatch,
-  RootState,
-} from "@/store";
-
-import type {
-  Doctor,
+  SPECIALTIES,
+  type Specialty,
 } from "@/types/doctor";
 
-import type {
-  DoctorAccount,
-} from "@/types/doctorAccount";
+import type { DoctorAccount } from "@/types/doctorAccount";
 
-type Status =
-  | "loading"
-  | "unauthorized"
-  | "ready";
+type FieldErrors = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  experienceYears?: string;
+  clinic?: string;
+  location?: string;
+};
 
-export default function DoctorProfileManager() {
-  const dispatch =
-    useDispatch<AppDispatch>();
-
-  const authUser =
-    useSelector(
-      (state: RootState) =>
-        state.auth.user,
-    );
-
-  const authInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.auth.initialized,
-    );
-
-  const doctors =
-    useSelector(
-      (state: RootState) =>
-        state.doctors.doctors,
-    );
-
-  const doctorsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.doctors.initialized,
-    );
-
-  const [status, setStatus] =
-    useState<Status>("loading");
-
-  const [account, setAccount] =
-    useState<DoctorAccount | null>(null);
-
-  const [mode, setMode] =
-    useState<"view" | "edit">("view");
-
-  useEffect(() => {
-    if (
-      !authInitialized
-    ) {
-      return;
-    }
-
-    if (
-      !authUser ||
-      authUser.role !== "doctor"
-    ) {
-      setStatus("unauthorized");
-      return;
-    }
-
-    if (
-      !doctorsInitialized
-    ) {
-      dispatch(
-        initializeDoctors(
-          getAllDoctors(),
-        ),
-      );
-    }
-
-    const doctorAccount =
-      getDoctorAccount();
-
-    if (
-      !doctorAccount ||
-      doctorAccount.id !== authUser.id
-    ) {
-      setStatus("unauthorized");
-      return;
-    }
-
-    setAccount(
-      doctorAccount,
-    );
-
-    setStatus("ready");
-  }, [
-    dispatch,
-    authInitialized,
-    authUser,
-    doctorsInitialized,
-  ]);
-
-  function handleSave(
+export default function DoctorProfileForm({
+  account,
+  onCancel,
+  onSave,
+}: {
+  account: DoctorAccount;
+  onCancel: () => void;
+  onSave: (
     updated: Omit<DoctorAccount, "id">,
-  ) {
+  ) => void;
+}) {
+  const [name, setName] =
+    useState(account.name);
+
+  const [email, setEmail] =
+    useState(account.email);
+
+  const [phone, setPhone] =
+    useState(account.phone);
+
+  const [specialty, setSpecialty] =
+    useState<Specialty>(
+      account.specialty,
+    );
+
+  const [experienceYears, setExperienceYears] =
+    useState(
+      String(account.experienceYears),
+    );
+
+  const [clinic, setClinic] =
+    useState(account.clinic);
+
+  const [location, setLocation] =
+    useState(account.location);
+
+  const [errors, setErrors] =
+    useState<FieldErrors>({});
+
+  const [isSaving, setIsSaving] =
+    useState(false);
+
+  function validate(): boolean {
+    const nextErrors: FieldErrors = {};
+
+    if (name.trim().length < 2) {
+      nextErrors.name =
+        "Enter your full name";
+    }
+
+    if (!isValidEmail(email)) {
+      nextErrors.email =
+        "Enter a valid email address";
+    }
+
+    if (!isValidMobile(phone)) {
+      nextErrors.phone =
+        "Enter a valid 10-digit mobile number";
+    }
+
+    const experience =
+      Number(experienceYears);
+
     if (
-      !account
+      !experienceYears ||
+      Number.isNaN(experience) ||
+      experience < 0
     ) {
+      nextErrors.experienceYears =
+        "Enter years of experience";
+    }
+
+    if (clinic.trim().length < 2) {
+      nextErrors.clinic =
+        "Enter your clinic or hospital name";
+    }
+
+    if (location.trim().length < 2) {
+      nextErrors.location =
+        "Enter your practice location";
+    }
+
+    setErrors(nextErrors);
+
+    return (
+      Object.keys(nextErrors).length === 0
+    );
+  }
+
+  function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (!validate()) {
       return;
     }
 
-    const nextAccount: DoctorAccount = {
-      id: account.id,
-      ...updated,
-    };
+    setIsSaving(true);
 
-    saveDoctorAccount(
-      nextAccount,
-    );
+    window.setTimeout(() => {
+      onSave({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        specialty,
+        experienceYears:
+          Number(experienceYears),
+        clinic: clinic.trim(),
+        location: location.trim(),
+      });
 
-    /*
-     * Keep the patient-facing doctor catalog
-     * synchronized with editable professional
-     * profile fields.
-     *
-     * Private account fields such as email and
-     * phone remain private and are not added to
-     * the public catalog.
-     */
-    const existingReduxDoctor =
-      doctors.find(
-        (doctor) =>
-          doctor.id ===
-          account.id,
-      );
-
-    const existingCatalogDoctor =
-      existingReduxDoctor ??
-      getDoctorById(
-        account.id,
-      );
-
-    const updatedDoctor: Doctor = {
-      id: nextAccount.id,
-      name: nextAccount.name,
-      specialty:
-        nextAccount.specialty,
-      experienceYears:
-        nextAccount.experienceYears,
-      clinic:
-        nextAccount.clinic,
-      location:
-        nextAccount.location,
-      qualification:
-        existingCatalogDoctor?.qualification ??
-        "MBBS",
-      rating:
-        existingCatalogDoctor?.rating ??
-        5,
-      reviewsCount:
-        existingCatalogDoctor?.reviewsCount ??
-        0,
-      patientsCount:
-        existingCatalogDoctor?.patientsCount ??
-        0,
-      consultationFee:
-        existingCatalogDoctor?.consultationFee ??
-        500,
-      availableToday:
-        existingCatalogDoctor?.availableToday ??
-        true,
-      timing:
-        existingCatalogDoctor?.timing ??
-        "09:00 AM - 5:00 PM",
-      bio: `${nextAccount.name} is a ${nextAccount.specialty.toLowerCase()} practicing at ${nextAccount.clinic}, ${nextAccount.location}.`,
-      avatarInitials:
-        getInitials(
-          nextAccount.name,
-        ),
-    };
-
-    /*
-     * Keep local persistence synchronized with the
-     * Redux application state.
-     */
-    addDoctor(
-      updatedDoctor,
-    );
-
-    dispatch(
-      updateDoctor(
-        updatedDoctor,
-      ),
-    );
-
-    setAccount(
-      nextAccount,
-    );
-
-    setMode("view");
-  }
-
-  if (
-    status === "loading"
-  ) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
-        <DoctorProfileSkeleton />
-      </div>
-    );
-  }
-
-  if (
-    status === "unauthorized" ||
-    !account
-  ) {
-    return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-deep)]">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            className="size-6"
-            aria-hidden="true"
-          >
-            <path
-              d="M12 3.5 19 7v5c0 4.3-2.7 7.3-7 8.8C7.7 19.3 5 16.3 5 12V7l7-3.5Z"
-              strokeLinejoin="round"
-            />
-
-            <path
-              d="M9.5 12.5 11.3 14l3.5-4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-
-        <h1 className="mt-5 text-xl font-semibold tracking-tight text-[var(--ink)]">
-          Doctor access required
-        </h1>
-
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">
-          Log in with a doctor account
-          to view and edit your
-          professional profile.
-        </p>
-
-        <Link
-          href="/doctor/login"
-          className="mt-6 inline-block"
-        >
-          <Button>
-            Doctor login
-          </Button>
-        </Link>
-      </div>
-    );
+      setIsSaving(false);
+    }, 400);
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-10">
-      <header className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[var(--brand-soft)] text-lg font-semibold text-[var(--brand-deep)]">
-              {getInitials(
-                account.name,
-              )}
-            </div>
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]"
+    >
+      <div className="bg-[var(--canvas)] p-5 sm:p-6">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-deep)]">
+          Professional profile
+        </p>
 
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--brand-deep)]">
-                Professional profile
-              </p>
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-[var(--ink)]">
+          Edit profile
+        </h2>
 
-              <h1 className="mt-1 truncate text-2xl font-semibold tracking-tight text-[var(--ink)]">
-                {account.name}
-              </h1>
-
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                {account.specialty} ·{" "}
-                {
-                  account.experienceYears
-                }{" "}
-                {account.experienceYears ===
-                1
-                  ? "year"
-                  : "years"}{" "}
-                experience
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link href="/doctor/appointments">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-              >
-                Appointments
-              </Button>
-            </Link>
-
-            <Link href="/doctor/slot">
-              <Button
-                className="w-full sm:w-auto"
-              >
-                Manage availability
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="mt-5">
-        {mode === "view" ? (
-          <DoctorProfileView
-            account={account}
-            onEdit={() =>
-              setMode("edit")
-            }
-          />
-        ) : (
-          <DoctorProfileForm
-            account={account}
-            onCancel={() =>
-              setMode("view")
-            }
-            onSave={handleSave}
-          />
-        )}
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+          Update the professional information
+          associated with your doctor account.
+        </p>
       </div>
-    </div>
+
+      <div className="border-t border-[var(--line)] p-5 sm:p-6">
+        <section>
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+              <PersonIcon />
+            </span>
+
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--ink)]">
+                Identity
+              </h3>
+
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                Your name and contact details.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5">
+            <TextField
+              id="profile-name"
+              label="Full name"
+              value={name}
+              onChange={(event) =>
+                setName(
+                  event.target.value,
+                )
+              }
+              error={errors.name}
+            />
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                id="profile-email"
+                label="Email"
+                type="email"
+                value={email}
+                onChange={(event) =>
+                  setEmail(
+                    event.target.value,
+                  )
+                }
+                error={errors.email}
+              />
+
+              <TextField
+                id="profile-phone"
+                label="Phone"
+                type="tel"
+                value={phone}
+                onChange={(event) =>
+                  setPhone(
+                    event.target.value,
+                  )
+                }
+                error={errors.phone}
+              />
+            </div>
+          </div>
+        </section>
+
+        <div className="my-7 border-t border-[var(--line)]" />
+
+        <section>
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--brand-soft)] text-[var(--brand-deep)]">
+              <MedicalIcon />
+            </span>
+
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--ink)]">
+                Professional details
+              </h3>
+
+              <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                Details used in your professional
+                doctor listing.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="profile-specialty"
+                  className="mb-1.5 block text-sm font-medium text-[var(--ink)]"
+                >
+                  Specialty
+                </label>
+
+                <select
+                  id="profile-specialty"
+                  value={specialty}
+                  onChange={(event) =>
+                    setSpecialty(
+                      event.target
+                        .value as Specialty,
+                    )
+                  }
+                  className="min-h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 py-2.5 text-sm text-[var(--ink)] outline-none transition focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/10"
+                >
+                  {SPECIALTIES.map(
+                    (item) => (
+                      <option
+                        key={item}
+                        value={item}
+                      >
+                        {item}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+
+              <TextField
+                id="profile-experience"
+                label="Years of experience"
+                type="number"
+                min={0}
+                value={
+                  experienceYears
+                }
+                onChange={(event) =>
+                  setExperienceYears(
+                    event.target.value,
+                  )
+                }
+                error={
+                  errors.experienceYears
+                }
+              />
+            </div>
+
+            <TextField
+              id="profile-clinic"
+              label="Clinic / Hospital"
+              value={clinic}
+              onChange={(event) =>
+                setClinic(
+                  event.target.value,
+                )
+              }
+              error={errors.clinic}
+            />
+
+            <TextField
+              id="profile-location"
+              label="Location"
+              value={location}
+              onChange={(event) =>
+                setLocation(
+                  event.target.value,
+                )
+              }
+              error={errors.location}
+            />
+          </div>
+        </section>
+      </div>
+
+      <div className="flex flex-col-reverse gap-3 border-t border-[var(--line)] bg-[var(--canvas)] p-4 sm:flex-row sm:justify-end sm:p-5">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="w-full sm:w-auto"
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="submit"
+          disabled={isSaving}
+          className="w-full sm:w-auto"
+        >
+          {isSaving
+            ? "Saving..."
+            : "Save changes"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
-function DoctorProfileSkeleton() {
+function PersonIcon() {
   return (
-    <div
-      className="animate-pulse"
-      aria-label="Loading doctor profile"
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-4"
+      aria-hidden="true"
     >
-      <div className="h-32 rounded-2xl bg-[var(--canvas)]" />
+      <circle cx="12" cy="8" r="3" />
 
-      <div className="mt-5 rounded-2xl bg-[var(--canvas)] p-6">
-        <div className="h-6 w-44 rounded bg-[var(--line)]" />
+      <path
+        d="M5.5 20c.8-3.5 3-5.3 6.5-5.3s5.7 1.8 6.5 5.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <div className="h-16 rounded-xl bg-[var(--line)]" />
+function MedicalIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className="size-4"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 4h8v16H8z"
+        strokeLinejoin="round"
+      />
 
-          <div className="h-16 rounded-xl bg-[var(--line)]" />
+      <path
+        d="M10 9h4M12 7v4"
+        strokeLinecap="round"
+      />
 
-          <div className="h-16 rounded-xl bg-[var(--line)]" />
-
-          <div className="h-16 rounded-xl bg-[var(--line)]" />
-        </div>
-      </div>
-    </div>
+      <path
+        d="M10 15h4"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

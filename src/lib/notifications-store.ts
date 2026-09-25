@@ -174,6 +174,13 @@ function writeNotifications(
   );
 }
 
+/**
+ * Persistence adapter.
+ *
+ * Redux notifications state is the application
+ * source of truth. These functions provide persisted
+ * notification data for hydration and persistence.
+ */
 export function getAllNotifications(): AppNotification[] {
   return readNotifications();
 }
@@ -210,6 +217,12 @@ export function getNotificationsByUserId(
   );
 }
 
+/**
+ * Persistence helper.
+ *
+ * The notification should also be added to Redux
+ * through addNotification for application state.
+ */
 export function createNotification({
   userId,
   recipientRole = "patient",
@@ -551,6 +564,12 @@ export function getDoctorNotifications(
   );
 }
 
+/**
+ * Persistence helper.
+ *
+ * Redux should be updated through markAsRead
+ * before/alongside persistence synchronization.
+ */
 export function markNotificationAsRead(
   notificationId: string,
 ): void {

@@ -27,15 +27,7 @@ const notificationsSlice =
     reducers: {
       initializeNotifications(
         state,
-        action: PayloadAction<{
-          userId: string;
-          recipientRole: NotificationRecipientRole;
-          notifications: AppNotification[];
-        }>,
       ) {
-        state.notifications =
-          action.payload.notifications;
-
         state.initialized = true;
       },
 

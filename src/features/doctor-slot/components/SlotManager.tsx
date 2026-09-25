@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import {
   useDispatch,
   useSelector,
@@ -36,15 +37,7 @@ import type {
 import {
   initializeDoctorSlots,
   setDoctorSlots,
-  createDoctorSlot,
-  removeDoctorSlot,
-  toggleDoctorSlotAvailability,
 } from "@/store/slices/slotsSlice";
-
-type Status =
-  | "loading"
-  | "unauthorized"
-  | "ready";
 
 function getTodayISO(): string {
   const today =
@@ -412,13 +405,6 @@ export default function SlotManager() {
           updatedSlots,
       }),
     );
-
-    dispatch(
-      toggleDoctorSlotAvailability({
-        doctorId,
-        slotId,
-      }),
-    );
   }
 
   function handleRemove(
@@ -454,13 +440,6 @@ export default function SlotManager() {
         doctorId,
         slots:
           updatedSlots,
-      }),
-    );
-
-    dispatch(
-      removeDoctorSlot({
-        doctorId,
-        slotId,
       }),
     );
   }

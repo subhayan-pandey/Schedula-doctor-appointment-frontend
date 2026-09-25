@@ -188,9 +188,9 @@ const slotsSlice = createSlice({
 
       if (
         currentSlot.status !==
-        "booked" ||
+          "booked" ||
         newSlot.status !==
-        "available"
+          "available"
       ) {
         return;
       }

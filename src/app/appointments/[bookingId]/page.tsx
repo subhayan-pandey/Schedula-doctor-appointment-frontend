@@ -1,18 +1,9 @@
 "use client";
 
 import Link from "next/link";
-
-import {
-  useEffect,
-  useState,
-} from "react";
-
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
-import {
-  useDispatch,
-  useSelector,
-} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import Button from "@/components/ui/Button";
 
@@ -20,19 +11,14 @@ import PreConsultationIntakeForm from "@/features/appointment/components/PreCons
 
 import {
   getAllBookings,
+  updateBookingStatus,
 } from "@/lib/bookings-store";
 
-import {
-  createDoctorNotification,
-} from "@/lib/notifications-store";
+import { createDoctorNotification } from "@/lib/notifications-store";
 
-import {
-  getAllDoctors,
-} from "@/lib/doctors-store";
+import { getAllDoctors } from "@/lib/doctors-store";
 
-import {
-  getSlotsForDoctor,
-} from "@/lib/slots-store";
+import { getSlotsForDoctor } from "@/lib/slots-store";
 
 import {
   getConsultationCountdown,
@@ -42,40 +28,27 @@ import {
   getConsultationTypeLabel,
 } from "@/lib/consultation";
 
-import {
-  formatLongDate,
-} from "@/lib/utils/date";
+import { formatLongDate } from "@/lib/utils/date";
 
 import {
-  initializeAppointments,
+  setAppointments,
   updateAppointmentStatus,
 } from "@/store/slices/appointmentsSlice";
 
-import {
-  initializeDoctors,
-} from "@/store/slices/doctorsSlice";
+import { setDoctors } from "@/store/slices/doctorsSlice";
 
-import {
-  addNotification,
-} from "@/store/slices/notificationsSlice";
+import { addNotification } from "@/store/slices/notificationsSlice";
 
 import {
   initializeDoctorSlots,
   releaseDoctorSlot,
 } from "@/store/slices/slotsSlice";
 
-import type {
-  AppDispatch,
-  RootState,
-} from "@/store";
+import type { AppDispatch, RootState } from "@/store";
 
-import type {
-  BookingStatus,
-} from "@/types/booking";
+import type { BookingStatus } from "@/types/booking";
 
-function getStatusLabel(
-  status: BookingStatus,
-): string {
+function getStatusLabel(status: BookingStatus): string {
   switch (status) {
     case "pending":
       return "Pending";
@@ -103,9 +76,7 @@ function getStatusLabel(
   }
 }
 
-function getStatusClasses(
-  status: BookingStatus,
-): string {
+function getStatusClasses(status: BookingStatus): string {
   switch (status) {
     case "pending":
       return "text-amber-700";
@@ -117,13 +88,11 @@ function getStatusClasses(
       return "text-[var(--success)]";
 
     case "declined":
+    case "cancelled":
       return "text-[var(--urgent-deep)]";
 
     case "completed":
       return "text-[var(--brand-deep)]";
-
-    case "cancelled":
-      return "text-[var(--urgent-deep)]";
 
     case "missed":
       return "text-slate-600";
@@ -133,9 +102,7 @@ function getStatusClasses(
   }
 }
 
-function getStatusMessage(
-  status: BookingStatus,
-): string {
+function getStatusMessage(status: BookingStatus): string {
   switch (status) {
     case "pending":
       return "Your appointment request is waiting for doctor confirmation.";
@@ -163,9 +130,7 @@ function getStatusMessage(
   }
 }
 
-function getPageHeading(
-  status: BookingStatus,
-): string {
+function getPageHeading(status: BookingStatus): string {
   switch (status) {
     case "pending":
       return "Appointment Request Sent";
@@ -193,14 +158,13 @@ function getPageHeading(
   }
 }
 
-function getStatusIcon(
-  status: BookingStatus,
-): string {
+function getStatusIcon(status: BookingStatus): string {
   switch (status) {
     case "pending":
       return "⏳";
 
     case "confirmed":
+    case "completed":
       return "✓";
 
     case "upcoming":
@@ -208,9 +172,6 @@ function getStatusIcon(
 
     case "declined":
       return "×";
-
-    case "completed":
-      return "✓";
 
     case "cancelled":
       return "✕";
@@ -223,9 +184,7 @@ function getStatusIcon(
   }
 }
 
-function getStatusIconClasses(
-  status: BookingStatus,
-): string {
+function getStatusIconClasses(status: BookingStatus): string {
   switch (status) {
     case "declined":
     case "cancelled":
@@ -265,186 +224,119 @@ function LocationIcon() {
         d="M19 10.25c0 4.5-7 10.25-7 10.25S5 14.75 5 10.25a7 7 0 1 1 14 0Z"
       />
 
-      <circle
-        cx="12"
-        cy="10.25"
-        r="2.25"
-      />
+      <circle cx="12" cy="10.25" r="2.25" />
     </svg>
   );
 }
 
 export default function AppointmentConfirmationPage() {
-  const { bookingId } =
-    useParams<{
-      bookingId: string;
-    }>();
+  const { bookingId } = useParams<{ bookingId: string }>();
 
-  const dispatch =
-    useDispatch<AppDispatch>();
+  const dispatch = useDispatch<AppDispatch>();
 
-  const booking =
-    useSelector(
-      (state: RootState) =>
-        state.appointments.appointments.find(
-          (appointment) =>
-            appointment.id === bookingId,
-        ) ?? null,
-    );
+  const booking = useSelector(
+    (state: RootState) =>
+      state.appointments.appointments.find(
+        (appointment) => appointment.id === bookingId,
+      ) ?? null,
+  );
 
-  const appointmentsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.appointments.initialized,
-    );
+  const appointmentsInitialized = useSelector(
+    (state: RootState) => state.appointments.initialized,
+  );
 
-  const user =
-    useSelector(
-      (state: RootState) =>
-        state.auth.user,
-    );
+  const user = useSelector(
+    (state: RootState) => state.auth.user,
+  );
 
-  const authInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.auth.initialized,
-    );
+  const authInitialized = useSelector(
+    (state: RootState) => state.auth.initialized,
+  );
 
-  const doctor =
-    useSelector(
-      (state: RootState) =>
-        booking
-          ? state.doctors.doctors.find(
-              (item) =>
-                item.id ===
-                booking.doctorId,
-            ) ?? null
-          : null,
-    );
+  const doctor = useSelector(
+    (state: RootState) =>
+      booking
+        ? state.doctors.doctors.find(
+            (item) => item.id === booking.doctorId,
+          ) ?? null
+        : null,
+  );
 
-  const doctorsInitialized =
-    useSelector(
-      (state: RootState) =>
-        state.doctors.initialized,
-    );
+  const doctorsInitialized = useSelector(
+    (state: RootState) => state.doctors.initialized,
+  );
 
-  const slots =
-    useSelector(
-      (state: RootState) =>
-        booking
-          ? state.slots.slotsByDoctor[
-              booking.doctorId
-            ] ?? []
-          : [],
-    );
+  const slots = useSelector(
+    (state: RootState) =>
+      booking
+        ? state.slots.slotsByDoctor[booking.doctorId] ?? []
+        : [],
+  );
 
-  const slotsInitialized =
-    useSelector(
-      (state: RootState) =>
-        booking
-          ? state.slots.initializedDoctors.includes(
-              booking.doctorId,
-            )
-          : false,
-    );
+  const slotsInitialized = useSelector(
+    (state: RootState) =>
+      booking
+        ? state.slots.initializedDoctors.includes(
+            booking.doctorId,
+          )
+        : false,
+  );
 
-  const [
-    isCancelling,
-    setIsCancelling,
-  ] = useState(false);
-
-  const [
-    currentTime,
-    setCurrentTime,
-  ] = useState(0);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
 
   useEffect(() => {
     if (
       !booking ||
-      booking.consultationType !==
-        "online"
+      booking.consultationType !== "online"
     ) {
       return;
     }
 
-    const initialTimer =
-      window.setTimeout(() => {
-        setCurrentTime(
-          Date.now(),
-        );
-      }, 0);
+    const initialTimer = window.setTimeout(
+      () => setCurrentTime(Date.now()),
+      0,
+    );
 
-    const interval =
-      window.setInterval(() => {
-        setCurrentTime(
-          Date.now(),
-        );
-      }, 1000);
+    const interval = window.setInterval(
+      () => setCurrentTime(Date.now()),
+      1000,
+    );
 
     return () => {
-      window.clearTimeout(
-        initialTimer,
-      );
-
-      window.clearInterval(
-        interval,
-      );
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
     };
   }, [booking]);
 
   useEffect(() => {
-    if (
-      !appointmentsInitialized
-    ) {
+    if (!appointmentsInitialized) {
       dispatch(
-        initializeAppointments(
-          getAllBookings(),
-        ),
+        setAppointments(getAllBookings()),
       );
     }
-  }, [
-    dispatch,
-    appointmentsInitialized,
-  ]);
+  }, [dispatch, appointmentsInitialized]);
 
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(
-          getAllDoctors(),
-        ),
+        setDoctors(getAllDoctors()),
       );
     }
-  }, [
-    dispatch,
-    doctorsInitialized,
-  ]);
+  }, [dispatch, doctorsInitialized]);
 
   useEffect(() => {
-    if (
-      !booking ||
-      slotsInitialized
-    ) {
+    if (!booking || slotsInitialized) {
       return;
     }
 
-    const doctorId =
-      booking.doctorId;
-
     dispatch(
       initializeDoctorSlots({
-        doctorId,
-        slots:
-          getSlotsForDoctor(
-            doctorId,
-          ),
+        doctorId: booking.doctorId,
+        slots: getSlotsForDoctor(booking.doctorId),
       }),
     );
-  }, [
-    dispatch,
-    booking,
-    slotsInitialized,
-  ]);
+  }, [dispatch, booking, slotsInitialized]);
 
   if (
     !authInitialized ||
@@ -458,27 +350,23 @@ export default function AppointmentConfirmationPage() {
     );
   }
 
-  if (booking === null) {
+  if (!booking) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
         <h1 className="text-xl font-semibold text-[var(--ink)]">
-          We couldn&apos;t find that
-          appointment
+          We couldn&apos;t find that appointment
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          It may have been booked in a
-          different browser, or the link
-          is incorrect.
+          It may have been booked in a different browser, or the link is
+          incorrect.
         </p>
 
         <Link
           href="/doctors"
           className="mt-6 inline-block"
         >
-          <Button>
-            Find a doctor
-          </Button>
+          <Button>Find a doctor</Button>
         </Link>
       </div>
     );
@@ -487,8 +375,7 @@ export default function AppointmentConfirmationPage() {
   if (
     !user ||
     user.role !== "patient" ||
-    booking.patientId !==
-      user.id
+    booking.patientId !== user.id
   ) {
     return (
       <div className="mx-auto max-w-lg px-4 py-16 text-center">
@@ -497,110 +384,80 @@ export default function AppointmentConfirmationPage() {
         </h1>
 
         <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-          You are not authorized to view
-          this appointment.
+          You are not authorized to view this appointment.
         </p>
 
         <Link
           href="/appointments"
           className="mt-6 inline-block"
         >
-          <Button>
-            View my appointments
-          </Button>
+          <Button>View my appointments</Button>
         </Link>
       </div>
     );
   }
 
-  const currentBooking =
-    booking;
+  const currentBooking = booking;
 
   const isOnline =
-    currentBooking.consultationType ===
-    "online";
+    currentBooking.consultationType === "online";
 
-  const isInPerson =
-    !isOnline;
+  const isInPerson = !isOnline;
 
   const canCancel =
-    currentBooking.status ===
-      "pending" ||
-    currentBooking.status ===
-      "confirmed" ||
-    currentBooking.status ===
-      "upcoming";
+    currentBooking.status === "pending" ||
+    currentBooking.status === "confirmed" ||
+    currentBooking.status === "upcoming";
 
   const canReschedule =
-    currentBooking.status ===
-      "confirmed" ||
-    currentBooking.status ===
-      "upcoming";
+    currentBooking.status === "confirmed" ||
+    currentBooking.status === "upcoming";
 
   const isDeclined =
-    currentBooking.status ===
-    "declined";
+    currentBooking.status === "declined";
 
   const isCompleted =
-    currentBooking.status ===
-    "completed";
+    currentBooking.status === "completed";
 
   const isMissed =
-    currentBooking.status ===
-    "missed";
+    currentBooking.status === "missed";
 
   const isCancelled =
-    currentBooking.status ===
-    "cancelled";
+    currentBooking.status === "cancelled";
 
-  const consultationStatus =
-    isOnline
-      ? getConsultationStatus(
-          currentBooking.date,
-          currentBooking.time,
-          currentTime,
-        )
-      : "scheduled";
+  const consultationStatus = isOnline
+    ? getConsultationStatus(
+        currentBooking.date,
+        currentBooking.time,
+        currentTime,
+      )
+    : "scheduled";
 
-  const countdown =
-    isOnline
-      ? getConsultationCountdown(
-          currentBooking.date,
-          currentBooking.time,
-          currentTime,
-        )
-      : null;
+  const countdown = isOnline
+    ? getConsultationCountdown(
+        currentBooking.date,
+        currentBooking.time,
+        currentTime,
+      )
+    : null;
 
   const canJoinConsultation =
     isOnline &&
-    (
-      consultationStatus ===
-        "starting-soon" ||
-      consultationStatus ===
-        "live"
-    ) &&
-    (
-      currentBooking.status ===
-        "confirmed" ||
-      currentBooking.status ===
-        "upcoming"
-    ) &&
+    (consultationStatus === "starting-soon" ||
+      consultationStatus === "live") &&
+    (currentBooking.status === "confirmed" ||
+      currentBooking.status === "upcoming") &&
     currentTime > 0;
 
   const clinicName =
-    doctor?.clinic ??
-    "Clinic";
+    doctor?.clinic ?? "Clinic";
 
   const clinicLocation =
-    doctor?.location ??
-    "";
+    doctor?.location ?? "";
 
-  const locationQuery =
-    `${clinicName}${
-      clinicLocation
-        ? `, ${clinicLocation}`
-        : ""
-    }`;
+  const locationQuery = `${clinicName}${
+    clinicLocation ? `, ${clinicLocation}` : ""
+  }`;
 
   function handleCancel() {
     if (
@@ -611,17 +468,13 @@ export default function AppointmentConfirmationPage() {
       return;
     }
 
-    const currentSlot =
-      slots.find(
-        (slot) =>
-          slot.id ===
-          currentBooking.slotId,
-      );
+    const currentSlot = slots.find(
+      (slot) => slot.id === currentBooking.slotId,
+    );
 
     if (
       !currentSlot ||
-      currentSlot.status !==
-        "booked"
+      currentSlot.status !== "booked"
     ) {
       return;
     }
@@ -630,56 +483,46 @@ export default function AppointmentConfirmationPage() {
 
     dispatch(
       releaseDoctorSlot({
-        doctorId:
-          currentBooking.doctorId,
-        slotId:
-          currentBooking.slotId,
+        doctorId: currentBooking.doctorId,
+        slotId: currentBooking.slotId,
       }),
     );
 
     dispatch(
       updateAppointmentStatus({
-        bookingId:
-          currentBooking.id,
+        bookingId: currentBooking.id,
         status: "cancelled",
         actionReason:
           "Appointment cancelled by patient",
       }),
     );
 
+    updateBookingStatus(
+      currentBooking.id,
+      "cancelled",
+      "Appointment cancelled by patient",
+    );
+
     const notification =
       createDoctorNotification({
-        userId:
-          currentBooking.doctorId,
-
-        title:
-          "Appointment cancelled",
-
-        message: `${currentBooking.patientName} cancelled the appointment scheduled for ${formatLongDate(
+        userId: currentBooking.doctorId,
+        title: "Appointment cancelled",
+        message: `${
+          currentBooking.patientName
+        } cancelled the appointment scheduled for ${formatLongDate(
           currentBooking.date,
         )} at ${currentBooking.time}.`,
-
-        type:
-          "cancellation",
-
-        appointmentId:
-          currentBooking.id,
+        type: "cancellation",
+        appointmentId: currentBooking.id,
       });
 
-    dispatch(
-      addNotification(
-        notification,
-      ),
-    );
+    dispatch(addNotification(notification));
 
     setIsCancelling(false);
   }
 
   function handleCancelDeclined() {
-    if (
-      !isDeclined ||
-      isCancelling
-    ) {
+    if (!isDeclined || isCancelling) {
       return;
     }
 
@@ -687,38 +530,33 @@ export default function AppointmentConfirmationPage() {
 
     dispatch(
       updateAppointmentStatus({
-        bookingId:
-          currentBooking.id,
+        bookingId: currentBooking.id,
         status: "cancelled",
         actionReason:
           "Declined appointment cancelled by patient",
       }),
     );
 
+    updateBookingStatus(
+      currentBooking.id,
+      "cancelled",
+      "Declined appointment cancelled by patient",
+    );
+
     const notification =
       createDoctorNotification({
-        userId:
-          currentBooking.doctorId,
-
-        title:
-          "Declined appointment cancelled",
-
-        message: `${currentBooking.patientName} cancelled the declined appointment for ${formatLongDate(
+        userId: currentBooking.doctorId,
+        title: "Declined appointment cancelled",
+        message: `${
+          currentBooking.patientName
+        } cancelled the declined appointment for ${formatLongDate(
           currentBooking.date,
         )} at ${currentBooking.time}.`,
-
-        type:
-          "cancellation",
-
-        appointmentId:
-          currentBooking.id,
+        type: "cancellation",
+        appointmentId: currentBooking.id,
       });
 
-    dispatch(
-      addNotification(
-        notification,
-      ),
-    );
+    dispatch(addNotification(notification));
 
     setIsCancelling(false);
   }
@@ -731,21 +569,15 @@ export default function AppointmentConfirmationPage() {
             currentBooking.status,
           )}`}
         >
-          {getStatusIcon(
-            currentBooking.status,
-          )}
+          {getStatusIcon(currentBooking.status)}
         </span>
 
         <h1 className="mt-3 text-2xl font-semibold text-[var(--ink)]">
-          {getPageHeading(
-            currentBooking.status,
-          )}
+          {getPageHeading(currentBooking.status)}
         </h1>
 
         <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--muted)]">
-          {getStatusMessage(
-            currentBooking.status,
-          )}
+          {getStatusMessage(currentBooking.status)}
         </p>
       </div>
 
@@ -762,8 +594,7 @@ export default function AppointmentConfirmationPage() {
               </p>
 
               <p className="text-sm text-[var(--muted)]">
-                {doctor.specialty} ·{" "}
-                {doctor.location}
+                {doctor.specialty} · {doctor.location}
               </p>
             </div>
           </div>
@@ -776,10 +607,7 @@ export default function AppointmentConfirmationPage() {
             </dt>
 
             <dd className="font-medium text-[var(--ink)]">
-              #
-              {currentBooking.id
-                .slice(-6)
-                .toUpperCase()}
+              #{currentBooking.id.slice(-6).toUpperCase()}
             </dd>
           </div>
 
@@ -793,9 +621,7 @@ export default function AppointmentConfirmationPage() {
                 currentBooking.status,
               )}`}
             >
-              {getStatusLabel(
-                currentBooking.status,
-              )}
+              {getStatusLabel(currentBooking.status)}
             </dd>
           </div>
 
@@ -818,9 +644,7 @@ export default function AppointmentConfirmationPage() {
             </dt>
 
             <dd className="font-medium text-[var(--ink)]">
-              {formatLongDate(
-                currentBooking.date,
-              )}
+              {formatLongDate(currentBooking.date)}
             </dd>
           </div>
 
@@ -877,10 +701,7 @@ export default function AppointmentConfirmationPage() {
                       {formatLongDate(
                         currentBooking.date,
                       )}{" "}
-                      ·{" "}
-                      {
-                        currentBooking.time
-                      }
+                      · {currentBooking.time}
                     </p>
                   </div>
 
@@ -946,19 +767,15 @@ export default function AppointmentConfirmationPage() {
               </div>
             )}
 
-            {consultationStatus ===
-              "live" && (
+            {consultationStatus === "live" && (
               <p className="mt-3 text-xs leading-5 text-[var(--success)]">
-                The consultation is live. You
-                can join now.
+                The consultation is live. You can join now.
               </p>
             )}
 
-            {consultationStatus ===
-              "ended" && (
+            {consultationStatus === "ended" && (
               <p className="mt-3 text-xs leading-5 text-[var(--muted)]">
-                This consultation window has
-                ended.
+                This consultation window has ended.
               </p>
             )}
 
@@ -973,15 +790,10 @@ export default function AppointmentConfirmationPage() {
                   </Button>
                 </Link>
               ) : (
-                <Button
-                  className="w-full"
-                  disabled
-                >
-                  {consultationStatus ===
-                  "scheduled"
+                <Button className="w-full" disabled>
+                  {consultationStatus === "scheduled"
                     ? "Join when consultation is starting"
-                    : consultationStatus ===
-                        "ended"
+                    : consultationStatus === "ended"
                       ? "Consultation ended"
                       : "Join Consultation"}
                 </Button>
@@ -993,13 +805,11 @@ export default function AppointmentConfirmationPage() {
         {isDeclined && (
           <div className="mt-5 rounded-xl border border-[var(--urgent)]/15 bg-[var(--urgent-soft)] px-4 py-3">
             <p className="text-sm font-medium text-[var(--urgent-deep)]">
-              This appointment request was
-              declined by the doctor.
+              This appointment request was declined by the doctor.
             </p>
 
             <p className="mt-1 text-xs leading-5 text-[var(--urgent-deep)]/80">
-              You can book another available
-              slot with this doctor or cancel
+              You can book another available slot with this doctor or cancel
               this appointment request.
             </p>
           </div>
@@ -1008,41 +818,33 @@ export default function AppointmentConfirmationPage() {
         {isCancelled && (
           <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3">
             <p className="text-sm font-medium text-[var(--ink)]">
-              This appointment has been
-              cancelled.
+              This appointment has been cancelled.
             </p>
 
             <p className="mt-1 text-xs leading-5 text-[var(--muted)]">
-              You can reschedule this
-              appointment using the same
-              appointment record.
+              You can reschedule this appointment using the same appointment
+              record.
             </p>
           </div>
         )}
 
         {isCompleted && (
           <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm text-[var(--muted)]">
-            This appointment has been
-            completed.
+            This appointment has been completed.
           </div>
         )}
 
         {isMissed && (
           <div className="mt-5 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm text-[var(--muted)]">
-            This appointment was marked as
-            missed.
+            This appointment was marked as missed.
           </div>
         )}
       </div>
 
       <div className="mt-6">
         <PreConsultationIntakeForm
-          appointmentId={
-            currentBooking.id
-          }
-          patientId={
-            currentBooking.patientId
-          }
+          appointmentId={currentBooking.id}
+          patientId={currentBooking.patientId}
         />
       </div>
 
@@ -1060,12 +862,8 @@ export default function AppointmentConfirmationPage() {
           <Button
             variant="outline"
             className="flex-1"
-            disabled={
-              isCancelling
-            }
-            onClick={
-              handleCancelDeclined
-            }
+            disabled={isCancelling}
+            onClick={handleCancelDeclined}
           >
             {isCancelling
               ? "Cancelling..."
@@ -1147,9 +945,7 @@ export default function AppointmentConfirmationPage() {
                 isCancelling ||
                 !slotsInitialized
               }
-              onClick={
-                handleCancel
-              }
+              onClick={handleCancel}
             >
               {isCancelling
                 ? "Cancelling..."
