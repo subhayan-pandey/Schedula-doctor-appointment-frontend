@@ -27,11 +27,7 @@ const appointmentsSlice =
     reducers: {
       initializeAppointments(
         state,
-        action: PayloadAction<Booking[]>,
       ) {
-        state.appointments =
-          action.payload;
-
         state.initialized = true;
       },
 
@@ -63,6 +59,7 @@ const appointmentsSlice =
           state.appointments[
             existingIndex
           ] = appointment;
+
           return;
         }
 

@@ -6,9 +6,7 @@ import {
   Geist_Mono,
 } from "next/font/google";
 
-import Footer from "@/components/layout/Footer";
-import Navbar from "@/components/layout/Navbar";
-import ChatbotProvider from "@/app/ChatbotProvider";
+import ChromeGate from "@/components/layout/ChromeGate";
 
 import {
   ThemeProvider,
@@ -103,15 +101,7 @@ export default function RootLayout({
 
         <ReduxProvider>
           <ThemeProvider>
-            <Navbar />
-
-            <div className="flex-1">
-              {children}
-            </div>
-
-            <Footer />
-
-            <ChatbotProvider />
+            <ChromeGate>{children}</ChromeGate>
 
             <ToastContainer
               position="top-right"
