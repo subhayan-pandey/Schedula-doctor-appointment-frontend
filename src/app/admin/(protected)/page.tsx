@@ -8,7 +8,7 @@ export default function AdminHomePage() {
   const { adminUser, logout } = useAdminAuth();
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center gap-4 px-4 text-center">
+    <div className="mx-auto flex max-w-xl flex-col items-center gap-4 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--surface)] px-6 py-14 text-center">
       <span className="inline-flex items-center rounded-full bg-[var(--brand-soft)] px-3 py-1 text-xs font-semibold text-[var(--brand-deep)]">
         Admin Portal
       </span>
@@ -18,15 +18,13 @@ export default function AdminHomePage() {
       </h1>
 
       <p className="text-sm leading-6 text-[var(--muted)]">
-        This placeholder confirms the login → protected route → logout flow
-        works end to end. It will become the full Dashboard in Phase 1D, and
-        the Sidebar/Header from Phase 1C will wrap this and every future
-        admin page.
+        The Sidebar and Header are live. This placeholder becomes the full
+        Dashboard (stats, trends, recent activity) in Phase 1D.
       </p>
 
       <Button variant="outline" onClick={logout}>
         Log out
       </Button>
-    </main>
+    </div>
   );
 }
