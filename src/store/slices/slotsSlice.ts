@@ -6,10 +6,7 @@ import {
 import type { Slot } from "@/types/slot";
 
 type SlotsState = {
-  slotsByDoctor: Record<
-    string,
-    Slot[]
-  >;
+  slotsByDoctor: Record<string, Slot[]>;
   initializedDoctors: string[];
 };
 
@@ -20,9 +17,7 @@ const initialState: SlotsState = {
 
 const slotsSlice = createSlice({
   name: "slots",
-
   initialState,
-
   reducers: {
     initializeDoctorSlots(
       state,
@@ -31,27 +26,16 @@ const slotsSlice = createSlice({
         slots: Slot[];
       }>,
     ) {
-      const {
-        doctorId,
-        slots,
-      } = action.payload;
+      const { doctorId, slots } = action.payload;
 
       if (!doctorId) {
         return;
       }
 
-      state.slotsByDoctor[
-        doctorId
-      ] = slots;
+      state.slotsByDoctor[doctorId] = slots;
 
-      if (
-        !state.initializedDoctors.includes(
-          doctorId,
-        )
-      ) {
-        state.initializedDoctors.push(
-          doctorId,
-        );
+      if (!state.initializedDoctors.includes(doctorId)) {
+        state.initializedDoctors.push(doctorId);
       }
     },
 
@@ -62,27 +46,16 @@ const slotsSlice = createSlice({
         slots: Slot[];
       }>,
     ) {
-      const {
-        doctorId,
-        slots,
-      } = action.payload;
+      const { doctorId, slots } = action.payload;
 
       if (!doctorId) {
         return;
       }
 
-      state.slotsByDoctor[
-        doctorId
-      ] = slots;
+      state.slotsByDoctor[doctorId] = slots;
 
-      if (
-        !state.initializedDoctors.includes(
-          doctorId,
-        )
-      ) {
-        state.initializedDoctors.push(
-          doctorId,
-        );
+      if (!state.initializedDoctors.includes(doctorId)) {
+        state.initializedDoctors.push(doctorId);
       }
     },
 
@@ -93,44 +66,25 @@ const slotsSlice = createSlice({
         slotId: string;
       }>,
     ) {
-      const {
-        doctorId,
-        slotId,
-      } = action.payload;
-
-      const slots =
-        state.slotsByDoctor[
-          doctorId
-        ];
+      const { doctorId, slotId } = action.payload;
+      const slots = state.slotsByDoctor[doctorId];
 
       if (!slots) {
         return;
       }
 
-      const target =
-        slots.find(
-          (slot) =>
-            slot.id === slotId,
-        );
+      const target = slots.find(
+        (slot) => slot.id === slotId,
+      );
 
-      if (
-        !target ||
-        target.status !==
-          "available"
-      ) {
+      if (!target || target.status !== "available") {
         return;
       }
 
-      state.slotsByDoctor[
-        doctorId
-      ] = slots.map(
+      state.slotsByDoctor[doctorId] = slots.map(
         (slot): Slot =>
           slot.id === slotId
-            ? {
-                ...slot,
-                status:
-                  "booked",
-              }
+            ? { ...slot, status: "booked" }
             : slot,
       );
     },
@@ -149,76 +103,40 @@ const slotsSlice = createSlice({
         newSlotId,
       } = action.payload;
 
-      if (
-        currentSlotId ===
-        newSlotId
-      ) {
+      if (currentSlotId === newSlotId) {
         return;
       }
 
-      const slots =
-        state.slotsByDoctor[
-          doctorId
-        ];
+      const slots = state.slotsByDoctor[doctorId];
 
       if (!slots) {
         return;
       }
 
-      const currentSlot =
-        slots.find(
-          (slot) =>
-            slot.id ===
-            currentSlotId,
-        );
-
-      const newSlot =
-        slots.find(
-          (slot) =>
-            slot.id ===
-            newSlotId,
-        );
+      const currentSlot = slots.find(
+        (slot) => slot.id === currentSlotId,
+      );
+      const newSlot = slots.find(
+        (slot) => slot.id === newSlotId,
+      );
 
       if (
         !currentSlot ||
-        !newSlot
+        !newSlot ||
+        currentSlot.status !== "booked" ||
+        newSlot.status !== "available"
       ) {
         return;
       }
 
-      if (
-        currentSlot.status !==
-          "booked" ||
-        newSlot.status !==
-          "available"
-      ) {
-        return;
-      }
-
-      state.slotsByDoctor[
-        doctorId
-      ] = slots.map(
+      state.slotsByDoctor[doctorId] = slots.map(
         (slot): Slot => {
-          if (
-            slot.id ===
-            currentSlotId
-          ) {
-            return {
-              ...slot,
-              status:
-                "available",
-            };
+          if (slot.id === currentSlotId) {
+            return { ...slot, status: "available" };
           }
 
-          if (
-            slot.id ===
-            newSlotId
-          ) {
-            return {
-              ...slot,
-              status:
-                "booked",
-            };
+          if (slot.id === newSlotId) {
+            return { ...slot, status: "booked" };
           }
 
           return slot;
@@ -233,31 +151,17 @@ const slotsSlice = createSlice({
         slotId: string;
       }>,
     ) {
-      const {
-        doctorId,
-        slotId,
-      } = action.payload;
-
-      const slots =
-        state.slotsByDoctor[
-          doctorId
-        ];
+      const { doctorId, slotId } = action.payload;
+      const slots = state.slotsByDoctor[doctorId];
 
       if (!slots) {
         return;
       }
 
-      state.slotsByDoctor[
-        doctorId
-      ] = slots.map(
+      state.slotsByDoctor[doctorId] = slots.map(
         (slot): Slot =>
-          slot.id === slotId &&
-          slot.status === "booked"
-            ? {
-                ...slot,
-                status:
-                  "available",
-              }
+          slot.id === slotId && slot.status === "booked"
+            ? { ...slot, status: "available" }
             : slot,
       );
     },
@@ -273,32 +177,19 @@ const slotsSlice = createSlice({
         };
       }>,
     ) {
-      const {
-        doctorId,
-        slot,
-      } = action.payload;
+      const { doctorId, slot } = action.payload;
 
-      if (
-        !doctorId ||
-        !slot.date ||
-        !slot.time
-      ) {
+      if (!doctorId || !slot.date || !slot.time) {
         return;
       }
 
-      const existing =
-        state.slotsByDoctor[
-          doctorId
-        ] ?? [];
+      const existing = state.slotsByDoctor[doctorId] ?? [];
 
-      const duplicate =
-        existing.some(
-          (item) =>
-            item.date ===
-              slot.date &&
-            item.time ===
-              slot.time,
-        );
+      const duplicate = existing.some(
+        (item) =>
+          item.date === slot.date &&
+          item.time === slot.time,
+      );
 
       if (duplicate) {
         return;
@@ -315,21 +206,13 @@ const slotsSlice = createSlice({
         status: "available",
       };
 
-      state.slotsByDoctor[
-        doctorId
-      ] = [
+      state.slotsByDoctor[doctorId] = [
         ...existing,
         newSlot,
       ];
 
-      if (
-        !state.initializedDoctors.includes(
-          doctorId,
-        )
-      ) {
-        state.initializedDoctors.push(
-          doctorId,
-        );
+      if (!state.initializedDoctors.includes(doctorId)) {
+        state.initializedDoctors.push(doctorId);
       }
     },
 
@@ -340,39 +223,23 @@ const slotsSlice = createSlice({
         slotId: string;
       }>,
     ) {
-      const {
-        doctorId,
-        slotId,
-      } = action.payload;
-
-      const slots =
-        state.slotsByDoctor[
-          doctorId
-        ];
+      const { doctorId, slotId } = action.payload;
+      const slots = state.slotsByDoctor[doctorId];
 
       if (!slots) {
         return;
       }
 
-      const target =
-        slots.find(
-          (slot) =>
-            slot.id === slotId,
-        );
+      const target = slots.find(
+        (slot) => slot.id === slotId,
+      );
 
-      if (
-        !target ||
-        target.status ===
-          "booked"
-      ) {
+      if (!target || target.status === "booked") {
         return;
       }
 
-      state.slotsByDoctor[
-        doctorId
-      ] = slots.filter(
-        (slot) =>
-          slot.id !== slotId,
+      state.slotsByDoctor[doctorId] = slots.filter(
+        (slot) => slot.id !== slotId,
       );
     },
 
@@ -383,29 +250,18 @@ const slotsSlice = createSlice({
         slotId: string;
       }>,
     ) {
-      const {
-        doctorId,
-        slotId,
-      } = action.payload;
-
-      const slots =
-        state.slotsByDoctor[
-          doctorId
-        ];
+      const { doctorId, slotId } = action.payload;
+      const slots = state.slotsByDoctor[doctorId];
 
       if (!slots) {
         return;
       }
 
-      state.slotsByDoctor[
-        doctorId
-      ] = slots.map(
+      state.slotsByDoctor[doctorId] = slots.map(
         (slot): Slot => {
           if (
-            slot.id !==
-              slotId ||
-            slot.status ===
-              "booked"
+            slot.id !== slotId ||
+            slot.status === "booked"
           ) {
             return slot;
           }
@@ -413,8 +269,7 @@ const slotsSlice = createSlice({
           return {
             ...slot,
             status:
-              slot.status ===
-              "available"
+              slot.status === "available"
                 ? "unavailable"
                 : "available",
           };
@@ -433,7 +288,6 @@ export const {
   createDoctorSlot,
   removeDoctorSlot,
   toggleDoctorSlotAvailability,
-} =
-  slotsSlice.actions;
+} = slotsSlice.actions;
 
 export default slotsSlice.reducer;

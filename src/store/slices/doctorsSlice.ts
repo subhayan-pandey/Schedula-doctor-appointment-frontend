@@ -17,13 +17,9 @@ const initialState: DoctorsState = {
 
 const doctorsSlice = createSlice({
   name: "doctors",
-
   initialState,
-
   reducers: {
-    initializeDoctors(
-      state,
-    ) {
+    initializeDoctors(state) {
       state.initialized = true;
     },
 
@@ -31,9 +27,7 @@ const doctorsSlice = createSlice({
       state,
       action: PayloadAction<Doctor[]>,
     ) {
-      state.doctors =
-        action.payload;
-
+      state.doctors = action.payload;
       state.initialized = true;
     },
 
@@ -41,51 +35,38 @@ const doctorsSlice = createSlice({
       state,
       action: PayloadAction<Doctor>,
     ) {
-      const doctor =
-        action.payload;
+      const doctor = action.payload;
 
       const existingIndex =
         state.doctors.findIndex(
-          (item) =>
-            item.id === doctor.id,
+          (item) => item.id === doctor.id,
         );
 
       if (existingIndex >= 0) {
-        state.doctors[
-          existingIndex
-        ] = doctor;
-
+        state.doctors[existingIndex] = doctor;
         return;
       }
 
-      state.doctors.push(
-        doctor,
-      );
+      state.doctors.push(doctor);
     },
 
     updateDoctor(
       state,
       action: PayloadAction<Doctor>,
     ) {
-      const doctor =
-        action.payload;
+      const doctor = action.payload;
 
       const index =
         state.doctors.findIndex(
-          (item) =>
-            item.id === doctor.id,
+          (item) => item.id === doctor.id,
         );
 
       if (index === -1) {
-        state.doctors.push(
-          doctor,
-        );
-
+        state.doctors.push(doctor);
         return;
       }
 
-      state.doctors[index] =
-        doctor;
+      state.doctors[index] = doctor;
     },
   },
 });

@@ -3,116 +3,42 @@ import type {
   BookingStatus,
 } from "@/types/booking";
 
-const KEY = "schedula:bookings";
+import {
+  store,
+} from "@/store";
 
-type StoredBooking = Omit<
-  Booking,
-  | "patientId"
-  | "consultationType"
-  | "updatedAt"
-  | "rescheduleCount"
-  | "actionReason"
-> & {
-  patientId?: string;
-  consultationType?: Booking["consultationType"];
-  updatedAt?: string;
-  rescheduleCount?: number;
-  actionReason?: string;
-};
+import {
+  addAppointment,
+  setAppointments,
+  updateAppointment,
+  updateAppointmentStatus,
+} from "@/store/slices/appointmentsSlice";
 
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
+import {
+  loadPersistedBookings,
+} from "@/store/persistence";
 
-function normalizeBooking(
-  booking: StoredBooking,
-): Booking {
-  return {
-    ...booking,
-    patientId:
-      booking.patientId ?? "",
-    consultationType:
-      booking.consultationType ??
-      "in-person",
-    createdAt:
-      booking.createdAt ??
-      new Date().toISOString(),
-    updatedAt:
-      booking.updatedAt,
-    rescheduleCount:
-      booking.rescheduleCount ?? 0,
-    actionReason:
-      booking.actionReason,
-  };
-}
-
-function readBookings(): Booking[] {
-  if (!isBrowser()) {
-    return [];
-  }
-
-  try {
-    const raw =
-      window.localStorage.getItem(
-        KEY,
-      );
-
-    if (!raw) {
-      return [];
-    }
-
-    const parsed =
-      JSON.parse(raw);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.map(
-      normalizeBooking,
+function ensureHydrated(): void {
+  if (!store.getState().appointments.initialized) {
+    store.dispatch(
+      setAppointments(
+        loadPersistedBookings(),
+      ),
     );
-  } catch {
-    return [];
   }
 }
 
-function writeBookings(
-  bookings: Booking[],
-): void {
-  if (!isBrowser()) {
-    return;
-  }
-
-  window.localStorage.setItem(
-    KEY,
-    JSON.stringify(bookings),
-  );
-
-  window.dispatchEvent(
-    new Event(
-      "schedula:bookings-updated",
-    ),
-  );
-}
-
-/**
- * Persistence adapter.
- *
- * Redux is the application source of truth.
- * This function only reads persisted booking data
- * for hydration or persistence workflows.
- */
 export function getAllBookings(): Booking[] {
-  return readBookings();
+  ensureHydrated();
+  return store.getState().appointments.appointments;
 }
 
 export function getBookingById(
   id: string,
 ): Booking | null {
   return (
-    readBookings().find(
-      (booking) =>
-        booking.id === id,
+    getAllBookings().find(
+      (booking) => booking.id === id,
     ) ?? null
   );
 }
@@ -120,110 +46,56 @@ export function getBookingById(
 export function getBookingsByPatientId(
   patientId: string,
 ): Booking[] {
-  return readBookings().filter(
-    (booking) =>
-      booking.patientId ===
-      patientId,
+  return getAllBookings().filter(
+    (booking) => booking.patientId === patientId,
   );
 }
 
 export function getBookingsByDoctorId(
   doctorId: string,
 ): Booking[] {
-  return readBookings().filter(
-    (booking) =>
-      booking.doctorId ===
-      doctorId,
+  return getAllBookings().filter(
+    (booking) => booking.doctorId === doctorId,
   );
 }
 
 /**
- * Persists a booking.
+ * Compatibility facade.
  *
- * Live application state should be updated through
- * the appointments Redux slice before persistence.
+ * Runtime appointment state is owned by Redux.
+ * These functions are retained only so existing
+ * feature code continues to compile while all
+ * mutations are routed through the Redux slice.
  */
 export function addBooking(
   booking: Booking,
 ): Booking {
-  const bookings =
-    readBookings();
+  ensureHydrated();
 
-  const normalizedBooking =
-    normalizeBooking(booking);
-
-  const existingIndex =
-    bookings.findIndex(
-      (item) =>
-        item.id ===
-        normalizedBooking.id,
-    );
-
-  if (existingIndex >= 0) {
-    bookings[existingIndex] =
-      normalizedBooking;
-  } else {
-    bookings.push(
-      normalizedBooking,
-    );
-  }
-
-  writeBookings(bookings);
-
-  return normalizedBooking;
+  store.dispatch(addAppointment(booking));
+  return (
+    getBookingById(booking.id) ?? booking
+  );
 }
 
-/**
- * Persistence helper for appointment status.
- *
- * Redux should receive the corresponding mutation first.
- */
 export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
   actionReason?: string,
 ): Booking | null {
-  const bookings =
-    readBookings();
+  ensureHydrated();
 
-  const index =
-    bookings.findIndex(
-      (booking) =>
-        booking.id ===
-        bookingId,
-    );
-
-  if (index === -1) {
-    return null;
-  }
-
-  const updatedBooking: Booking =
-    {
-      ...bookings[index],
+  store.dispatch(
+    updateAppointmentStatus({
+      bookingId,
       status,
-      updatedAt:
-        new Date().toISOString(),
-      ...(actionReason !==
-      undefined
-        ? {
-            actionReason,
-          }
-        : {}),
-    };
+      actionReason,
+    }),
+  );
 
-  bookings[index] =
-    updatedBooking;
-
-  writeBookings(bookings);
-
-  return updatedBooking;
+  return getBookingById(bookingId);
 }
 
-/**
- * Persistence helper for appointment updates.
- *
- * Redux remains the authoritative application state.
- */
 export function updateBooking(
   bookingId: string,
   updates: Partial<
@@ -238,34 +110,16 @@ export function updateBooking(
     >
   >,
 ): Booking | null {
-  const bookings =
-    readBookings();
+  ensureHydrated();
 
-  const index =
-    bookings.findIndex(
-      (booking) =>
-        booking.id ===
-        bookingId,
-    );
+  store.dispatch(
+    updateAppointment({
+      bookingId,
+      updates,
+    }),
+  );
 
-  if (index === -1) {
-    return null;
-  }
-
-  const updatedBooking: Booking =
-    {
-      ...bookings[index],
-      ...updates,
-      updatedAt:
-        new Date().toISOString(),
-    };
-
-  bookings[index] =
-    updatedBooking;
-
-  writeBookings(bookings);
-
-  return updatedBooking;
+  return getBookingById(bookingId);
 }
 
 export function rescheduleBooking(
@@ -274,15 +128,6 @@ export function rescheduleBooking(
   date: string,
   time: string,
 ): Booking | null {
-  const booking =
-    getBookingById(
-      bookingId,
-    );
-
-  if (!booking) {
-    return null;
-  }
-
   return updateBooking(
     bookingId,
     {
@@ -310,9 +155,7 @@ export function canCancelBooking(
     "cancelled",
     "declined",
     "missed",
-  ].includes(
-    booking.status,
-  );
+  ].includes(booking.status);
 }
 
 export function canRescheduleBooking(
@@ -323,9 +166,7 @@ export function canRescheduleBooking(
     "cancelled",
     "declined",
     "missed",
-  ].includes(
-    booking.status,
-  );
+  ].includes(booking.status);
 }
 
 export function canCompleteBooking(
@@ -334,9 +175,7 @@ export function canCompleteBooking(
   return [
     "confirmed",
     "upcoming",
-  ].includes(
-    booking.status,
-  );
+  ].includes(booking.status);
 }
 
 export function canMarkMissed(
@@ -345,7 +184,5 @@ export function canMarkMissed(
   return [
     "confirmed",
     "upcoming",
-  ].includes(
-    booking.status,
-  );
+  ].includes(booking.status);
 }

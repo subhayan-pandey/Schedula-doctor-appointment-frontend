@@ -21,13 +21,9 @@ const initialState: AppointmentsState = {
 const appointmentsSlice =
   createSlice({
     name: "appointments",
-
     initialState,
-
     reducers: {
-      initializeAppointments(
-        state,
-      ) {
+      initializeAppointments(state) {
         state.initialized = true;
       },
 
@@ -35,9 +31,7 @@ const appointmentsSlice =
         state,
         action: PayloadAction<Booking[]>,
       ) {
-        state.appointments =
-          action.payload;
-
+        state.appointments = action.payload;
         state.initialized = true;
       },
 
@@ -45,27 +39,19 @@ const appointmentsSlice =
         state,
         action: PayloadAction<Booking>,
       ) {
-        const appointment =
-          action.payload;
+        const appointment = action.payload;
 
         const existingIndex =
           state.appointments.findIndex(
-            (booking) =>
-              booking.id ===
-              appointment.id,
+            (booking) => booking.id === appointment.id,
           );
 
         if (existingIndex >= 0) {
-          state.appointments[
-            existingIndex
-          ] = appointment;
-
+          state.appointments[existingIndex] = appointment;
           return;
         }
 
-        state.appointments.push(
-          appointment,
-        );
+        state.appointments.push(appointment);
       },
 
       updateAppointment(
@@ -85,16 +71,11 @@ const appointmentsSlice =
           >;
         }>,
       ) {
-        const {
-          bookingId,
-          updates,
-        } = action.payload;
+        const { bookingId, updates } = action.payload;
 
         const index =
           state.appointments.findIndex(
-            (booking) =>
-              booking.id ===
-              bookingId,
+            (booking) => booking.id === bookingId,
           );
 
         if (index === -1) {
@@ -104,8 +85,7 @@ const appointmentsSlice =
         state.appointments[index] = {
           ...state.appointments[index],
           ...updates,
-          updatedAt:
-            new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
       },
 
@@ -125,28 +105,21 @@ const appointmentsSlice =
 
         const index =
           state.appointments.findIndex(
-            (booking) =>
-              booking.id ===
-              bookingId,
+            (booking) => booking.id === bookingId,
           );
 
         if (index === -1) {
           return;
         }
 
-        const current =
-          state.appointments[index];
+        const current = state.appointments[index];
 
         state.appointments[index] = {
           ...current,
           status,
-          updatedAt:
-            new Date().toISOString(),
-          ...(actionReason !==
-          undefined
-            ? {
-                actionReason,
-              }
+          updatedAt: new Date().toISOString(),
+          ...(actionReason !== undefined
+            ? { actionReason }
             : {}),
         };
       },
@@ -159,7 +132,6 @@ export const {
   addAppointment,
   updateAppointment,
   updateAppointmentStatus,
-} =
-  appointmentsSlice.actions;
+} = appointmentsSlice.actions;
 
 export default appointmentsSlice.reducer;

@@ -4,99 +4,55 @@ import {
   doctors as seedDoctors,
 } from "@/lib/mock-data/doctors";
 
-const KEY =
-  "schedula:doctors";
+import {
+  store,
+} from "@/store";
 
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
+import {
+  addDoctorToStore,
+  setDoctors,
+} from "@/store/slices/doctorsSlice";
 
-function readDoctors(): Doctor[] {
-  if (!isBrowser()) {
-    return seedDoctors;
-  }
+import {
+  loadPersistedDoctors,
+} from "@/store/persistence";
 
-  const raw =
-    window.localStorage.getItem(
-      KEY,
+function ensureHydrated(): void {
+  if (!store.getState().doctors.initialized) {
+    store.dispatch(
+      setDoctors(
+        loadPersistedDoctors(seedDoctors),
+      ),
     );
-
-  if (raw) {
-    try {
-      const parsed =
-        JSON.parse(raw);
-
-      if (Array.isArray(parsed)) {
-        return parsed as Doctor[];
-      }
-    } catch {
-      // Fall through and reseed.
-    }
   }
-
-  window.localStorage.setItem(
-    KEY,
-    JSON.stringify(
-      seedDoctors,
-    ),
-  );
-
-  return seedDoctors;
 }
 
-function writeDoctors(
-  doctors: Doctor[],
-): void {
-  if (!isBrowser()) {
-    return;
-  }
-
-  window.localStorage.setItem(
-    KEY,
-    JSON.stringify(
-      doctors,
-    ),
-  );
-}
-
-/**
- * Persistence adapter.
- *
- * Redux doctors state is the application source
- * of truth. This function is used for hydration
- * and persistence access.
- */
 export function getAllDoctors(): Doctor[] {
-  return readDoctors();
+  ensureHydrated();
+  return store.getState().doctors.doctors;
 }
 
 export function getDoctorById(
   id: string,
 ): Doctor | undefined {
-  return readDoctors().find(
-    (doctor) =>
-      doctor.id === id,
+  return getAllDoctors().find(
+    (doctor) => doctor.id === id,
   );
 }
 
 /**
- * Persists a doctor record.
+ * Compatibility facade.
  *
- * Application state should be updated through
- * the doctors Redux slice.
+ * Doctor runtime state is owned by Redux.
+ * This function remains available to existing
+ * feature code and routes the mutation into Redux.
  */
 export function addDoctor(
   doctor: Doctor,
 ): void {
-  const doctors =
-    readDoctors();
+  ensureHydrated();
 
-  writeDoctors([
-    ...doctors.filter(
-      (existing) =>
-        existing.id !==
-        doctor.id,
-    ),
-    doctor,
-  ]);
+  store.dispatch(
+    addDoctorToStore(doctor),
+  );
 }
