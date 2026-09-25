@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -14,9 +14,17 @@ export default function AdminLayoutChrome({
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
+  // Reset the mobile drawer on navigation. Done during render (React's
+  // documented pattern for "resetting state when a prop changes") rather
+  // than in a useEffect, which avoids the extra render pass and the
+  // react-hooks/set-state-in-effect lint error that comes with calling
+  // setState synchronously inside an effect.
+  const [lastPathname, setLastPathname] = useState(pathname);
+
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   return (
     <div className="flex min-h-screen bg-[var(--canvas)]">

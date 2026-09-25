@@ -11,6 +11,7 @@ import {
 import {
   addDoctorToStore,
   setDoctors,
+  updateDoctor,
 } from "@/store/slices/doctorsSlice";
 
 import {
@@ -55,4 +56,42 @@ export function addDoctor(
   store.dispatch(
     addDoctorToStore(doctor),
   );
+}
+
+/**
+ * Admin Portal facade (Phase 2A).
+ *
+ * Merges `patch` into the doctor and dispatches the same `updateDoctor`
+ * reducer addDoctor()/setDoctors() already rely on, so the change is
+ * persisted through the existing Redux -> store/persistence.ts path
+ * like every other doctor mutation. Returns the updated doctor, or
+ * null if no doctor with that id exists.
+ */
+export function updateDoctorFields(
+  id: string,
+  patch: Partial<Doctor>,
+): Doctor | null {
+  const doctor = getDoctorById(id);
+
+  if (!doctor) {
+    return null;
+  }
+
+  const updated: Doctor = {
+    ...doctor,
+    ...patch,
+  };
+
+  store.dispatch(
+    updateDoctor(updated),
+  );
+
+  return updated;
+}
+
+export function setDoctorActiveStatus(
+  id: string,
+  isActive: boolean,
+): Doctor | null {
+  return updateDoctorFields(id, { isActive });
 }
