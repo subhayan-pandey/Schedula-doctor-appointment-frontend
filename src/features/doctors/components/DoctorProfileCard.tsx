@@ -1,3 +1,7 @@
+import VerifiedBadge from "@/components/doctor/VerifiedBadge";
+
+import { isDoctorVerified } from "@/lib/doctor-verification";
+
 import type { Doctor } from "@/types/doctor";
 
 export default function DoctorProfileCard({
@@ -17,6 +21,8 @@ export default function DoctorProfileCard({
             <h1 className="text-xl font-semibold tracking-tight text-[var(--ink)] sm:text-2xl">
               {doctor.name}
             </h1>
+
+            {isDoctorVerified(doctor) && <VerifiedBadge />}
 
             {doctor.availableToday && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--success-soft)] px-2.5 py-1 text-xs font-medium text-[var(--success)]">

@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import VerifiedBadge from "@/components/doctor/VerifiedBadge";
+
+import { isDoctorVerified } from "@/lib/doctor-verification";
+
 import type { Doctor } from "@/types/doctor";
 
 export default function DoctorCard({
@@ -15,9 +19,13 @@ export default function DoctorCard({
         </span>
 
         <div className="min-w-0 pt-0.5">
-          <h3 className="truncate text-[15px] font-semibold text-[var(--ink)]">
-            {doctor.name}
-          </h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="truncate text-[15px] font-semibold text-[var(--ink)]">
+              {doctor.name}
+            </h3>
+
+            {isDoctorVerified(doctor) && <VerifiedBadge />}
+          </div>
 
           <p className="mt-0.5 text-sm font-medium text-[var(--brand-deep)]">
             {doctor.specialty}
