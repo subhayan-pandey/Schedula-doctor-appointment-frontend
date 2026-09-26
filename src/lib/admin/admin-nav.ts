@@ -35,7 +35,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "appointments",
     label: "Appointments",
     href: "/admin/appointments",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "payments",

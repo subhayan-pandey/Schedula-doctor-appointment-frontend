@@ -7,9 +7,10 @@ import Table, { type TableColumn } from "@/components/admin/ui/Table";
 import { getBookingsByPatientId } from "@/lib/bookings-store";
 import { getDoctorById } from "@/lib/doctors-store";
 import { getInitials } from "@/lib/utils/text";
+import { getBookingStatusLabel, getBookingStatusTone } from "@/lib/booking-status";
 
 import type { AdminPatientView } from "@/lib/admin/admin-patients-store";
-import type { Booking, BookingStatus } from "@/types/booking";
+import type { Booking } from "@/types/booking";
 
 type PatientDetailModalProps = {
   patient: AdminPatientView | null;
@@ -17,30 +18,6 @@ type PatientDetailModalProps = {
   onClose: () => void;
   onRequestToggleActive: (patient: AdminPatientView) => void;
 };
-
-function statusTone(
-  status: BookingStatus,
-): "success" | "brand" | "warning" | "danger" | "neutral" {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "upcoming":
-    case "confirmed":
-      return "brand";
-    case "pending":
-      return "warning";
-    case "cancelled":
-    case "declined":
-    case "missed":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-function statusLabel(status: BookingStatus): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
 
 const historyColumns: TableColumn<Booking>[] = [
   {
@@ -62,7 +39,10 @@ const historyColumns: TableColumn<Booking>[] = [
     key: "status",
     header: "Status",
     render: (row) => (
-      <StatusBadge label={statusLabel(row.status)} tone={statusTone(row.status)} />
+      <StatusBadge
+        label={getBookingStatusLabel(row.status)}
+        tone={getBookingStatusTone(row.status)}
+      />
     ),
   },
 ];

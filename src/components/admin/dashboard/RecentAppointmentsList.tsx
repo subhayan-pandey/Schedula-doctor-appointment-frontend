@@ -1,30 +1,9 @@
 import Table, { type TableColumn } from "@/components/admin/ui/Table";
-import StatusBadge, { type StatusTone } from "@/components/admin/ui/StatusBadge";
+import StatusBadge from "@/components/admin/ui/StatusBadge";
+
+import { getBookingStatusLabel, getBookingStatusTone } from "@/lib/booking-status";
 
 import type { RecentAppointment } from "@/lib/admin/dashboard-metrics";
-import type { BookingStatus } from "@/types/booking";
-
-function statusTone(status: BookingStatus): StatusTone {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "upcoming":
-    case "confirmed":
-      return "brand";
-    case "pending":
-      return "warning";
-    case "cancelled":
-    case "declined":
-    case "missed":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-function statusLabel(status: BookingStatus): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
 
 const columns: TableColumn<RecentAppointment>[] = [
   {
@@ -46,7 +25,10 @@ const columns: TableColumn<RecentAppointment>[] = [
     key: "status",
     header: "Status",
     render: (row) => (
-      <StatusBadge label={statusLabel(row.status)} tone={statusTone(row.status)} />
+      <StatusBadge
+        label={getBookingStatusLabel(row.status)}
+        tone={getBookingStatusTone(row.status)}
+      />
     ),
   },
 ];
