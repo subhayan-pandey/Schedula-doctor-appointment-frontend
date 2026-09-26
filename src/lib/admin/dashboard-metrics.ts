@@ -2,6 +2,7 @@ import { getAllBookings } from "@/lib/bookings-store";
 import { getAllDoctors, getDoctorById } from "@/lib/doctors-store";
 
 import { getAllPatientAccounts } from "@/lib/admin/admin-patients-store";
+import { normalizeDoctorForAdmin } from "@/lib/admin/admin-doctors";
 
 import type { Booking, BookingStatus } from "@/types/booking";
 import type { Doctor } from "@/types/doctor";
@@ -26,6 +27,7 @@ export type DashboardMetrics = {
   totalAppointments: number;
   upcomingAppointments: number;
   completedAppointments: number;
+  pendingVerifications: number;
   appointmentTrend: TrendPoint[];
   recentAppointments: RecentAppointment[];
   recentDoctors: Doctor[];
@@ -75,6 +77,10 @@ export function getDashboardMetrics(): DashboardMetrics {
   const bookings = getAllBookings();
   const patients = getAllPatientAccounts();
 
+  const pendingVerifications = doctors.filter(
+    (doctor) => normalizeDoctorForAdmin(doctor).verificationStatus === "pending",
+  ).length;
+
   return {
     totalDoctors: doctors.length,
     totalPatients: patients.length,
@@ -86,6 +92,7 @@ export function getDashboardMetrics(): DashboardMetrics {
     completedAppointments: bookings.filter(
       (booking) => booking.status === "completed",
     ).length,
+    pendingVerifications,
     appointmentTrend: buildAppointmentTrend(bookings),
     recentAppointments: buildRecentAppointments(bookings),
     recentDoctors: buildRecentDoctors(doctors),

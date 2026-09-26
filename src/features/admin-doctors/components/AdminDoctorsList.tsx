@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import SearchFilter from "@/components/admin/ui/SearchFilter";
 import Table, { type TableColumn } from "@/components/admin/ui/Table";
@@ -40,7 +40,16 @@ const selectClassName =
 export default function AdminDoctorsList() {
   const { adminUser } = useAdminAuth();
 
-  const [doctors, setDoctors] = useState<AdminDoctorView[] | null>(null);
+  // Lazy initializer: getAllDoctorsForAdmin() is a synchronous, local
+  // read (Redux state / localStorage), and this component only ever
+  // mounts client-side (nested under AdminAuthGuard, which renders
+  // LoadingState instead of this tree until the admin session check
+  // finishes), so there's no SSR/hydration concern here. That means
+  // the data can be read directly into the initial state instead of
+  // fetched in a useEffect after mount.
+  const [doctors, setDoctors] = useState<AdminDoctorView[]>(() =>
+    getAllDoctorsForAdmin(),
+  );
 
   const [search, setSearch] = useState("");
   const [specialtyFilter, setSpecialtyFilter] = useState<Specialty | "all">(
@@ -60,15 +69,7 @@ export default function AdminDoctorsList() {
     setDoctors(getAllDoctorsForAdmin());
   }
 
-  useEffect(() => {
-    refresh();
-  }, []);
-
   const filteredDoctors = useMemo(() => {
-    if (!doctors) {
-      return [];
-    }
-
     const normalizedSearch = search.trim().toLowerCase();
 
     return doctors.filter((doctor) => {
@@ -249,7 +250,7 @@ export default function AdminDoctorsList() {
       <div>
         <h1 className="text-xl font-semibold text-[var(--ink)]">Doctors</h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {doctors ? `${doctors.length} total` : "Loading…"}
+          {doctors.length} total
         </p>
       </div>
 
@@ -319,8 +320,6 @@ export default function AdminDoctorsList() {
         columns={columns}
         rows={paginatedDoctors}
         keyExtractor={(row) => row.id}
-        status={doctors === null ? "loading" : "ready"}
-        loadingMessage="Loading doctors…"
         emptyTitle="No doctors match these filters"
         emptyDescription="Try adjusting your search or filters."
       />

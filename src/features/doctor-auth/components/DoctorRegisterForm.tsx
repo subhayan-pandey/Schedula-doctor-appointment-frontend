@@ -214,6 +214,20 @@ export default function DoctorRegisterForm() {
           getInitials(
             trimmedName,
           ),
+        verificationStatus:
+          "pending" as const,
+        verificationDocuments: [
+          {
+            id: `${accountId}-doc-1`,
+            name: "Medical Degree Certificate.pdf",
+            type: "Qualification",
+          },
+          {
+            id: `${accountId}-doc-2`,
+            name: "Medical Council Registration.pdf",
+            type: "License",
+          },
+        ],
       };
 
       saveDoctorAccount(

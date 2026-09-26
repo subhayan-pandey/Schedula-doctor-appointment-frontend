@@ -43,7 +43,20 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    // Unlike AdminDoctorsList/AdminDashboard, AdminAuthProvider IS
+    // server-rendered (it sits in src/app/admin/layout.tsx, above
+    // AdminAuthGuard's SSR-vs-client branch), so its first render must
+    // match on server and client to avoid a hydration mismatch.
+    // localStorage doesn't exist during SSR, so `initialized` has to
+    // start false there and flip to true only after mount, once we
+    // actually know whether a session exists — that's exactly what
+    // this pair of setState calls does. It's a deliberate exception to
+    // the lint rule, not the "fetch on mount" anti-pattern the rule is
+    // meant to catch, so it's suppressed explicitly rather than
+    // rewritten into something SSR-unsafe.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAdminUser(getAdminSession());
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInitialized(true);
 
     function handleSessionUpdated(): void {

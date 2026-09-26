@@ -1,4 +1,4 @@
-import type { Doctor } from "@/types/doctor";
+import type { Doctor, DoctorVerificationStatus } from "@/types/doctor";
 
 import {
   doctors as seedDoctors,
@@ -94,4 +94,22 @@ export function setDoctorActiveStatus(
   isActive: boolean,
 ): Doctor | null {
   return updateDoctorFields(id, { isActive });
+}
+
+/**
+ * Admin Portal facade (Phase 2B).
+ *
+ * rejectionReason is only kept when status is "rejected" — approving,
+ * or resetting a rejected doctor back to "pending" for resubmission,
+ * both clear any previous reason.
+ */
+export function setDoctorVerificationStatus(
+  id: string,
+  status: DoctorVerificationStatus,
+  rejectionReason?: string,
+): Doctor | null {
+  return updateDoctorFields(id, {
+    verificationStatus: status,
+    rejectionReason: status === "rejected" ? rejectionReason : undefined,
+  });
 }

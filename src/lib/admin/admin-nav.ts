@@ -23,7 +23,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "doctor-verification",
     label: "Doctor Verification",
     href: "/admin/doctor-verification",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "patients",

@@ -8,6 +8,12 @@ export type Specialty =
 
 export type DoctorVerificationStatus = "pending" | "approved" | "rejected";
 
+export type VerificationDocument = {
+  id: string;
+  name: string;
+  type: string;
+};
+
 export type Doctor = {
   id: string;
   name: string;
@@ -37,6 +43,17 @@ export type Doctor = {
    */
   isActive?: boolean;
   verificationStatus?: DoctorVerificationStatus;
+  /**
+   * Doctor Verification fields (Phase 2B). rejectionReason is only
+   * meaningful when verificationStatus is "rejected" — cleared
+   * automatically by setDoctorVerificationStatus() otherwise.
+   * verificationDocuments is mock data (this demo has no real file
+   * upload); src/features/doctor-auth/components/DoctorRegisterForm.tsx
+   * seeds a fixed placeholder set for new registrations so the admin
+   * verification queue has something real to review.
+   */
+  rejectionReason?: string;
+  verificationDocuments?: VerificationDocument[];
 };
 
 export const SPECIALTIES: Specialty[] = [
