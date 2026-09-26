@@ -29,7 +29,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "patients",
     label: "Patients",
     href: "/admin/patients",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "appointments",

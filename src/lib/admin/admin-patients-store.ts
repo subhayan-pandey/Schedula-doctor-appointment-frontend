@@ -1,49 +1,60 @@
-import type { PatientAccount } from "@/lib/storage";
+import {
+  getAllPatientAccounts as getAllPatientAccountsRaw,
+  savePatientAccount,
+  type PatientAccount,
+} from "@/lib/storage";
 
-const PATIENT_ACCOUNTS_KEY = "schedula:patient-accounts";
+export type AdminPatientView = PatientAccount & {
+  isActive: boolean;
+};
 
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
+/**
+ * Pre-existing patient accounts have no isActive (that field didn't
+ * exist before Phase 3A) — treated as already active, same convention
+ * as Doctor's isActive default from Phase 2A.
+ */
+export function normalizePatientForAdmin(
+  account: PatientAccount,
+): AdminPatientView {
+  return {
+    ...account,
+    isActive: account.isActive ?? true,
+  };
 }
 
-function isPatientAccount(value: unknown): value is PatientAccount {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
+export function getAllPatientAccounts(): AdminPatientView[] {
+  return getAllPatientAccountsRaw().map(normalizePatientForAdmin);
+}
 
-  const account = value as Partial<PatientAccount>;
-
-  return (
-    typeof account.id === "string" &&
-    typeof account.name === "string" &&
-    typeof account.emailOrMobile === "string" &&
-    typeof account.password === "string"
+export function getPatientAccountById(id: string): AdminPatientView | null {
+  const account = getAllPatientAccountsRaw().find(
+    (candidate) => candidate.id === id,
   );
+
+  return account ? normalizePatientForAdmin(account) : null;
 }
 
 /**
- * Reads the same "schedula:patient-accounts" localStorage key that
- * src/lib/storage.ts writes to. That file only exposes a single-account
- * lookup (getPatientAccount), so this adds the list view the Admin Portal
- * needs (dashboard totals now, Patient Management in Phase 3A) without
- * touching storage.ts's write path or its legacy single-account migration.
+ * Persists through the same savePatientAccount() the registration/
+ * profile-update flows already use (it upserts by emailOrMobile), so
+ * this goes through the one real write path rather than a parallel
+ * one.
  */
-export function getAllPatientAccounts(): PatientAccount[] {
-  if (!isBrowser()) {
-    return [];
+export function setPatientActiveStatus(
+  id: string,
+  isActive: boolean,
+): AdminPatientView | null {
+  const account = getAllPatientAccountsRaw().find(
+    (candidate) => candidate.id === id,
+  );
+
+  if (!account) {
+    return null;
   }
 
-  try {
-    const raw = window.localStorage.getItem(PATIENT_ACCOUNTS_KEY);
+  const updated: PatientAccount = { ...account, isActive };
 
-    if (!raw) {
-      return [];
-    }
+  savePatientAccount(updated);
 
-    const parsed = JSON.parse(raw) as unknown;
-
-    return Array.isArray(parsed) ? parsed.filter(isPatientAccount) : [];
-  } catch {
-    return [];
-  }
+  return normalizePatientForAdmin(updated);
 }

@@ -14,6 +14,14 @@ export type PatientAccount = {
   name: string;
   emailOrMobile: string;
   password: string;
+  /**
+   * Admin Portal field (Phase 3A). Optional so every existing
+   * PatientAccount object still type-checks unchanged. Missing means
+   * active — see src/lib/admin/admin-patients-store.ts's
+   * normalizePatientForAdmin(), same default convention as Doctor's
+   * isActive from Phase 2A.
+   */
+  isActive?: boolean;
 };
 
 function isBrowser(): boolean {
@@ -237,6 +245,17 @@ export function getPatientAccount(
         normalizedIdentifier,
     ) ?? null
   );
+}
+
+/**
+ * Admin Portal facade (Phase 3A). Exposes the full list — previously
+ * only a single-account lookup was exported. Reuses the same
+ * readPatientAccounts() every other function here already goes
+ * through (legacy-account migration included), so this can't drift
+ * from what the patient/doctor side of the app sees.
+ */
+export function getAllPatientAccounts(): PatientAccount[] {
+  return readPatientAccounts();
 }
 
 export function savePatientAccount(
