@@ -22,8 +22,10 @@ import AppointmentFilters, {
 
 import {
   getAllBookings,
+  updateBooking,
   updateBookingStatus,
 } from "@/lib/bookings-store";
+import { formatInr } from "@/lib/payments";
 
 import {
   getAllDoctors,
@@ -620,7 +622,9 @@ export default function DoctorAppointments() {
     type:
       | "appointment"
       | "confirmation"
-      | "cancellation",
+      | "cancellation"
+      | "refund"
+      | "missed",
   ) {
     if (!booking.patientId) {
       return;
@@ -727,6 +731,7 @@ export default function DoctorAppointments() {
       "declined",
       "Appointment declined by doctor",
     );
+    updateBooking(booking.id, { refundStatus: "eligible", refundAmountInr: booking.amountInr });
 
     notifyPatient(
       booking,
@@ -832,6 +837,7 @@ export default function DoctorAppointments() {
 
   function handleMissed(
     booking: Booking,
+    missedBy: "patient" | "doctor",
   ) {
     if (
       booking.status !==
@@ -858,6 +864,13 @@ export default function DoctorAppointments() {
       booking.id,
       "missed",
     );
+    const refundAmountInr = Math.round((booking.amountInr ?? 0) * (missedBy === "doctor" ? 1 : 0.5));
+    updateBooking(booking.id, {
+      missedBy,
+      refundStatus: "eligible",
+      refundAmountInr,
+      actionReason: `Appointment marked missed by ${missedBy}`,
+    });
 
     notifyPatient(
       booking,
@@ -866,8 +879,8 @@ export default function DoctorAppointments() {
         booking.date,
       )} at ${
         booking.time
-      } was marked as missed. You can book another appointment.`,
-      "appointment",
+      } was marked missed by the ${missedBy}. You may request a ${missedBy === "doctor" ? "100%" : "50%"} refund or discuss rescheduling.`,
+      "missed",
     );
 
     setProcessingBookingId(
@@ -925,6 +938,7 @@ export default function DoctorAppointments() {
       "cancelled",
       "Appointment cancelled by doctor",
     );
+    updateBooking(booking.id, { refundStatus: "eligible", refundAmountInr: booking.amountInr });
 
     notifyPatient(
       booking,
@@ -986,6 +1000,21 @@ export default function DoctorAppointments() {
   function renderAppointmentActions(
     booking: Booking,
   ) {
+    if (booking.refundStatus === "requested") {
+      return (
+        <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--line)] pt-4">
+          <p className="mr-auto text-sm text-[var(--muted)]">Refund request · {formatInr(booking.refundAmountInr)} · awaiting your approval</p>
+          <Button size="sm" onClick={() => {
+            updateBooking(booking.id, { refundStatus: "refunded", paymentStatus: "refunded" });
+            notifyPatient(booking, "Refund approved", `Your refund of ${formatInr(booking.refundAmountInr)} was approved.`, "refund");
+          }}>Approve refund</Button>
+          <Button size="sm" variant="outline" onClick={() => {
+            updateBooking(booking.id, { refundStatus: "rejected", paymentStatus: "paid" });
+            notifyPatient(booking, "Refund request declined", "Your doctor declined the refund request. Please contact the clinic if you have questions.", "refund");
+          }}>Decline</Button>
+        </div>
+      );
+    }
     const isProcessing =
       processingBookingId ===
       booking.id;
@@ -1179,20 +1208,11 @@ export default function DoctorAppointments() {
               Mark completed
             </Button>
 
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={
-                isProcessing
-              }
-              onClick={() =>
-                handleMissed(
-                  booking,
-                )
-              }
-            >
-              Mark missed
-            </Button>
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--line)] p-2">
+              <span className="px-1 text-xs text-[var(--muted)]">Missed by</span>
+              <Button size="sm" variant="outline" disabled={isProcessing} onClick={() => handleMissed(booking, "patient")}>Patient</Button>
+              <Button size="sm" variant="outline" disabled={isProcessing} onClick={() => handleMissed(booking, "doctor")}>Doctor</Button>
+            </div>
 
             <Link
               href={`/doctor/calendar?appointmentId=${encodeURIComponent(
@@ -1224,6 +1244,16 @@ export default function DoctorAppointments() {
             >
               Cancel
             </Button>
+          </div>
+        );
+
+      case "missed":
+        return (
+          <div className="mt-5 flex flex-wrap gap-3 border-t border-[var(--line)] pt-4">
+            <Link href={`/doctor/calendar?appointmentId=${encodeURIComponent(booking.id)}`}>
+              <Button size="sm" variant="outline">Offer a reschedule</Button>
+            </Link>
+            <span className="self-center text-xs text-[var(--muted)]">Missed by {booking.missedBy ?? "unspecified"} · refund eligibility shown to patient</span>
           </div>
         );
 
@@ -1317,6 +1347,7 @@ export default function DoctorAppointments() {
               <p className="mt-1 text-sm font-semibold text-[var(--ink)]">
                 {doctor.name}
               </p>
+              <Link href="/doctor/payments" className="mt-2 inline-block text-xs font-medium text-[var(--brand-deep)] hover:underline">Payment history & earnings</Link>
             </div>
           )}
         </div>
@@ -1569,6 +1600,15 @@ export default function DoctorAppointments() {
                               )}
                             </span>
                           </div>
+
+                          {booking.amountInr !== undefined && (
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm">
+                              <span className="font-medium text-[var(--ink)]">{formatInr(booking.amountInr)} · {booking.paymentMethod?.toUpperCase() ?? "Payment"}</span>
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${booking.refundStatus === "refunded" ? "bg-[var(--success-soft)] text-[var(--success)]" : booking.refundStatus === "requested" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--brand-soft)] text-[var(--brand-deep)]"}`}>
+                                {booking.refundStatus === "refunded" ? `Refunded ${formatInr(booking.refundAmountInr)}` : booking.refundStatus === "requested" ? "Refund requested" : booking.refundStatus === "eligible" ? `Refund eligible · ${formatInr(booking.refundAmountInr)}` : booking.paymentStatus === "paid" ? "Paid" : "Payment status unavailable"}
+                              </span>
+                            </div>
+                          )}
 
                           <div className="mt-4 grid gap-3 rounded-xl bg-[var(--canvas)] p-4 sm:grid-cols-2">
                             <div>

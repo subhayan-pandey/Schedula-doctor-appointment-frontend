@@ -29,5 +29,8 @@ export function isNotificationEnabled(
   preferences: NotificationPreferences,
   type: NotificationType,
 ): boolean {
+  if (type === "payment" || type === "refund") {
+    return preferences.system;
+  }
   return preferences[type];
 }

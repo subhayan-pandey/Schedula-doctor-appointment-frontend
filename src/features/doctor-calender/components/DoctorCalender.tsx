@@ -948,11 +948,11 @@ export default function DoctorCalendar() {
     "confirmed" &&
    currentStatus !==
     "upcoming" &&
-   currentStatus !==
-    "declined"
+   currentStatus !== "declined" &&
+   currentStatus !== "missed"
   ) {
    setError(
-    "Only confirmed, upcoming or declined appointments can be rescheduled.",
+    "Only confirmed, upcoming, declined or missed appointments can be rescheduled.",
    );
 
    return;
@@ -1047,6 +1047,8 @@ export default function DoctorCalendar() {
        latestNewSlot.date,
       time:
        latestNewSlot.time,
+      rescheduleProposedBy: "doctor",
+      reschedulePendingPatient: true,
      },
     );
 
@@ -1125,6 +1127,10 @@ export default function DoctorCalendar() {
     latestNewSlot.id,
    );
 
+  if (currentStatus === "missed") {
+   releaseSlot(currentDoctorId, currentBooking.slotId);
+  }
+
   if (!bookedSlots) {
    setError(
     "This slot is no longer available. Please select another slot.",
@@ -1156,6 +1162,8 @@ export default function DoctorCalendar() {
       latestNewSlot.time,
      status:
       "upcoming",
+     rescheduleProposedBy: "doctor",
+     reschedulePendingPatient: true,
     },
    );
 

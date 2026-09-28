@@ -18,7 +18,9 @@ import Button from "@/components/ui/Button";
 
 import {
   getAllBookings,
+  updateBooking,
 } from "@/lib/bookings-store";
+import { formatInr } from "@/lib/payments";
 
 import {
   getAllDoctors,
@@ -41,12 +43,12 @@ import {
 } from "@/lib/utils/date";
 
 import {
-  initializeAppointments,
+  setAppointments,
   updateAppointmentStatus,
 } from "@/store/slices/appointmentsSlice";
 
 import {
-  initializeDoctors,
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import {
@@ -387,7 +389,7 @@ export default function DoctorAppointmentDetailsPage() {
       !appointmentsInitialized
     ) {
       dispatch(
-        initializeAppointments(
+        setAppointments(
           getAllBookings(),
         ),
       );
@@ -400,7 +402,7 @@ export default function DoctorAppointmentDetailsPage() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(
+        setDoctors(
           getAllDoctors(),
         ),
       );
@@ -453,7 +455,9 @@ export default function DoctorAppointmentDetailsPage() {
     type:
       | "appointment"
       | "confirmation"
-      | "cancellation",
+      | "cancellation"
+      | "missed"
+      | "refund",
   ) {
     if (
       !currentBooking.patientId
@@ -497,6 +501,8 @@ export default function DoctorAppointmentDetailsPage() {
         status: "upcoming",
       }),
     );
+
+    updateBooking(booking.id, { refundStatus: "eligible", refundAmountInr: booking.amountInr, actionReason: "Appointment cancelled by doctor" });
 
     notifyPatient(
       booking,
@@ -618,7 +624,7 @@ export default function DoctorAppointmentDetailsPage() {
     setIsProcessing(false);
   }
 
-  function handleMissed() {
+  function handleMissed(missedBy: "patient" | "doctor") {
     if (
       !booking ||
       booking.status !==
@@ -637,6 +643,13 @@ export default function DoctorAppointmentDetailsPage() {
       }),
     );
 
+    updateBooking(booking.id, {
+      missedBy,
+      refundStatus: "eligible",
+      refundAmountInr: Math.round((booking.amountInr ?? 0) * (missedBy === "doctor" ? 1 : 0.5)),
+      actionReason: `Appointment marked missed by ${missedBy}`,
+    });
+
     notifyPatient(
       booking,
       "Appointment missed",
@@ -644,8 +657,8 @@ export default function DoctorAppointmentDetailsPage() {
         booking.date,
       )} at ${
         booking.time
-      } was marked as missed.`,
-      "appointment",
+      } was marked missed by the ${missedBy}. You may request a ${missedBy === "doctor" ? "100%" : "50%"} refund.`,
+      "missed",
     );
 
     setIsProcessing(false);
@@ -785,17 +798,9 @@ export default function DoctorAppointmentDetailsPage() {
               Mark completed
             </Button>
 
-            <Button
-              variant="outline"
-              disabled={
-                isProcessing
-              }
-              onClick={
-                handleMissed
-              }
-            >
-              Mark missed
-            </Button>
+            <span className="self-center text-xs text-[var(--muted)]">Missed by:</span>
+            <Button variant="outline" disabled={isProcessing} onClick={() => handleMissed("patient")}>Patient</Button>
+            <Button variant="outline" disabled={isProcessing} onClick={() => handleMissed("doctor")}>Doctor</Button>
 
             <Button
               variant="outline"
@@ -844,10 +849,9 @@ export default function DoctorAppointmentDetailsPage() {
 
       case "missed":
         return (
-          <div className="rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
-            This appointment was
-            marked as missed and is
-            read-only.
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--canvas)] px-4 py-3 text-sm leading-6 text-[var(--muted)]">
+            <span>Marked missed by {booking.missedBy ?? "unspecified"}. Offer a new date if the patient is eligible to reschedule.</span>
+            <Link href={`/doctor/calendar?appointmentId=${encodeURIComponent(booking.id)}`}><Button size="sm" variant="outline">Offer reschedule</Button></Link>
           </div>
         );
 
@@ -1100,6 +1104,8 @@ export default function DoctorAppointmentDetailsPage() {
               )}
             </dd>
           </div>
+
+          {booking.amountInr !== undefined && <div className="rounded-xl bg-[var(--canvas)] p-4"><dt className="text-xs font-medium text-[var(--muted)]">Payment status · {booking.paymentMethod?.toUpperCase()}</dt><dd className="mt-1 text-sm font-semibold text-[var(--ink)]">{formatInr(booking.amountInr)} · {booking.paymentStatus === "refunded" ? `Refunded ${formatInr(booking.refundAmountInr)}` : booking.paymentStatus === "paid" ? "Paid" : "Payment status unavailable"}</dd></div>}
 
           <div className="rounded-xl bg-[var(--canvas)] p-4">
             <dt className="text-xs font-medium text-[var(--muted)]">

@@ -67,6 +67,18 @@ const appointmentsSlice =
               | "status"
               | "actionReason"
               | "consultationType"
+              | "amountInr"
+              | "paymentMethod"
+              | "paymentStatus"
+              | "paymentReference"
+              | "paymentUpdatedAt"
+              | "moneyDeductedOnFailure"
+              | "refundStatus"
+              | "refundAmountInr"
+              | "refundReason"
+              | "missedBy"
+              | "rescheduleProposedBy"
+              | "reschedulePendingPatient"
             >
           >;
         }>,

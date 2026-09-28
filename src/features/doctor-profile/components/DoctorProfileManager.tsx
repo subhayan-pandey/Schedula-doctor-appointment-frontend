@@ -133,9 +133,10 @@ export default function DoctorProfileManager() {
         return;
       }
 
-      setAccount(
-        doctorAccount,
-      );
+      setAccount({
+        ...doctorAccount,
+        consultationFee: doctorAccount.consultationFee ?? getDoctorById(doctorAccount.id)?.consultationFee ?? 500,
+      });
 
       setStatus("ready");
     });
@@ -203,7 +204,7 @@ export default function DoctorProfileManager() {
         existingCatalogDoctor?.patientsCount ??
         0,
       consultationFee:
-        existingCatalogDoctor?.consultationFee ??
+        nextAccount.consultationFee ?? existingCatalogDoctor?.consultationFee ??
         500,
       availableToday:
         existingCatalogDoctor?.availableToday ??

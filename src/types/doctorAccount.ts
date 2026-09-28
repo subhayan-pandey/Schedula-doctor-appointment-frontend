@@ -9,4 +9,5 @@ export type DoctorAccount = {
   experienceYears: number;
   clinic: string;
   location: string;
+  consultationFee?: number;
 };

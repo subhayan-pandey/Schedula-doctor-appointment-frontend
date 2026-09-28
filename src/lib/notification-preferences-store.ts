@@ -293,6 +293,9 @@ export function isNotificationPreferenceEnabled(
       userId,
     );
 
+  if (type === "payment" || type === "refund") {
+    return preferences.system;
+  }
   return preferences[type];
 }
 

@@ -27,6 +27,7 @@ type FieldErrors = {
   experienceYears?: string;
   clinic?: string;
   location?: string;
+  consultationFee?: string;
 };
 
 export default function DoctorProfileForm({
@@ -64,6 +65,7 @@ export default function DoctorProfileForm({
 
   const [location, setLocation] =
     useState(account.location);
+  const [consultationFee, setConsultationFee] = useState(String(account.consultationFee ?? 500));
 
   const [errors, setErrors] =
     useState<FieldErrors>({});
@@ -111,6 +113,10 @@ export default function DoctorProfileForm({
         "Enter your practice location";
     }
 
+    if (!Number.isFinite(Number(consultationFee)) || Number(consultationFee) < 0) {
+      nextErrors.consultationFee = "Enter a valid fee in INR";
+    }
+
     setErrors(nextErrors);
 
     return (
@@ -139,6 +145,7 @@ export default function DoctorProfileForm({
           Number(experienceYears),
         clinic: clinic.trim(),
         location: location.trim(),
+        consultationFee: Number(consultationFee),
       });
 
       setIsSaving(false);
@@ -322,6 +329,16 @@ export default function DoctorProfileForm({
                 )
               }
               error={errors.location}
+            />
+
+            <TextField
+              id="profile-fee"
+              label="Consultation fee (INR)"
+              type="number"
+              min={0}
+              value={consultationFee}
+              onChange={(event) => setConsultationFee(event.target.value)}
+              error={errors.consultationFee}
             />
           </div>
         </section>

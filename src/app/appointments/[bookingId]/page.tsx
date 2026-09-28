@@ -11,8 +11,10 @@ import PreConsultationIntakeForm from "@/features/appointment/components/PreCons
 
 import {
   getAllBookings,
+  updateBooking,
   updateBookingStatus,
 } from "@/lib/bookings-store";
+import { downloadInvoice, eligibleRefundPercent, formatInr, isRefundEligible } from "@/lib/payments";
 
 import { createDoctorNotification } from "@/lib/notifications-store";
 
@@ -502,6 +504,7 @@ export default function AppointmentConfirmationPage() {
       "cancelled",
       "Appointment cancelled by patient",
     );
+    updateBooking(currentBooking.id, { refundStatus: "eligible", refundAmountInr: Math.round((currentBooking.amountInr ?? 0) * (currentBooking.missedBy === "doctor" ? 1 : 0.5)), reschedulePendingPatient: false });
 
     const notification =
       createDoctorNotification({
@@ -533,15 +536,16 @@ export default function AppointmentConfirmationPage() {
         bookingId: currentBooking.id,
         status: "cancelled",
         actionReason:
-          "Declined appointment cancelled by patient",
+          "Patient cancelled after doctor decline",
       }),
     );
 
     updateBookingStatus(
       currentBooking.id,
       "cancelled",
-      "Declined appointment cancelled by patient",
+      "Patient cancelled after doctor decline",
     );
+    updateBooking(currentBooking.id, { refundStatus: "eligible", refundAmountInr: currentBooking.amountInr, actionReason: "Patient cancelled after doctor decline" });
 
     const notification =
       createDoctorNotification({
@@ -610,6 +614,8 @@ export default function AppointmentConfirmationPage() {
               #{currentBooking.id.slice(-6).toUpperCase()}
             </dd>
           </div>
+
+          {currentBooking.amountInr !== undefined && <div className="flex justify-between gap-2 border-t border-[var(--line)] pt-3"><dt className="text-[var(--muted)]">Payment · {currentBooking.paymentMethod?.toUpperCase()}</dt><dd className="text-right font-semibold text-[var(--ink)]">{formatInr(currentBooking.amountInr)} · {currentBooking.refundStatus === "refunded" ? `Refunded ${formatInr(currentBooking.refundAmountInr)}` : currentBooking.refundStatus === "requested" ? "Refund awaiting approval" : currentBooking.refundStatus === "eligible" ? `Refund eligible · ${eligibleRefundPercent(currentBooking)}%` : currentBooking.paymentStatus === "paid" ? "Paid" : "Payment status unavailable"}</dd></div>}
 
           <div className="flex justify-between gap-2">
             <dt className="text-[var(--muted)]">
@@ -917,7 +923,7 @@ export default function AppointmentConfirmationPage() {
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          {canReschedule ? (
+          {canReschedule && !currentBooking.reschedulePendingPatient ? (
             <Link
               href={`/appointments/${currentBooking.id}/reschedule`}
               className="flex-1"
@@ -937,7 +943,7 @@ export default function AppointmentConfirmationPage() {
             </Link>
           )}
 
-          {canCancel && (
+          {canCancel && !currentBooking.reschedulePendingPatient && (
             <Button
               variant="outline"
               className="flex-1"
@@ -971,6 +977,17 @@ export default function AppointmentConfirmationPage() {
       )}
 
       <div className="mt-3">
+        {currentBooking.reschedulePendingPatient && (
+          <div className="mb-3 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4">
+            <p className="text-sm font-medium text-[var(--ink)]">Your doctor proposed this appointment date. Accept the date or cancel the appointment.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => updateBooking(currentBooking.id, { reschedulePendingPatient: false, rescheduleProposedBy: undefined, missedBy: undefined, refundStatus: "none", refundAmountInr: undefined })}>Accept date</Button>
+              <Button size="sm" variant="outline" disabled={isCancelling || !slotsInitialized} onClick={handleCancel}>Cancel appointment</Button>
+            </div>
+          </div>
+        )}
+        {currentBooking.status === "completed" && <Button variant="outline" className="w-full" onClick={() => downloadInvoice(currentBooking, doctor?.name ?? "Doctor")}>Download payment invoice · {formatInr(currentBooking.amountInr)}</Button>}
+        {isRefundEligible(currentBooking) && <Button className="mt-2 w-full" variant="outline" onClick={() => { const amount = Math.round((currentBooking.amountInr ?? 0) * eligibleRefundPercent(currentBooking) / 100); updateBooking(currentBooking.id, { refundStatus: "requested", paymentStatus: "refund-requested", refundAmountInr: amount }); createDoctorNotification({ userId: currentBooking.doctorId, title: "Refund approval requested", message: `Patient requested a ${eligibleRefundPercent(currentBooking)}% refund (${formatInr(amount)}).`, type: "refund", appointmentId: currentBooking.id }); }}>Request {eligibleRefundPercent(currentBooking)}% refund · {formatInr(Math.round((currentBooking.amountInr ?? 0) * eligibleRefundPercent(currentBooking) / 100))}</Button>}
         <Link
           href="/appointments"
           className="block"

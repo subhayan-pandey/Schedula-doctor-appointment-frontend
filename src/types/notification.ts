@@ -9,6 +9,8 @@ export type NotificationType =
   | "reschedule"
   | "declined"
   | "missed"
+  | "payment"
+  | "refund"
   | "prescription"
   | "system";
 

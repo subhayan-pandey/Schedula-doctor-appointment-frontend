@@ -23,7 +23,7 @@ import {
 } from "@/lib/doctors-store";
 
 import {
-  initializeDoctors,
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import type {
@@ -58,7 +58,7 @@ export default function DoctorProfilePage() {
   useEffect(() => {
     if (!initialized) {
       dispatch(
-        initializeDoctors(
+        setDoctors(
           getAllDoctors(),
         ),
       );

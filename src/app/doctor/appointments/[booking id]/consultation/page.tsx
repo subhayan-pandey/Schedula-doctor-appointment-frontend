@@ -41,11 +41,11 @@ import {
 } from "@/lib/utils/date";
 
 import {
-  initializeAppointments,
+  setAppointments,
 } from "@/store/slices/appointmentsSlice";
 
 import {
-  initializeDoctors,
+  setDoctors,
 } from "@/store/slices/doctorsSlice";
 
 import type {
@@ -227,7 +227,7 @@ export default function DoctorConsultationPage() {
   useEffect(() => {
     if (!appointmentsInitialized) {
       dispatch(
-        initializeAppointments(
+        setAppointments(
           getAllBookings(),
         ),
       );
@@ -240,7 +240,7 @@ export default function DoctorConsultationPage() {
   useEffect(() => {
     if (!doctorsInitialized) {
       dispatch(
-        initializeDoctors(
+        setDoctors(
           getAllDoctors(),
         ),
       );

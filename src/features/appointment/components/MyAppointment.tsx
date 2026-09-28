@@ -22,8 +22,14 @@ import AppointmentTimeline from "@/features/appointment/components/AppointmentTi
 
 import {
   getAllBookings,
+  updateBooking,
   updateBookingStatus,
 } from "@/lib/bookings-store";
+import { createDoctorNotification } from "@/lib/notifications-store";
+import { eligibleRefundPercent, formatInr, isRefundEligible } from "@/lib/payments";
+import { downloadInvoice } from "@/lib/payments";
+import { releaseDoctorSlot } from "@/store/slices/slotsSlice";
+import { releaseSlot } from "@/lib/slots-store";
 
 import {
   getAllDoctors,
@@ -848,10 +854,7 @@ export default function MyAppointment() {
     if (
       !booking ||
       (
-        booking.status !==
-          "confirmed" &&
-        booking.status !==
-          "upcoming"
+        !["pending", "confirmed", "upcoming"].includes(booking.status)
       )
     ) {
       return;
@@ -859,6 +862,9 @@ export default function MyAppointment() {
 
     const actionReason =
       "Appointment cancelled by patient";
+
+    dispatch(releaseDoctorSlot({ doctorId: booking.doctorId, slotId: booking.slotId }));
+    releaseSlot(booking.doctorId, booking.slotId);
 
     dispatch(
       updateAppointmentStatusInRedux({
@@ -873,56 +879,46 @@ export default function MyAppointment() {
       "cancelled",
       actionReason,
     );
+    updateBooking(bookingId, { reschedulePendingPatient: false });
+    if (booking.doctorId) createDoctorNotification({
+      userId: booking.doctorId,
+      title: "Appointment cancelled",
+      message: `${booking.patientName} cancelled their appointment for ${booking.date} at ${booking.time}. A 50% refund may be requested by the patient.`,
+      type: "cancellation",
+      appointmentId: booking.id,
+    });
   }
 
-  function handleMarkMissed(
-    bookingId: string,
-  ) {
-    const booking =
-      bookings.find(
-        (item) =>
-          item.id === bookingId,
-      );
+  function handleRefundRequest(booking: Booking) {
+    if (!isRefundEligible(booking)) return;
+    const amount = Math.round((booking.amountInr ?? 0) * eligibleRefundPercent(booking) / 100);
+    updateBooking(booking.id, {
+      refundStatus: "requested",
+      refundAmountInr: amount,
+      paymentStatus: "refund-requested",
+      refundReason: `Patient requested ${eligibleRefundPercent(booking)}% refund`,
+    });
+    createDoctorNotification({
+      userId: booking.doctorId,
+      title: "Refund approval requested",
+      message: `${booking.patientName} requested a ${eligibleRefundPercent(booking)}% refund (${formatInr(amount)}) for the ${booking.status} appointment. Please review it.`,
+      type: "refund",
+      appointmentId: booking.id,
+    });
+  }
 
-    if (
-      !booking ||
-      booking.status !==
-        "confirmed"
-    ) {
+  function handleRescheduleResponse(booking: Booking, accept: boolean) {
+    if (!booking.reschedulePendingPatient) return;
+    if (accept) {
+      updateBooking(booking.id, { reschedulePendingPatient: false, rescheduleProposedBy: undefined, missedBy: undefined, refundStatus: "none", refundAmountInr: undefined });
+      createDoctorNotification({ userId: booking.doctorId, title: "Reschedule accepted", message: `${booking.patientName} accepted the proposed date ${booking.date} at ${booking.time}.`, type: "reschedule", appointmentId: booking.id });
       return;
     }
-
-    const appointmentTime =
-      new Date(
-        `${booking.date} ${booking.time}`,
-      ).getTime();
-
-    if (
-      Number.isNaN(
-        appointmentTime,
-      ) ||
-      currentTime <=
-        appointmentTime
-    ) {
-      return;
-    }
-
-    const actionReason =
-      "Appointment marked as missed after scheduled time";
-
-    dispatch(
-      updateAppointmentStatusInRedux({
-        bookingId,
-        status: "missed",
-        actionReason,
-      }),
-    );
-
-    updateBookingStatus(
-      bookingId,
-      "missed",
-      actionReason,
-    );
+    dispatch(releaseDoctorSlot({ doctorId: booking.doctorId, slotId: booking.slotId }));
+    releaseSlot(booking.doctorId, booking.slotId);
+    const actionReason = "Patient cancelled after doctor-proposed reschedule";
+    updateBooking(booking.id, { status: "cancelled", actionReason, reschedulePendingPatient: false, refundStatus: "eligible", refundAmountInr: Math.round((booking.amountInr ?? 0) * (booking.missedBy === "doctor" ? 1 : 0.5)) });
+    createDoctorNotification({ userId: booking.doctorId, title: "Reschedule declined", message: `${booking.patientName} declined the proposed reschedule and cancelled the appointment.`, type: "cancellation", appointmentId: booking.id });
   }
 
   if (!patientId) {
@@ -945,9 +941,12 @@ export default function MyAppointment() {
     <>
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-10">
         <header>
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--brand-deep)]">
             Patient Portal
           </p>
+          <Link href="/payments" className="text-sm font-medium text-[var(--brand-deep)] hover:underline">Payment history</Link>
+          </div>
 
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[var(--ink)] sm:text-3xl">
             My Appointments
@@ -1181,6 +1180,15 @@ export default function MyAppointment() {
                         )}
                       </div>
 
+                      {booking.amountInr !== undefined && (
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm">
+                          <span className="font-medium text-[var(--ink)]">{formatInr(booking.amountInr)} · {booking.paymentMethod?.toUpperCase() ?? "Payment"}</span>
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${booking.refundStatus === "refunded" ? "bg-[var(--success-soft)] text-[var(--success)]" : booking.refundStatus === "requested" ? "bg-[var(--warning-soft)] text-[var(--warning)]" : "bg-[var(--brand-soft)] text-[var(--brand-deep)]"}`}>
+                            {booking.refundStatus === "refunded" ? `Refunded ${formatInr(booking.refundAmountInr)}` : booking.refundStatus === "requested" ? "Refund awaiting doctor approval" : booking.refundStatus === "eligible" ? `Refund eligible · ${eligibleRefundPercent(booking)}%` : booking.paymentStatus === "paid" ? "Paid" : "Payment status unavailable"}
+                          </span>
+                        </div>
+                      )}
+
                       {booking.consultationType ===
                         "in-person" &&
                         doctor?.location && (
@@ -1295,6 +1303,7 @@ export default function MyAppointment() {
                         {booking.status ===
                           "completed" && (
                           <>
+                            <Button size="sm" variant="outline" onClick={() => downloadInvoice(booking, doctor?.name ?? "Doctor")} className="w-full sm:w-auto">Download invoice</Button>
                             {getPrescriptionByAppointmentId(
                               booking.id,
                             ) && (
@@ -1333,12 +1342,21 @@ export default function MyAppointment() {
                           </>
                         )}
 
+                        {booking.reschedulePendingPatient && (
+                          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--warning-soft)] bg-[var(--canvas)] p-3">
+                            <span className="mr-auto text-sm text-[var(--ink)]">Doctor proposed this date. Accept it or cancel (refund eligibility follows the cancellation reason).</span>
+                            <Button size="sm" onClick={() => handleRescheduleResponse(booking, true)}>Accept date</Button>
+                            <Button size="sm" variant="outline" onClick={() => handleRescheduleResponse(booking, false)}>Cancel appointment</Button>
+                          </div>
+                        )}
+
                         {(
+                          booking.status === "pending" ||
                           booking.status ===
                             "confirmed" ||
                           booking.status ===
                             "upcoming"
-                        ) && (
+                        ) && !booking.reschedulePendingPatient && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -1353,26 +1371,11 @@ export default function MyAppointment() {
                           </Button>
                         )}
 
-                        {booking.status ===
-                          "confirmed" &&
-                          currentTime > 0 &&
-                          new Date(
-                            `${booking.date} ${booking.time}`,
-                          ).getTime() <
-                            currentTime && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                handleMarkMissed(
-                                  booking.id,
-                                )
-                              }
-                              className="w-full sm:w-auto"
-                            >
-                              Mark as Missed
-                            </Button>
-                          )}
+                        {isRefundEligible(booking) && (
+                          <Button size="sm" variant="outline" onClick={() => handleRefundRequest(booking)} className="w-full sm:w-auto">
+                            Request {eligibleRefundPercent(booking)}% refund
+                          </Button>
+                        )}
                       </div>
 
                       <div className="mt-5">

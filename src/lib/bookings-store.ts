@@ -107,6 +107,18 @@ export function updateBooking(
       | "status"
       | "actionReason"
       | "consultationType"
+      | "amountInr"
+      | "paymentMethod"
+      | "paymentStatus"
+      | "paymentReference"
+      | "paymentUpdatedAt"
+      | "moneyDeductedOnFailure"
+      | "refundStatus"
+      | "refundAmountInr"
+      | "refundReason"
+      | "missedBy"
+      | "rescheduleProposedBy"
+      | "reschedulePendingPatient"
     >
   >,
 ): Booking | null {

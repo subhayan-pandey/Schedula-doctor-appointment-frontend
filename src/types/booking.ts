@@ -9,6 +9,16 @@ export type BookingStatus =
   | "declined"
   | "missed";
 
+export type PaymentMethod = "card" | "upi";
+export type PaymentStatus =
+  | "paid"
+  | "failed"
+  | "refund-requested"
+  | "refund-approved"
+  | "refunded";
+export type RefundStatus = "none" | "eligible" | "requested" | "approved" | "rejected" | "refunded";
+export type MissedBy = "patient" | "doctor";
+
 export type Booking = {
   id: string;
   doctorId: string;
@@ -23,4 +33,17 @@ export type Booking = {
   updatedAt?: string;
   rescheduleCount?: number;
   actionReason?: string;
+  /** INR amount captured at booking time; later fee edits never change it. */
+  amountInr?: number;
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  paymentReference?: string;
+  paymentUpdatedAt?: string;
+  moneyDeductedOnFailure?: boolean;
+  refundStatus?: RefundStatus;
+  refundAmountInr?: number;
+  refundReason?: string;
+  missedBy?: MissedBy;
+  rescheduleProposedBy?: "doctor" | "patient";
+  reschedulePendingPatient?: boolean;
 };

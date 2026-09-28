@@ -85,6 +85,8 @@ function isNotificationType(value: unknown): value is NotificationType {
     value === "reschedule" ||
     value === "declined" ||
     value === "missed" ||
+    value === "payment" ||
+    value === "refund" ||
     value === "prescription" ||
     value === "system"
   );

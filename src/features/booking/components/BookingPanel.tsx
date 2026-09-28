@@ -15,6 +15,7 @@ import {
   useDispatch,
   useSelector,
 } from "react-redux";
+import { toast } from "react-toastify";
 
 import Button from "@/components/ui/Button";
 import DateStrip from "@/components/ui/DateStrip";
@@ -66,6 +67,10 @@ import type {
 import type {
   ConsultationType,
 } from "@/types/consultation";
+import { formatInr } from "@/lib/payments";
+import { addPaymentRecord } from "@/lib/payment-store";
+import { createPatientNotification } from "@/lib/notifications-store";
+import type { PaymentMethod } from "@/types/booking";
 
 export default function BookingPanel({
   doctorId,
@@ -120,11 +125,19 @@ export default function BookingPanel({
     string | null
   >(null);
 
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [demoOutcome, setDemoOutcome] = useState<"success" | "failure" | "deducted-failure">("success");
+
   const user =
     useSelector(
       (state: RootState) =>
         state.auth.user,
     );
+
+  const doctor = useSelector((state: RootState) =>
+    state.doctors.doctors.find((item) => item.id === doctorId),
+  );
 
   const slots =
     useSelector(
@@ -308,6 +321,11 @@ export default function BookingPanel({
   }
 
   function handleConfirmBooking() {
+    if (!checkoutOpen) {
+      if (!canBookSelectedSlot) return;
+      setCheckoutOpen(true);
+      return;
+    }
     if (
       !selectedSlotId ||
       isBooking
@@ -359,9 +377,42 @@ export default function BookingPanel({
       return;
     }
 
-    setIsBooking(
-      true,
-    );
+    const bookingId = `bk-${Date.now()}`;
+    const amount = doctor?.consultationFee ?? 500;
+    const paymentReference = `DEMO-${Date.now()}`;
+    const historyRecord = {
+      id: paymentReference,
+      bookingId: demoOutcome === "success" ? bookingId : undefined,
+      patientId: user.id,
+      patientName: user.name,
+      doctorId,
+      doctorName: doctor?.name ?? "Doctor",
+      amountInr: amount,
+      method: paymentMethod,
+      status: demoOutcome === "success" ? "paid" as const : demoOutcome === "failure" ? "failed" as const : "refund-processing" as const,
+      reference: paymentReference,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (demoOutcome !== "success") {
+      addPaymentRecord(historyRecord);
+      if (demoOutcome === "deducted-failure") {
+        createPatientNotification({
+          userId: user.id,
+          title: "Payment refund processing",
+          message: `The demo payment for ${formatInr(amount)} failed after deduction. A full refund is being processed.`,
+          type: "refund",
+        });
+        toast.error("Payment failed. Money was deducted; a full refund is being processed.");
+      } else {
+        toast.error("Payment failed. No amount was charged.");
+      }
+      setBookingError(demoOutcome === "deducted-failure" ? "Refund processing · no appointment was booked." : "Payment failed · no appointment was booked.");
+      setIsBooking(false);
+      return;
+    }
+
+    setIsBooking(true);
 
     setBookingError(
       null,
@@ -376,9 +427,6 @@ export default function BookingPanel({
               selectedSlotId,
           }),
         );
-
-        const bookingId =
-          `bk-${Date.now()}`;
 
         const appointment = {
           id:
@@ -408,7 +456,16 @@ export default function BookingPanel({
 
           createdAt:
             new Date().toISOString(),
+          amountInr: amount,
+          paymentMethod,
+          paymentStatus: "paid" as const,
+          paymentReference,
+          paymentUpdatedAt: new Date().toISOString(),
+          refundStatus: "none" as const,
         };
+
+        addPaymentRecord(historyRecord);
+        toast.success(`Payment of ${formatInr(amount)} successful. Appointment sent for doctor confirmation.`);
 
         dispatch(
           addAppointment(
@@ -460,6 +517,7 @@ export default function BookingPanel({
         setSelectedSlotId(
           null,
         );
+        setCheckoutOpen(false);
 
         setIsBooking(
           false,
@@ -623,6 +681,24 @@ export default function BookingPanel({
         </p>
       )}
 
+      {hasAvailableSlots && selectedSlotId && checkoutOpen && (
+        <section className="mt-6 rounded-xl border border-[var(--line)] bg-[var(--canvas)] p-4" aria-label="Demo payment">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[var(--ink)]">Demo checkout</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">Frontend simulation only. Use dummy details; no real payment is taken.</p>
+            </div>
+            <p className="text-sm font-semibold text-[var(--ink)]">{formatInr(doctor?.consultationFee ?? 500)}</p>
+          </div>
+          <div className="mt-4 flex gap-2">
+            {(["card", "upi"] as const).map((method) => <button key={method} type="button" aria-pressed={paymentMethod === method} onClick={() => setPaymentMethod(method)} className={`rounded-lg border px-3 py-2 text-sm font-medium capitalize ${paymentMethod === method ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]" : "border-[var(--line)] text-[var(--muted)]"}`}>{method === "upi" ? "UPI" : "Card"}</button>)}
+          </div>
+          <label className="mt-3 block text-xs font-medium text-[var(--muted)]">{paymentMethod === "card" ? "Demo card" : "Demo UPI ID"}<input readOnly value={paymentMethod === "card" ? "4242 4242 4242 4242 · demo" : "patient@upi · demo"} className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]" /></label>
+          <label className="mt-3 block text-xs font-medium text-[var(--muted)]">Simulation outcome<select value={demoOutcome} onChange={(event) => setDemoOutcome(event.target.value as typeof demoOutcome)} className="mt-1 min-h-10 w-full rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 text-sm text-[var(--ink)]"><option value="success">Successful payment</option><option value="failure">Failed · no deduction</option><option value="deducted-failure">Failed · money deducted (refund demo)</option></select></label>
+          <p className="mt-2 text-[11px] leading-5 text-[var(--muted)]">Payment and booking amounts are shown in INR for all consultations.</p>
+        </section>
+      )}
+
       {hasAvailableSlots && (
         <Button
           size="lg"
@@ -637,7 +713,7 @@ export default function BookingPanel({
         >
           {isBooking
             ? "Booking..."
-            : "Book appointment"}
+            : checkoutOpen ? `Pay ${formatInr(doctor?.consultationFee ?? 500)} and book` : `Continue · ${formatInr(doctor?.consultationFee ?? 500)}`}
         </Button>
       )}
     </div>
