@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 import { useParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -521,6 +522,10 @@ export default function AppointmentConfirmationPage() {
 
     dispatch(addNotification(notification));
 
+    toast.success(
+      "Appointment cancelled. You can request a 50% refund.",
+    );
+
     setIsCancelling(false);
   }
 
@@ -561,6 +566,10 @@ export default function AppointmentConfirmationPage() {
       });
 
     dispatch(addNotification(notification));
+
+    toast.success(
+      "Appointment cancelled. You can request the eligible refund.",
+    );
 
     setIsCancelling(false);
   }

@@ -31,7 +31,16 @@ const appointmentsSlice =
         state,
         action: PayloadAction<Booking[]>,
       ) {
-        state.appointments = action.payload;
+        state.appointments = action.payload.map(
+          (booking) => ({
+            ...booking,
+            // Bookings saved before consultation types were introduced are
+            // in-person appointments by default.
+            consultationType:
+              booking.consultationType ??
+              "in-person",
+          }),
+        );
         state.initialized = true;
       },
 
@@ -64,6 +73,7 @@ const appointmentsSlice =
               | "slotId"
               | "date"
               | "time"
+              | "rescheduleCount"
               | "status"
               | "actionReason"
               | "consultationType"

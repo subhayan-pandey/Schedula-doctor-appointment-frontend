@@ -104,6 +104,7 @@ export function updateBooking(
       | "slotId"
       | "date"
       | "time"
+      | "rescheduleCount"
       | "status"
       | "actionReason"
       | "consultationType"
@@ -140,12 +141,23 @@ export function rescheduleBooking(
   date: string,
   time: string,
 ): Booking | null {
+  const booking =
+    getBookingById(
+      bookingId,
+    );
+
+  if (!booking) {
+    return null;
+  }
+
   return updateBooking(
     bookingId,
     {
       slotId,
       date,
       time,
+      rescheduleCount:
+        (booking.rescheduleCount ?? 0) + 1,
     },
   );
 }

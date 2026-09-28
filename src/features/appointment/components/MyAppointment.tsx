@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast } from "react-toastify";
 
 import {
   useDispatch,
@@ -879,7 +880,13 @@ export default function MyAppointment() {
       "cancelled",
       actionReason,
     );
-    updateBooking(bookingId, { reschedulePendingPatient: false });
+    updateBooking(bookingId, {
+      reschedulePendingPatient: false,
+      refundStatus: "eligible",
+      refundAmountInr: Math.round(
+        (booking.amountInr ?? 0) * 0.5,
+      ),
+    });
     if (booking.doctorId) createDoctorNotification({
       userId: booking.doctorId,
       title: "Appointment cancelled",
@@ -887,6 +894,10 @@ export default function MyAppointment() {
       type: "cancellation",
       appointmentId: booking.id,
     });
+
+    toast.success(
+      "Appointment cancelled. You can request a 50% refund.",
+    );
   }
 
   function handleRefundRequest(booking: Booking) {

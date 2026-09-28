@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "react-toastify";
 
 import Button from "@/components/ui/Button";
 
@@ -368,6 +369,12 @@ export default function MockConsultationScreen({
 
     setConsultationStarted(
       true,
+    );
+
+    toast.success(
+      role === "doctor"
+        ? "Mock consultation started."
+        : "You joined the mock consultation.",
     );
   }
 

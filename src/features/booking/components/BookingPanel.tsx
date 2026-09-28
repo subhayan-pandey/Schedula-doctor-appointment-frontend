@@ -311,12 +311,20 @@ export default function BookingPanel({
   function handleSelectConsultationType(
     type: ConsultationType,
   ) {
+    if (type === consultationType) {
+      return;
+    }
+
     setConsultationType(
       type,
     );
 
     setBookingError(
       null,
+    );
+
+    toast.info(
+      `${type === "online" ? "Online" : "In-person"} consultation selected.`,
     );
   }
 
@@ -334,9 +342,11 @@ export default function BookingPanel({
     }
 
     if (!user) {
-      setBookingError(
-        "Please log in before booking an appointment.",
-      );
+      const message =
+        "Please log in before booking an appointment.";
+
+      setBookingError(message);
+      toast.error(message);
 
       return;
     }
@@ -345,9 +355,11 @@ export default function BookingPanel({
       user.role !==
       "patient"
     ) {
-      setBookingError(
-        "Please use a patient account to book an appointment.",
-      );
+      const message =
+        "Please use a patient account to book an appointment.";
+
+      setBookingError(message);
+      toast.error(message);
 
       return;
     }
@@ -364,9 +376,11 @@ export default function BookingPanel({
       slotToBook.status !==
         "available"
     ) {
-      setBookingError(
-        "Sorry, this slot was just booked or is no longer available. Please pick another slot.",
-      );
+      const message =
+        "Sorry, this slot was just booked or is no longer available. Please pick another slot.";
+
+      setBookingError(message);
+      toast.error(message);
 
       setSelectedSlotId(
         null,

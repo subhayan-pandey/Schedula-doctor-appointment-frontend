@@ -13,8 +13,45 @@ export function getAppointmentDateTime(
   date: string,
   time: string,
 ): Date | null {
-  const appointmentDate =
-    new Date(`${date} ${time}`);
+  const startTime =
+    time.split("-")[0]?.trim();
+
+  if (!startTime) {
+    return null;
+  }
+
+  const timeMatch = startTime.match(
+    /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i,
+  );
+
+  if (!timeMatch) {
+    return null;
+  }
+
+  let hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2]);
+  const meridiem = timeMatch[3].toUpperCase();
+
+  if (
+    hours < 1 ||
+    hours > 12 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+
+  if (meridiem === "AM" && hours === 12) {
+    hours = 0;
+  } else if (meridiem === "PM" && hours !== 12) {
+    hours += 12;
+  }
+
+  const appointmentDate = new Date(
+    `${date}T${String(hours).padStart(2, "0")}:${String(
+      minutes,
+    ).padStart(2, "0")}:00`,
+  );
 
   if (
     Number.isNaN(

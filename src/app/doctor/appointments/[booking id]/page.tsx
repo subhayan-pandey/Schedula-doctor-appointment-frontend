@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { toast } from "react-toastify";
 
 import { useParams } from "next/navigation";
 
@@ -502,8 +503,6 @@ export default function DoctorAppointmentDetailsPage() {
       }),
     );
 
-    updateBooking(booking.id, { refundStatus: "eligible", refundAmountInr: booking.amountInr, actionReason: "Appointment cancelled by doctor" });
-
     notifyPatient(
       booking,
       "Appointment confirmed",
@@ -695,8 +694,17 @@ export default function DoctorAppointmentDetailsPage() {
         bookingId:
           booking.id,
         status: "cancelled",
+        actionReason:
+          "Appointment cancelled by doctor",
       }),
     );
+
+    updateBooking(booking.id, {
+      refundStatus: "eligible",
+      refundAmountInr: booking.amountInr,
+      actionReason:
+        "Appointment cancelled by doctor",
+    });
 
     notifyPatient(
       booking,
@@ -707,6 +715,10 @@ export default function DoctorAppointmentDetailsPage() {
         booking.time
       } has been cancelled. The appointment slot is available again.`,
       "cancellation",
+    );
+
+    toast.success(
+      "Appointment cancelled. The patient can request a full refund.",
     );
 
     setIsProcessing(false);

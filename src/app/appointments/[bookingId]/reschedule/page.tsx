@@ -44,7 +44,6 @@ import {
 
 import {
   setAppointments,
-  updateAppointment,
 } from "@/store/slices/appointmentsSlice";
 
 import { setDoctors } from "@/store/slices/doctorsSlice";
@@ -520,20 +519,6 @@ export default function RescheduleAppointmentPage() {
         selectedSlot.id,
       );
     }
-
-    dispatch(
-      updateAppointment({
-        bookingId: booking.id,
-        updates: {
-          slotId:
-            selectedSlot.id,
-          date:
-            selectedSlot.date,
-          time:
-            selectedSlot.time,
-        },
-      }),
-    );
 
     rescheduleBooking(
       booking.id,

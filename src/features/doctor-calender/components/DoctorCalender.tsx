@@ -1047,6 +1047,8 @@ export default function DoctorCalendar() {
        latestNewSlot.date,
       time:
        latestNewSlot.time,
+      rescheduleCount:
+       (currentBooking.rescheduleCount ?? 0) + 1,
       rescheduleProposedBy: "doctor",
       reschedulePendingPatient: true,
      },
@@ -1162,6 +1164,8 @@ export default function DoctorCalendar() {
       latestNewSlot.time,
      status:
       "upcoming",
+     rescheduleCount:
+      (currentBooking.rescheduleCount ?? 0) + 1,
      rescheduleProposedBy: "doctor",
      reschedulePendingPatient: true,
     },

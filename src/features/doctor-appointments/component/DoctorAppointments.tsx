@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "react-toastify";
 
 import {
   useDispatch,
@@ -949,6 +950,10 @@ export default function DoctorAppointments() {
         booking.time
       } has been cancelled. You can reschedule or book another appointment.`,
       "cancellation",
+    );
+
+    toast.success(
+      "Appointment cancelled. The patient can request a full refund.",
     );
 
     setProcessingBookingId(
