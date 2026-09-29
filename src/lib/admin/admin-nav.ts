@@ -47,7 +47,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "reviews",
     label: "Reviews",
     href: "/admin/reviews",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "notifications",
