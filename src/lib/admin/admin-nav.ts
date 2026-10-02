@@ -56,6 +56,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     implemented: true,
   },
   {
+    key: "analytics",
+    label: "Analytics",
+    href: "/admin/analytics",
+    implemented: true,
+  },
+  {
     key: "reports",
     label: "Reports",
     href: "/admin/reports",

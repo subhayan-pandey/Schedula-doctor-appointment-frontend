@@ -86,6 +86,15 @@ export default function AdminNavIcon({ itemKey, className = "" }: NavIconProps) 
         </svg>
       );
 
+    case "analytics":
+      return (
+        <svg {...sharedProps} className={className}>
+          <path d="M3.5 19.5h17" />
+          <path d="M5 15.5 9.5 10l3.5 3.5L19 6.5" />
+          <path d="M15 6.5h4v4" />
+        </svg>
+      );
+
     case "reports":
       return (
         <svg {...sharedProps} className={className}>
