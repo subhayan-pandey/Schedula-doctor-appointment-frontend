@@ -53,7 +53,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "notifications",
     label: "Notifications",
     href: "/admin/notifications",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "reports",
