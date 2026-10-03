@@ -65,7 +65,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "reports",
     label: "Reports",
     href: "/admin/reports",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "admin-users",
@@ -77,7 +77,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "audit-logs",
     label: "Audit Logs",
     href: "/admin/audit-logs",
-    implemented: false,
+    implemented: true,
   },
   {
     key: "settings",
