@@ -4,18 +4,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { findActiveAdminNavItem } from "@/lib/admin/admin-nav";
+import { formatAdminRole } from "@/lib/admin/admin-roles";
 import { getInitials } from "@/lib/utils/text";
 
 import { useAdminAuth } from "@/context/AdminAuthContext";
-
-import type { AdminRole } from "@/types/admin/admin-user";
-
-function formatAdminRole(role: AdminRole): string {
-  return role
-    .split("_")
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function ProfileMenu() {
   const { adminUser, logout } = useAdminAuth();
