@@ -17,6 +17,7 @@ type PatientDetailModalProps = {
   open: boolean;
   onClose: () => void;
   onRequestToggleActive: (patient: AdminPatientView) => void;
+  canEdit: boolean;
 };
 
 const historyColumns: TableColumn<Booking>[] = [
@@ -52,6 +53,7 @@ export default function PatientDetailModal({
   open,
   onClose,
   onRequestToggleActive,
+  canEdit,
 }: PatientDetailModalProps) {
   if (!patient) {
     return null;
@@ -101,7 +103,8 @@ export default function PatientDetailModal({
           </div>
         </div>
 
-        <div className="flex justify-end border-t border-[var(--line)] pt-4">
+        {canEdit && (
+          <div className="flex justify-end border-t border-[var(--line)] pt-4">
           <Button
             type="button"
             variant="outline"
@@ -114,7 +117,8 @@ export default function PatientDetailModal({
           >
             {patient.isActive ? "Deactivate patient" : "Activate patient"}
           </Button>
-        </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

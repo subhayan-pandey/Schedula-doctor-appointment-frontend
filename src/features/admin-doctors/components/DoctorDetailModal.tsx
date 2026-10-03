@@ -11,6 +11,7 @@ type DoctorDetailModalProps = {
   open: boolean;
   onClose: () => void;
   onRequestToggleActive: (doctor: AdminDoctorView) => void;
+  canEdit: boolean;
 };
 
 export default function DoctorDetailModal({
@@ -18,6 +19,7 @@ export default function DoctorDetailModal({
   open,
   onClose,
   onRequestToggleActive,
+  canEdit,
 }: DoctorDetailModalProps) {
   if (!doctor) {
     return null;
@@ -28,7 +30,8 @@ export default function DoctorDetailModal({
       <div className="flex flex-col gap-6">
         <DoctorProfileSummary doctor={doctor} />
 
-        <div className="flex justify-end border-t border-[var(--line)] pt-4">
+        {canEdit && (
+          <div className="flex justify-end border-t border-[var(--line)] pt-4">
           <Button
             type="button"
             variant="outline"
@@ -41,7 +44,8 @@ export default function DoctorDetailModal({
           >
             {doctor.isActive ? "Deactivate doctor" : "Activate doctor"}
           </Button>
-        </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

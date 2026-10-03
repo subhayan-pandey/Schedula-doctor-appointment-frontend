@@ -20,6 +20,7 @@ import {
 
 import { setDoctorActiveStatus } from "@/lib/doctors-store";
 import { logAdminAction } from "@/lib/admin/audit-log-store";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -39,6 +40,7 @@ const selectClassName =
 
 export default function AdminDoctorsList() {
   const { adminUser } = useAdminAuth();
+  const canEditDoctors = hasAdminPermission(adminUser, "doctors", "edit");
 
   // Lazy initializer: getAllDoctorsForAdmin() is a synchronous, local
   // read (Redux state / localStorage), and this component only ever
@@ -125,12 +127,17 @@ export default function AdminDoctorsList() {
   }
 
   function handleToggleActive(doctor: AdminDoctorView): void {
+    if (!canEditDoctors) {
+      adminToast.error("You do not have permission to update doctors.");
+      return;
+    }
+
     setSelectedDoctor(null);
     setConfirmTarget(doctor);
   }
 
   function handleConfirmToggle(): void {
-    if (!confirmTarget || !adminUser) {
+    if (!confirmTarget || !adminUser || !canEditDoctors) {
       return;
     }
 
@@ -229,7 +236,8 @@ export default function AdminDoctorsList() {
             View
           </button>
 
-          <button
+          {canEditDoctors && (
+            <button
             type="button"
             onClick={() => handleToggleActive(row)}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
@@ -239,7 +247,8 @@ export default function AdminDoctorsList() {
             }`}
           >
             {row.isActive ? "Deactivate" : "Activate"}
-          </button>
+            </button>
+          )}
         </div>
       ),
     },
@@ -337,6 +346,7 @@ export default function AdminDoctorsList() {
         open={selectedDoctor !== null}
         onClose={() => setSelectedDoctor(null)}
         onRequestToggleActive={handleToggleActive}
+        canEdit={canEditDoctors}
       />
 
       <ConfirmDialog

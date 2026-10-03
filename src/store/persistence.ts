@@ -65,6 +65,8 @@ export function hydratePersistedState(): void {
     if (legacyPatient && !collections.patientAccounts.length) collections.patientAccounts = [legacyPatient];
     store.dispatch(setSharedData({ collections, singletons: {
       doctorAccount: read("schedula:doctor-account", null), doctorPassword: read("schedula:doctor-password", null),
+      adminNotificationPreferences: read("schedula:admin-notification-preferences", null),
+      platformSettings: read("schedula:platform-settings", null),
     } }));
     const slotDoctorIds = new Set(doctors.map((doctor) => doctor.id));
     for (let index = 0; index < localStorage.length; index += 1) {

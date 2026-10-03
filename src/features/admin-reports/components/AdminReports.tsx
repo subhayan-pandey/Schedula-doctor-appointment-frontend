@@ -14,6 +14,7 @@ import { adminToast } from "@/components/admin/ui/toast";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
 import { logAdminAction } from "@/lib/admin/audit-log-store";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 import {
   DEFAULT_REPORT_FILTERS,
   REPORT_KIND_OPTIONS,
@@ -69,6 +70,7 @@ function formatCell(value: string | number, kind: string): string {
 
 export default function AdminReports() {
   const { adminUser } = useAdminAuth();
+  const canExportReports = hasAdminPermission(adminUser, "reports", "view");
 
   const [filters, setFilters] = useState<ReportFilters>(DEFAULT_REPORT_FILTERS);
   const [page, setPage] = useState(1);
@@ -122,7 +124,7 @@ export default function AdminReports() {
   }
 
   function handleExport(format: ExportFormat) {
-    if (build.status !== "ready" || build.result.rows.length === 0) {
+    if (!canExportReports || build.status !== "ready" || build.result.rows.length === 0) {
       return;
     }
 
@@ -363,7 +365,7 @@ export default function AdminReports() {
                 key={format}
                 variant="outline"
                 size="sm"
-                disabled={!canExport || exporting !== null}
+                disabled={!canExport || !canExportReports || exporting !== null}
                 onClick={() => handleExport(format)}
                 aria-label={`Export report as ${EXPORT_FORMAT_LABELS[format]}`}
                 title={

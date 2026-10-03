@@ -13,6 +13,7 @@ import {
   type RecipientOption,
 } from "@/lib/admin/admin-notifications";
 import { logAdminAction } from "@/lib/admin/audit-log-store";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -40,6 +41,11 @@ export default function ComposeNotificationModal({
   onSent,
 }: ComposeNotificationModalProps) {
   const { adminUser } = useAdminAuth();
+  const canCreateNotifications = hasAdminPermission(
+    adminUser,
+    "notifications",
+    "create",
+  );
 
   const [recipientOptions] = useState<RecipientOption[]>(() =>
     getAllRecipientOptions(),
@@ -123,6 +129,11 @@ export default function ComposeNotificationModal({
   }
 
   async function handleSend(): Promise<void> {
+    if (!canCreateNotifications) {
+      adminToast.error("You do not have permission to send notifications.");
+      return;
+    }
+
     if (!title.trim() || !message.trim()) {
       setError("Title and message are both required.");
       return;
@@ -200,7 +211,7 @@ export default function ComposeNotificationModal({
           >
             Cancel
           </Button>
-          <Button type="button" size="sm" onClick={handleSend} disabled={isSending}>
+          <Button type="button" size="sm" onClick={handleSend} disabled={isSending || !canCreateNotifications}>
             {isSending ? "Sending…" : "Send"}
           </Button>
         </>

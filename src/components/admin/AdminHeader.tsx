@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { findActiveAdminNavItem } from "@/lib/admin/admin-nav";
@@ -98,6 +99,15 @@ function ProfileMenu() {
           </div>
 
           <div className="my-1 h-px bg-[var(--line)]" />
+
+          <Link
+            href="/admin/settings"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--ink)] transition-colors hover:bg-[var(--line)]/30"
+          >
+            Settings
+          </Link>
 
           <button
             type="button"

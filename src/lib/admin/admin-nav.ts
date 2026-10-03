@@ -1,9 +1,10 @@
+import type { AdminModule } from "@/lib/admin/admin-permissions";
+
 export type AdminNavItem = {
   key: string;
   label: string;
   href: string;
-  /** false renders the item as a disabled "Coming Soon" entry instead of a link. */
-  implemented: boolean;
+  module: AdminModule;
 };
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
@@ -11,79 +12,79 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     key: "dashboard",
     label: "Dashboard",
     href: "/admin",
-    implemented: true,
+    module: "dashboard",
   },
   {
     key: "doctors",
     label: "Doctors",
     href: "/admin/doctors",
-    implemented: true,
+    module: "doctors",
   },
   {
     key: "doctor-verification",
     label: "Doctor Verification",
     href: "/admin/doctor-verification",
-    implemented: true,
+    module: "doctorVerification",
   },
   {
     key: "patients",
     label: "Patients",
     href: "/admin/patients",
-    implemented: true,
+    module: "patients",
   },
   {
     key: "appointments",
     label: "Appointments",
     href: "/admin/appointments",
-    implemented: true,
+    module: "appointments",
   },
   {
     key: "payments",
     label: "Payments",
     href: "/admin/payments",
-    implemented: true,
+    module: "payments",
   },
   {
     key: "reviews",
     label: "Reviews",
     href: "/admin/reviews",
-    implemented: true,
+    module: "reviews",
   },
   {
     key: "notifications",
     label: "Notifications",
     href: "/admin/notifications",
-    implemented: true,
+    module: "notifications",
   },
   {
     key: "analytics",
     label: "Analytics",
     href: "/admin/analytics",
-    implemented: true,
+    module: "analytics",
   },
   {
     key: "reports",
     label: "Reports",
     href: "/admin/reports",
-    implemented: true,
+    module: "reports",
   },
   {
     key: "admin-users",
     label: "Admin Users",
     href: "/admin/admin-users",
-    implemented: true,
+    module: "adminUsers",
   },
   {
     key: "audit-logs",
     label: "Audit Logs",
     href: "/admin/audit-logs",
-    implemented: true,
+    module: "auditLogs",
   },
   {
     key: "settings",
     label: "Settings",
     href: "/admin/settings",
-    implemented: false,
+    module: "settings",
   },
 ];
 

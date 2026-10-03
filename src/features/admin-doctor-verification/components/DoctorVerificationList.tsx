@@ -21,6 +21,7 @@ import {
 
 import { setDoctorVerificationStatus } from "@/lib/doctors-store";
 import { logAdminAction } from "@/lib/admin/audit-log-store";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -40,6 +41,8 @@ const selectClassName =
 
 export default function DoctorVerificationList() {
   const { adminUser } = useAdminAuth();
+  const canApproveVerification = hasAdminPermission(adminUser, "doctorVerification", "approve");
+  const canRejectVerification = hasAdminPermission(adminUser, "doctorVerification", "reject");
 
   // Same reasoning as AdminDoctorsList/AdminDashboard: synchronous
   // local data, this component only ever mounts client-side, so a
@@ -103,16 +106,31 @@ export default function DoctorVerificationList() {
   }
 
   function handleRequestApprove(doctor: AdminDoctorView): void {
+    if (!canApproveVerification) {
+      adminToast.error("You do not have permission to approve verification.");
+      return;
+    }
+
     setSelectedDoctor(null);
     setConfirmAction({ doctor, action: "approve" });
   }
 
   function handleRequestReject(doctor: AdminDoctorView): void {
+    if (!canRejectVerification) {
+      adminToast.error("You do not have permission to reject verification.");
+      return;
+    }
+
     setSelectedDoctor(null);
     setRejectTarget(doctor);
   }
 
   function handleRequestResubmit(doctor: AdminDoctorView): void {
+    if (!canApproveVerification) {
+      adminToast.error("You do not have permission to update verification.");
+      return;
+    }
+
     setSelectedDoctor(null);
     setConfirmAction({ doctor, action: "resubmit" });
   }
@@ -144,7 +162,7 @@ export default function DoctorVerificationList() {
   }
 
   async function handleConfirmAction(): Promise<void> {
-    if (!confirmAction) {
+    if (!confirmAction || !canApproveVerification) {
       return;
     }
 
@@ -173,7 +191,7 @@ export default function DoctorVerificationList() {
   }
 
   async function handleConfirmReject(reason: string): Promise<void> {
-    if (!rejectTarget) {
+    if (!rejectTarget || !canRejectVerification) {
       return;
     }
 
@@ -261,26 +279,30 @@ export default function DoctorVerificationList() {
             View
           </button>
 
-          {row.verificationStatus === "pending" && (
+          {row.verificationStatus === "pending" && (canApproveVerification || canRejectVerification) && (
             <>
-              <button
+              {canRejectVerification && (
+                <button
                 type="button"
                 onClick={() => handleRequestReject(row)}
                 className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--urgent-deep)] transition-colors hover:bg-[var(--urgent-soft)]"
               >
                 Reject
-              </button>
-              <button
+                </button>
+              )}
+              {canApproveVerification && (
+                <button
                 type="button"
                 onClick={() => handleRequestApprove(row)}
                 className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--success)] transition-colors hover:bg-[var(--success-soft)]"
               >
                 Approve
-              </button>
+                </button>
+              )}
             </>
           )}
 
-          {row.verificationStatus === "rejected" && (
+          {row.verificationStatus === "rejected" && canApproveVerification && (
             <button
               type="button"
               onClick={() => handleRequestResubmit(row)}
@@ -358,6 +380,8 @@ export default function DoctorVerificationList() {
         onRequestApprove={handleRequestApprove}
         onRequestReject={handleRequestReject}
         onRequestResubmit={handleRequestResubmit}
+        canApprove={canApproveVerification}
+        canReject={canRejectVerification}
       />
 
       <RejectDoctorDialog

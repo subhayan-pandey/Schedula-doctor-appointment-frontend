@@ -19,6 +19,7 @@ import {
 } from "@/lib/admin/admin-reviews";
 import { getAllDoctors } from "@/lib/doctors-store";
 import { logAdminAction } from "@/lib/admin/audit-log-store";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -38,6 +39,7 @@ const selectClassName =
 
 export default function AdminReviewsList() {
   const { adminUser } = useAdminAuth();
+  const canEditReviews = hasAdminPermission(adminUser, "reviews", "edit");
 
   // Lazy initializer, same reasoning as every other admin list: this
   // component only ever mounts client-side, past AdminAuthGuard.
@@ -123,6 +125,11 @@ export default function AdminReviewsList() {
   }
 
   function handleRequestToggleReported(review: AdminReviewView): void {
+    if (!canEditReviews) {
+      adminToast.error("You do not have permission to update reviews.");
+      return;
+    }
+
     setSelectedReview(null);
     setConfirmAction({
       review,
@@ -131,12 +138,17 @@ export default function AdminReviewsList() {
   }
 
   function handleRequestToggleHidden(review: AdminReviewView): void {
+    if (!canEditReviews) {
+      adminToast.error("You do not have permission to update reviews.");
+      return;
+    }
+
     setSelectedReview(null);
     setConfirmAction({ review, kind: review.hidden ? "unhide" : "hide" });
   }
 
   function handleConfirm(): void {
-    if (!confirmAction || !adminUser) {
+    if (!confirmAction || !adminUser || !canEditReviews) {
       return;
     }
 
@@ -372,6 +384,7 @@ export default function AdminReviewsList() {
         onClose={() => setSelectedReview(null)}
         onRequestToggleReported={handleRequestToggleReported}
         onRequestToggleHidden={handleRequestToggleHidden}
+        canEdit={canEditReviews}
       />
 
       <ConfirmDialog

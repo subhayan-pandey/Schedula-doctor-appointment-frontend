@@ -16,6 +16,8 @@ import {
   getAllNotificationsForAdmin,
   getRecipientName,
 } from "@/lib/admin/admin-notifications";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
 import type { AppNotification, NotificationRecipientRole } from "@/types/notification";
 
@@ -28,6 +30,12 @@ const selectClassName =
   "h-9 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 text-xs font-medium text-[var(--ink)] outline-none transition-colors hover:border-[var(--brand)]/40 focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]";
 
 export default function AdminNotificationsList() {
+  const { adminUser } = useAdminAuth();
+  const canCreateNotifications = hasAdminPermission(
+    adminUser,
+    "notifications",
+    "create",
+  );
   // Lazy initializer, same reasoning as every other admin list: this
   // component only ever mounts client-side, past AdminAuthGuard.
   const [notifications, setNotifications] = useState<AppNotification[]>(() =>
@@ -170,9 +178,11 @@ export default function AdminNotificationsList() {
           </p>
         </div>
 
-        <Button type="button" onClick={() => setComposeOpen(true)}>
-          Compose notification
-        </Button>
+        {canCreateNotifications && (
+          <Button type="button" onClick={() => setComposeOpen(true)}>
+            Compose notification
+          </Button>
+        )}
       </div>
 
       <SearchFilter
@@ -241,7 +251,7 @@ export default function AdminNotificationsList() {
       />
 
       <ComposeNotificationModal
-        open={composeOpen}
+        open={composeOpen && canCreateNotifications}
         onClose={() => setComposeOpen(false)}
         onSent={refresh}
       />

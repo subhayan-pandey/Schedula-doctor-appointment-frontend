@@ -12,10 +12,25 @@ export function updateSharedCollection<T>(name: SharedCollectionName, update: (i
   replaceSharedCollection(name, next);
   return next;
 }
-export function getSharedSingleton<T>(name: "doctorAccount" | "doctorPassword"): T | null {
+export function getSharedSingleton<
+  T,
+>(
+  name:
+    | "doctorAccount"
+    | "doctorPassword"
+    | "adminNotificationPreferences"
+    | "platformSettings",
+): T | null {
   return store.getState().sharedData.singletons[name] as T | null;
 }
-export function setSharedSingleton(name: "doctorAccount" | "doctorPassword", value: unknown): void {
+export function setSharedSingleton(
+  name:
+    | "doctorAccount"
+    | "doctorPassword"
+    | "adminNotificationPreferences"
+    | "platformSettings",
+  value: unknown,
+): void {
   store.dispatch(setSingleton({ name, value }));
 }
 export function emitLegacyViewEvent(name: string): void {

@@ -22,6 +22,7 @@ type ReviewDetailModalProps = {
   onClose: () => void;
   onRequestToggleReported: (review: AdminReviewView) => void;
   onRequestToggleHidden: (review: AdminReviewView) => void;
+  canEdit: boolean;
 };
 
 export default function ReviewDetailModal({
@@ -30,6 +31,7 @@ export default function ReviewDetailModal({
   onClose,
   onRequestToggleReported,
   onRequestToggleHidden,
+  canEdit,
 }: ReviewDetailModalProps) {
   if (!review) {
     return null;
@@ -62,7 +64,8 @@ export default function ReviewDetailModal({
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--line)] pt-4">
+        {canEdit && (
+          <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--line)] pt-4">
           <Button
             type="button"
             variant="outline"
@@ -83,7 +86,8 @@ export default function ReviewDetailModal({
           >
             {review.hidden ? "Unhide review" : "Hide review"}
           </Button>
-        </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

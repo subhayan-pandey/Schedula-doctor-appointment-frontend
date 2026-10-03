@@ -10,7 +10,12 @@ export type SharedDataState = {
   status: "idle" | "loading" | "ready" | "error";
   error: string | null;
   collections: Record<SharedCollectionName, unknown[]>;
-  singletons: { doctorAccount: unknown | null; doctorPassword: string | null };
+  singletons: {
+    doctorAccount: unknown | null;
+    doctorPassword: string | null;
+    adminNotificationPreferences: unknown | null;
+    platformSettings: unknown | null;
+  };
 };
 
 const emptyCollections = (): SharedDataState["collections"] => ({
@@ -21,7 +26,12 @@ const emptyCollections = (): SharedDataState["collections"] => ({
 
 const initialState: SharedDataState = {
   status: "idle", error: null, collections: emptyCollections(),
-  singletons: { doctorAccount: null, doctorPassword: null },
+  singletons: {
+    doctorAccount: null,
+    doctorPassword: null,
+    adminNotificationPreferences: null,
+    platformSettings: null,
+  },
 };
 
 const sharedDataSlice = createSlice({

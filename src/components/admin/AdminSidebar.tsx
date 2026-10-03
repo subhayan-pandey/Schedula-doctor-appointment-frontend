@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { ADMIN_NAV_ITEMS } from "@/lib/admin/admin-nav";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 
-import { adminToast } from "@/components/admin/ui/toast";
 import AdminNavIcon from "@/components/admin/AdminNavIcon";
+import { useAdminAuth } from "@/context/AdminAuthContext";
 
 function SidebarBrand(): ReactNode {
   return (
@@ -44,32 +45,13 @@ function SidebarNavList({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const { adminUser } = useAdminAuth();
+
   return (
     <nav aria-label="Admin navigation" className="flex flex-col gap-1 px-3">
-      {ADMIN_NAV_ITEMS.map((item) => {
-        if (!item.implemented) {
-          return (
-            <button
-              key={item.key}
-              type="button"
-              aria-disabled="true"
-              onClick={() =>
-                adminToast.info(`${item.label} is coming soon.`)
-              }
-              className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--muted)] transition-colors hover:bg-[var(--line)]/30"
-            >
-              <span className="flex items-center gap-2.5">
-                <AdminNavIcon itemKey={item.key} className="shrink-0 opacity-70" />
-                {item.label}
-              </span>
-
-              <span className="shrink-0 rounded-full bg-[var(--line)]/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-                Soon
-              </span>
-            </button>
-          );
-        }
-
+      {ADMIN_NAV_ITEMS.filter((item) =>
+        hasAdminPermission(adminUser, item.module, "view"),
+      ).map((item) => {
         const isActive = isItemActive(item.href, pathname);
 
         return (

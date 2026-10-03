@@ -15,6 +15,8 @@ type DoctorVerificationDetailModalProps = {
   onRequestApprove: (doctor: AdminDoctorView) => void;
   onRequestReject: (doctor: AdminDoctorView) => void;
   onRequestResubmit: (doctor: AdminDoctorView) => void;
+  canApprove: boolean;
+  canReject: boolean;
 };
 
 export default function DoctorVerificationDetailModal({
@@ -24,6 +26,8 @@ export default function DoctorVerificationDetailModal({
   onRequestApprove,
   onRequestReject,
   onRequestResubmit,
+  canApprove,
+  canReject,
 }: DoctorVerificationDetailModalProps) {
   if (!doctor) {
     return null;
@@ -92,23 +96,27 @@ export default function DoctorVerificationDetailModal({
           <DetailRow label="Rejection reason" value={doctor.rejectionReason} />
         )}
 
-        {doctor.verificationStatus === "pending" && (
+        {doctor.verificationStatus === "pending" && (canApprove || canReject) && (
           <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--line)] pt-4">
-            <Button
+            {canReject && (
+              <Button
               type="button"
               variant="outline"
               className="border-[var(--urgent)] text-[var(--urgent-deep)] hover:bg-[var(--urgent-soft)]"
               onClick={() => onRequestReject(doctor)}
             >
               Reject
-            </Button>
-            <Button type="button" onClick={() => onRequestApprove(doctor)}>
-              Approve
-            </Button>
+              </Button>
+            )}
+            {canApprove && (
+              <Button type="button" onClick={() => onRequestApprove(doctor)}>
+                Approve
+              </Button>
+            )}
           </div>
         )}
 
-        {doctor.verificationStatus === "rejected" && (
+        {doctor.verificationStatus === "rejected" && canApprove && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-4">
             <p className="text-xs text-[var(--muted)]">
               In a real deployment, the doctor resubmits from their own

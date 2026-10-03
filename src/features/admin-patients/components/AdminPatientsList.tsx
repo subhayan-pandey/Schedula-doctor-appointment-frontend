@@ -19,6 +19,7 @@ import {
 import { getBookingsByPatientId } from "@/lib/bookings-store";
 import { getInitials } from "@/lib/utils/text";
 import { logAdminAction } from "@/lib/admin/audit-log-store";
+import { hasAdminPermission } from "@/lib/admin/admin-permissions";
 
 import { useAdminAuth } from "@/context/AdminAuthContext";
 
@@ -31,6 +32,7 @@ const selectClassName =
 
 export default function AdminPatientsList() {
   const { adminUser } = useAdminAuth();
+  const canEditPatients = hasAdminPermission(adminUser, "patients", "edit");
 
   // Lazy initializer, same reasoning as AdminDoctorsList: synchronous
   // local data, this component only ever mounts client-side past
@@ -91,12 +93,17 @@ export default function AdminPatientsList() {
   }
 
   function handleToggleActive(patient: AdminPatientView): void {
+    if (!canEditPatients) {
+      adminToast.error("You do not have permission to update patients.");
+      return;
+    }
+
     setSelectedPatient(null);
     setConfirmTarget(patient);
   }
 
   function handleConfirmToggle(): void {
-    if (!confirmTarget || !adminUser) {
+    if (!confirmTarget || !adminUser || !canEditPatients) {
       return;
     }
 
@@ -182,7 +189,8 @@ export default function AdminPatientsList() {
             View
           </button>
 
-          <button
+          {canEditPatients && (
+            <button
             type="button"
             onClick={() => handleToggleActive(row)}
             className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
@@ -192,7 +200,8 @@ export default function AdminPatientsList() {
             }`}
           >
             {row.isActive ? "Deactivate" : "Activate"}
-          </button>
+            </button>
+          )}
         </div>
       ),
     },
@@ -256,6 +265,7 @@ export default function AdminPatientsList() {
         open={selectedPatient !== null}
         onClose={() => setSelectedPatient(null)}
         onRequestToggleActive={handleToggleActive}
+        canEdit={canEditPatients}
       />
 
       <ConfirmDialog
